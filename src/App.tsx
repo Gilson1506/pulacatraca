@@ -10,30 +10,27 @@ import ProfilePage from './pages/ProfilePage';
 import CheckInPage from './pages/CheckInPage';
 import Footer from './components/Footer';
 import { AuthProvider } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
 
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Header />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/event/:id" element={<EventPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/checkin" element={<CheckInPage />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </Router>
-      </CartProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/event/:id" element={<EventPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/checkin" element={<CheckInPage />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </Router>
     </AuthProvider>
   );
 }

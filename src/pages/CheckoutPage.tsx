@@ -1,52 +1,77 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CreditCard, Smartphone, QrCode, Trash2, Plus, Minus } from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CreditCard, Smartphone, QrCode, Plus, Minus, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const CheckoutPage = () => {
-  const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
+  const { state } = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const { event, ticket } = state || {};
+
+  useEffect(() => {
+    // Se não houver dados do evento/ticket, redireciona para a home
+    if (!event || !ticket) {
+      console.warn('Dados do evento ou do ingresso não encontrados. Redirecionando...');
+      navigate('/');
+    }
+  }, [event, ticket, navigate]);
+
+  const handleQuantityChange = (amount: number) => {
+    setQuantity((prev) => Math.max(1, prev + amount));
+  };
+
+  const serviceFee = 2.50; // Taxa de serviço fixa por ingresso
+  const subtotal = ticket ? ticket.price * quantity : 0;
+  const totalServiceFee = serviceFee * quantity;
+  
+  // Taxa de processamento baseada no método de pagamento
+  const processingFee = paymentMethod === 'card' ? subtotal * 0.05 : 0; // 5% para cartão, 0 para PIX
+
+  const totalPrice = subtotal + totalServiceFee + processingFee;
+
   const handleCheckout = async () => {
     setIsProcessing(true);
-    
-    // Simular processamento de pagamento
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Simular compra bem-sucedida
-    clearCart();
-    navigate('/profile', { 
-      state: { 
+
+    // Simula a criação de um novo ingresso após a compra
+    const newTicketPurchase = {
+      id: Math.random().toString(36).substr(2, 9),
+      eventName: event.title,
+      eventDate: event.date,
+      eventLocation: event.location,
+      ticketType: ticket.name,
+      quantity: quantity,
+      qrCode: `QR-${Math.random().toString(36).substr(2, 9)}`,
+      status: 'ativo'
+    };
+
+    navigate('/profile', {
+      state: {
         message: 'Compra realizada com sucesso! Seus ingressos foram enviados para o seu email.',
-        newTickets: items.map(item => ({
-          id: Math.random().toString(36).substr(2, 9),
-          eventName: item.eventName,
-          eventDate: item.eventDate,
-          eventLocation: item.eventLocation,
-          ticketType: item.ticketType,
-          quantity: item.quantity,
-          qrCode: `QR-${Math.random().toString(36).substr(2, 9)}`,
-          status: 'ativo'
-        }))
+        newTickets: [newTicketPurchase] // Envia como um array
       }
     });
   };
 
-  if (items.length === 0) {
+  // Renderiza uma tela de erro se os dados não foram passados corretamente
+  if (!event || !ticket) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Carrinho vazio</h2>
-          <p className="text-gray-600 mb-8">Adicione alguns ingressos ao seu carrinho para continuar.</p>
+        <div className="text-center p-8">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Oops! Algo deu errado.</h2>
+          <p className="text-gray-600">Você precisa selecionar um evento antes de prosseguir para o checkout.</p>
           <button
             onClick={() => navigate('/')}
-            className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors"
+            className="mt-6 bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors"
           >
-            Explorar eventos
+            Voltar para a Home
           </button>
         </div>
       </div>
@@ -54,56 +79,43 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Finalizar compra</h1>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Cart Items */}
-            <div className="space-y-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Finalizar compra</h1>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Side: Order Summary & Payment */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Event Details */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-bold mb-4">Seus ingressos</h2>
-                <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
-                      <img
-                        src={item.eventImage}
-                        alt={item.eventName}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{item.eventName}</h3>
-                        <p className="text-sm text-gray-500">{item.ticketType}</p>
-                        <p className="text-sm text-gray-500">{new Date(item.eventDate).toLocaleDateString('pt-BR')}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="p-1 rounded-full hover:bg-gray-100"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-1 rounded-full hover:bg-gray-100"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">R$ {(item.price * item.quantity).toFixed(2)}</p>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-red-500 hover:text-red-700 text-sm flex items-center space-x-1"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          <span>Remover</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <h2 className="text-xl font-bold mb-4">Resumo do Pedido</h2>
+                <div className="flex items-start space-x-4">
+                  <img src={event.image} alt={event.title} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-800">{event.title}</h3>
+                    <p className="text-sm text-gray-500">{new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                    <p className="text-sm text-gray-500">{event.location}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ticket Details & Quantity */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold text-gray-800">{ticket.name}</h3>
+                    <p className="text-lg font-bold text-pink-600">R$ {ticket.price.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-gray-100 rounded-full p-1">
+                    <button onClick={() => handleQuantityChange(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="font-bold text-lg w-8 text-center">{quantity}</span>
+                    <button onClick={() => handleQuantityChange(1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -117,74 +129,78 @@ const CheckoutPage = () => {
                     }`}
                     onClick={() => setPaymentMethod('card')}
                   >
-                    <div className="flex items-center space-x-3">
-                      <CreditCard className="h-5 w-5 text-gray-600" />
-                      <span>Cartão de crédito/débito</span>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <CreditCard className="h-5 w-5 mr-3 text-gray-600" />
+                        <span className="font-semibold">Cartão de Crédito</span>
+                      </div>
+                      <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        {paymentMethod === 'card' && <div className="h-2 w-2 rounded-full bg-pink-500"></div>}
+                      </div>
                     </div>
                   </div>
+                  {/* PIX Payment Method */}
                   <div
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                       paymentMethod === 'pix' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'
                     }`}
                     onClick={() => setPaymentMethod('pix')}
                   >
-                    <div className="flex items-center space-x-3">
-                      <QrCode className="h-5 w-5 text-gray-600" />
-                      <span>PIX</span>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <QrCode className="h-5 w-5 mr-3 text-gray-600" />
+                        <span className="font-semibold">PIX</span>
+                      </div>
+                      <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        {paymentMethod === 'pix' && <div className="h-2 w-2 rounded-full bg-pink-500"></div>}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Order Summary */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-                <h2 className="text-xl font-bold mb-4">Resumo do pedido</h2>
-                
-                <div className="space-y-3 mb-6">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex justify-between">
-                      <span className="text-gray-600">
-                        {item.eventName} ({item.quantity}x)
-                      </span>
-                      <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-6">
-                    <span className="text-xl font-bold">Total:</span>
-                    <span className="text-xl font-bold text-pink-600">
-                      R$ {getTotalPrice().toFixed(2)}
-                    </span>
+            {/* Right Side: Price Summary & Checkout Button */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm p-6 lg:sticky lg:top-24">
+                <h2 className="text-xl font-bold mb-4">Resumo</h2>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal ({quantity} {quantity > 1 ? 'ingressos' : 'ingresso'})</span>
+                    <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
                   </div>
-
-                  <button
-                    onClick={handleCheckout}
-                    disabled={isProcessing}
-                    className="w-full py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50"
-                  >
-                    {isProcessing ? 'Processando...' : 'Finalizar compra'}
-                  </button>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Taxa de Serviço</span>
+                    <span className="font-medium">R$ {totalServiceFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Taxa de Processamento</span>
+                    <span className="font-medium">R$ {processingFee.toFixed(2)}</span>
+                  </div>
                 </div>
-
-                <div className="mt-6 text-center text-sm text-gray-500">
-                  <p>🔒 Compra segura e protegida</p>
-                  <p>Seus ingressos serão enviados por email e WhatsApp</p>
+                <div className="border-t my-4"></div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total</span>
+                  <span>R$ {totalPrice.toFixed(2)}</span>
                 </div>
-              </div>
-
-              {/* Delivery Info */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="font-semibold mb-3">📱 Receba seus ingressos</h3>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li>• Email com QR Code</li>
-                  <li>• WhatsApp com ingresso digital</li>
-                  <li>• Acesso direto no app</li>
-                  <li>• Histórico de compras</li>
-                </ul>
+                <button
+                  onClick={handleCheckout}
+                  disabled={isProcessing}
+                  className="mt-6 w-full bg-pink-600 text-white py-3 rounded-lg font-bold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isProcessing ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                      </svg>
+                      Processando...
+                    </>
+                  ) : (
+                    'Pagar'
+                  )}
+                </button>
+                <p className="text-xs text-gray-500 mt-4 text-center">Compra 100% segura.</p>
               </div>
             </div>
           </div>

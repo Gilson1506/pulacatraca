@@ -31,33 +31,33 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <Link to={`/event/${event.id}`} className="block group">
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-        <div className="relative">
+      <div className="bg-white rounded-[12px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col">
+        <div className="relative w-full">
           <img
             src={event.image}
             alt={event.title}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+            style={{ borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
           />
-          {/* Data removida da imagem */}
         </div>
-        
-        <div className="p-4">
-          <h3 className="font-bold text-gray-700 group-hover:text-pink-600 transition-colors mb-2 text-lg">
-            {event.title}
-          </h3>
-          {/* Data do evento abaixo do título */}
-          <div className="flex items-center space-x-2 text-gray-500 text-sm mb-2">
-            <span className="inline-block font-semibold text-pink-600 bg-pink-50 rounded px-2 py-0.5">
-              {dateFormatted.day}/{dateFormatted.month}
-            </span>
-            <span className="text-gray-600">{event.time}</span>
+        <div className="flex flex-row items-start p-4 gap-4">
+          {/* Bloco de data rosa à esquerda */}
+          <div className="flex flex-col items-center justify-center min-w-[56px] mr-2">
+            <div className="bg-[#ff2d55] text-white rounded-lg px-2 py-1 flex flex-col items-center shadow-md">
+              <span className="text-2xl font-bold leading-tight" style={{ fontFamily: 'Poppins, Inter, Roboto, sans-serif' }}>{dateFormatted.day}</span>
+              <span className="text-xs font-semibold uppercase tracking-wide" style={{ fontFamily: 'Poppins, Inter, Roboto, sans-serif' }}>{dateFormatted.month}</span>
+            </div>
           </div>
-          <div className="flex items-center space-x-1 text-gray-500 text-sm mb-3">
-            <MapPin className="h-4 w-4" />
-            <span>{event.city}/{event.state}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            {/* Preço removido */}
+          {/* Conteúdo principal do card */}
+          <div className="flex-1 flex flex-col justify-center">
+            <h3 className="font-semibold text-gray-800 mb-1 text-[18px] leading-snug" style={{ fontFamily: 'Poppins, Inter, Roboto, sans-serif' }}>
+              {event.title}
+            </h3>
+            <div className="flex items-center space-x-1 text-[14px] mb-1" style={{ fontFamily: 'Inter, Roboto, Poppins, sans-serif' }}>
+              <MapPin className="h-4 w-4 text-[#007aff]" />
+              <span className="text-[#007aff] font-semibold">{event.location || `${event.city}/${event.state}`}</span>
+            </div>
+            <span className="text-gray-500 text-xs mt-1" style={{ fontFamily: 'Inter, Roboto, Poppins, sans-serif' }}>{event.time}</span>
           </div>
         </div>
       </div>

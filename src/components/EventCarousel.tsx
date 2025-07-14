@@ -19,7 +19,7 @@ const EventCarousel = () => {
       id: '1',
       title: 'O EMBAIXADOR',
       subtitle: 'Classic',
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=1',
+      image: 'https://i.postimg.cc/7YtVwL9b/Imagem-Whats-App-2025-07-14-s-17-58-28-83ccbe3c.jpg',
       buttonText: 'COMPRE AQUI SEU INGRESSO!',
       buttonLink: '/event/1'
     },
@@ -27,7 +27,7 @@ const EventCarousel = () => {
       id: '2',
       title: 'FESTA JULINA',
       subtitle: 'Sorocaba',
-      image: 'https://images.pexels.com/photos/1105666/pexels-photo-1105666.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=1',
+      image: 'https://i.postimg.cc/d3dtV6Z4/Imagem-Whats-App-2025-07-14-s-17-58-28-fdcded78.jpg',
       buttonText: 'COMPRE AQUI SEU INGRESSO!',
       buttonLink: '/event/2'
     },
@@ -35,7 +35,7 @@ const EventCarousel = () => {
       id: '3',
       title: 'TULUM BEACH',
       subtitle: 'Club 2025',
-      image: 'https://images.pexels.com/photos/1684187/pexels-photo-1684187.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=1',
+      image: 'https://i.postimg.cc/t4nDCVB7/Imagem-Whats-App-2025-07-14-s-17-58-16-03e9661e.jpg',
       buttonText: 'COMPRE AQUI SEU INGRESSO!',
       buttonLink: '/event/3'
     }
@@ -71,19 +71,12 @@ const EventCarousel = () => {
             >
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white space-y-6 max-w-4xl px-4">
-                  <h1 className="text-5xl md:text-7xl font-bold tracking-wider">
-                    {event.title}
-                  </h1>
-                  <p className="text-2xl md:text-3xl italic text-yellow-400 font-light">
-                    {event.subtitle}
-                  </p>
-                  <div className="w-32 h-1 bg-yellow-400 mx-auto"></div>
-                  {/* Botão de comprar ingresso removido */}
                   <div className="mt-8 space-y-4">
                     <h2 className="text-3xl md:text-4xl font-bold">
                       VENDAS ABERTAS
                     </h2>
                   </div>
+                  <div className="w-32 h-1 bg-yellow-400 mx-auto"></div>
                 </div>
               </div>
             </div>
