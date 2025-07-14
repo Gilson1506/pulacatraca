@@ -55,7 +55,7 @@ const RegisterPage = () => {
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Voltar para baladapp.com.br</span>
+          <span>Voltar para pulacatraca.com.br</span>
         </Link>
 
         {/* Register Card */}

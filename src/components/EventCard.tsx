@@ -47,7 +47,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
         
         <div className="p-4">
-          <h3 className="font-bold text-gray-900 group-hover:text-pink-600 transition-colors mb-2 text-lg">
+          <h3 className="font-bold text-gray-700 group-hover:text-pink-600 transition-colors mb-2 text-lg">
             {event.title}
           </h3>
           
@@ -60,9 +60,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
             <div className="text-sm text-gray-600">
               {event.time}
             </div>
-            <div className="font-bold text-pink-600">
-              A partir de R$ {event.price.toFixed(2)}
-            </div>
+            {/* Preço removido */}
           </div>
         </div>
       </div>
