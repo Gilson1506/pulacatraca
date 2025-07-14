@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Globe, Apple, Smartphone, Instagram, Facebook, Linkedin, Award, Shield, Recycle } from 'lucide-react';
+import LogoPulacatraca from './LogoPulacatraca'; // Import the LogoPulacatraca component
 
 const Footer = () => {
   return (
@@ -10,11 +11,7 @@ const Footer = () => {
           {/* Logo e Descrição */}
           <div className="space-y-4 font-bold">
             <div className="flex items-center space-x-2">
-              <img 
-                src="/Imagem WhatsApp 2025-07-14 às 11.16.21_85eab4b8.jpg" 
-                alt="BaladAPP" 
-                className="h-16 w-auto md:h-20" 
-              />
+              <LogoPulacatraca />
             </div>
             <p className="text-gray-400 text-sm font-bold">
               A plataforma completa para descobrir e comprar ingressos para os melhores eventos da sua região.

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Chrome } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import LogoPulacatraca from '../components/LogoPulacatraca'; // Import the LogoPulacatraca component
 
 const LoginPage = () => {
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -62,13 +63,12 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
-        {/* Back Button */}
+        {/* Logo */}
         <Link
           to="/"
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 mb-8 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar para pulacatraca.com.br</span>
+          <LogoPulacatraca />
         </Link>
 
         {/* Login Card */}

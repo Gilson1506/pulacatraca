@@ -55,7 +55,7 @@ const EventCarousel = () => {
   }, []);
 
   return (
-    <div className="relative h-[500px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
+    <div className="relative h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
       {/* Slides */}
       <div 
         className="flex transition-transform duration-500 ease-in-out h-full"
@@ -78,16 +78,11 @@ const EventCarousel = () => {
                     {event.subtitle}
                   </p>
                   <div className="w-32 h-1 bg-yellow-400 mx-auto"></div>
+                  {/* Botão de comprar ingresso removido */}
                   <div className="mt-8 space-y-4">
                     <h2 className="text-3xl md:text-4xl font-bold">
                       VENDAS ABERTAS
                     </h2>
-                    <Link 
-                      to={event.buttonLink}
-                      className="inline-block bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
-                    >
-                      {event.buttonText}
-                    </Link>
                   </div>
                 </div>
               </div>
