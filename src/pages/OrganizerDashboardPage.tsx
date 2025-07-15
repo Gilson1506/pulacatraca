@@ -3,7 +3,6 @@ import {
   Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send
 } from 'lucide-react';
 import QrScanner from '../components/QrScanner';
-// import { QrReader } from 'react-qr-reader';
 
 // Interfaces
 interface Event {
