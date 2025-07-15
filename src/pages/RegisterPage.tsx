@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Chrome, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import LogoPulacatraca from '../components/LogoPulacatraca'; // Import the LogoPulacatraca component
 
 const RegisterPage = () => {
   const [name, setName] = useState('');
@@ -55,18 +54,18 @@ const RegisterPage = () => {
           to="/"
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 mb-8 transition-colors"
         >
-          <LogoPulacatraca />
+          <img
+            src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+            alt="Logo PULACATRACA"
+            className="h-36 w-auto mx-auto mb-6"
+          />
         </Link>
 
         {/* Register Card */}
         <div className="bg-white rounded-lg shadow-md p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <img 
-              src="/Imagem WhatsApp 2025-07-14 às 11.16.21_85eab4b8.jpg" 
-              alt="BaladAPP" 
-              className="h-12 mx-auto mb-4"
-            />
+            {/* Logo removida para evitar duplicidade */}
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">Criar Conta</h1>
             <p className="text-gray-600">
               Crie sua conta para acessar os melhores eventos

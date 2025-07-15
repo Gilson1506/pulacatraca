@@ -26,14 +26,19 @@ const CheckoutPage = () => {
     setQuantity((prev) => Math.max(1, prev + amount));
   };
 
-  const serviceFee = 2.50; // Taxa de serviço fixa por ingresso
+  // Remover taxa de serviço
+  // delete serviceFee;
+  // delete totalServiceFee;
+  // Ajustar cálculo do total:
   const subtotal = ticket ? ticket.price * quantity : 0;
-  const totalServiceFee = serviceFee * quantity;
-  
-  // Taxa de processamento baseada no método de pagamento
-  const processingFee = paymentMethod === 'card' ? subtotal * 0.05 : 0; // 5% para cartão, 0 para PIX
-
-  const totalPrice = subtotal + totalServiceFee + processingFee;
+  let taxaCompra = 0;
+  if (subtotal < 30) {
+    taxaCompra = subtotal * 0.03;
+  } else {
+    taxaCompra = subtotal * 0.10;
+  }
+  const taxaPagamento = paymentMethod === 'card' ? subtotal * 0.06 : 0; // 6% cartão, 0 pix
+  const totalPrice = subtotal + taxaCompra + taxaPagamento;
 
   const handleCheckout = async () => {
     setIsProcessing(true);
@@ -166,16 +171,16 @@ const CheckoutPage = () => {
                 <h2 className="text-xl font-bold mb-4">Resumo</h2>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal ({quantity} {quantity > 1 ? 'ingressos' : 'ingresso'})</span>
-                    <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+                    <span className="text-gray-700">Subtotal ({quantity} {quantity > 1 ? 'ingressos' : 'ingresso'})</span>
+                    <span className="font-medium text-gray-800">R$ {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Taxa de Serviço</span>
-                    <span className="font-medium">R$ {totalServiceFee.toFixed(2)}</span>
+                    <span className="text-gray-700">Taxa de Compra</span>
+                    <span className="font-medium text-gray-800">R$ {taxaCompra.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Taxa de Processamento</span>
-                    <span className="font-medium">R$ {processingFee.toFixed(2)}</span>
+                    <span className="text-gray-700">Taxa de Pagamento</span>
+                    <span className="font-medium text-gray-800">R$ {taxaPagamento.toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="border-t my-4"></div>
@@ -200,6 +205,15 @@ const CheckoutPage = () => {
                     'Pagar'
                   )}
                 </button>
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-xs text-gray-700">
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Compras abaixo de R$ 30,00: taxa de 3%.</li>
+                    <li>Compras a partir de R$ 30,00: taxa de 10%.</li>
+                    <li>Pagamento por cartão: taxa adicional de 6%.</li>
+                    <li>Pagamento por PIX: taxa 0%.</li>
+                    <li>Sua compra será verificada e processada. Aguarde a confirmação no status do pedido.</li>
+                  </ul>
+                </div>
                 <p className="text-xs text-gray-500 mt-4 text-center">Compra 100% segura.</p>
               </div>
             </div>

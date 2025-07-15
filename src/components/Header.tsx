@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, MapPin, User, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LocationModal from './LocationModal';
-import LogoPulacatraca from './LogoPulacatraca'; // Import the LogoPulacatraca component
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,7 +30,12 @@ const Header = () => {
             {/* Logo + Search juntos */}
             <div className="flex flex-1 items-center">
               <Link to="/" className="flex items-center h-14 md:h-16 mr-2">
-                <LogoPulacatraca />
+                <img
+                  src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+                  alt="Logo PULACATRACA"
+                  className="h-[17rem] w-auto cursor-pointer max-h-32"
+                  onClick={() => navigate('/')}
+                />
               </Link>
               {/* Search Bar - Desktop */}
               <div className="hidden md:flex items-center flex-1 max-w-xl gap-2">
@@ -89,7 +93,7 @@ const Header = () => {
                 <div className="flex items-center space-x-4">
                   {/* Link para cadastro de evento */}
                   <Link
-                    to="/register-event"
+                    to="/organizer-register"
                     className="ml-0 mr-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-full font-semibold hover:bg-pink-200 transition-colors whitespace-nowrap"
                   >
                     Cadastre o seu evento
@@ -149,6 +153,15 @@ const Header = () => {
                 </form>
               </div>
               <div className="space-y-2">
+                {!user && (
+                  <Link
+                    to="/organizer-register"
+                    className="block py-2 px-4 bg-pink-100 text-pink-700 rounded-full font-semibold hover:bg-pink-200 transition-colors text-center"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Cadastre o seu evento
+                  </Link>
+                )}
                 {user ? (
                   <>
                     <Link

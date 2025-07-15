@@ -23,6 +23,13 @@ const ProfilePage = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [message, setMessage] = useState('');
 
+  // Redirecionar organizador para o dashboard
+  useEffect(() => {
+    if (user && user.isOrganizer) {
+      navigate('/organizer-dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
   useEffect(() => {
     if (location.state?.message) {
       setMessage(location.state.message);

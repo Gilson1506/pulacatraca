@@ -5,6 +5,7 @@ interface User {
   name: string;
   email: string;
   avatar?: string;
+  isOrganizer?: boolean;
 }
 
 interface AuthContextType {
@@ -48,6 +49,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     setLoading(true);
+    // Login de teste para organizador
+    if (email === 'organizador@teste.com' && password === '123456') {
+      const mockUser: User = {
+        id: 'org-1',
+        name: 'Organizador Teste',
+        email: email,
+        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
+        isOrganizer: true
+      };
+      setUser(mockUser);
+      localStorage.setItem('token', 'mock-token-org');
+      setLoading(false);
+      return;
+    }
     // Simular login
     await new Promise(resolve => setTimeout(resolve, 1000));
     

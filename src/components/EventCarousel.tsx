@@ -66,17 +66,12 @@ const EventCarousel = () => {
             <div 
               className="w-full h-full bg-cover bg-center relative"
               style={{ 
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${event.image})` 
+                backgroundImage: `url(${event.image})` 
               }}
             >
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white space-y-6 max-w-4xl px-4">
-                  <div className="mt-8 space-y-4">
-                    <h2 className="text-3xl md:text-4xl font-bold">
-                      VENDAS ABERTAS
-                    </h2>
-                  </div>
-                  <div className="w-32 h-1 bg-yellow-400 mx-auto"></div>
+                  {/* Conteúdo removido conforme solicitado */}
                 </div>
               </div>
             </div>
@@ -99,18 +94,6 @@ const EventCarousel = () => {
         <ChevronRight className="h-6 w-6" />
       </button>
 
-      {/* Dots Indicator */}
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3">
-        {featuredEvents.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentSlide(index)}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              index === currentSlide ? 'bg-yellow-400 scale-125' : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-            }`}
-          />
-        ))}
-      </div>
     </div>
   );
 };

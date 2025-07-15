@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Globe, Apple, Smartphone, Instagram, Facebook, Linkedin, Award, Shield, Recycle } from 'lucide-react';
-import LogoPulacatraca from './LogoPulacatraca'; // Import the LogoPulacatraca component
 
 const Footer = () => {
   return (
@@ -11,11 +10,12 @@ const Footer = () => {
           {/* Logo e Descrição */}
           <div className="space-y-4 font-bold">
             <div className="flex items-center space-x-2">
-              <LogoPulacatraca />
+              <img
+                src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+                alt="Logo PULACATRACA"
+                className="h-[29rem] w-auto mb-2 max-h-60"
+              />
             </div>
-            <p className="text-gray-400 text-sm font-bold">
-              A plataforma completa para descobrir e comprar ingressos para os melhores eventos da sua região.
-            </p>
             <div className="flex space-x-4">
               <img src="https://images.pexels.com/photos/1526/flag-icon-symbols-flags.jpg?auto=compress&cs=tinysrgb&w=24&h=24&dpr=1" alt="Brasil" className="w-6 h-6 rounded" />
               <img src="https://images.pexels.com/photos/1526/flag-icon-symbols-flags.jpg?auto=compress&cs=tinysrgb&w=24&h=24&dpr=1" alt="USA" className="w-6 h-6 rounded" />

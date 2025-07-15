@@ -36,7 +36,6 @@ const EventPageSimple = () => {
     ],
     contactInfo: {
       phone: '62 3434-8450',
-      email: 'contato@pulacatraca.com.br',
       hours: [
         '08h00 às 20h00 - Seg a Sex',
         '10h00 às 20h00 - Sáb (Disque 3)',
@@ -180,10 +179,6 @@ const EventPageSimple = () => {
                   <Phone className="h-5 w-5 text-gray-400" />
                   <span>{event.contactInfo.phone}</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                  <span>{event.contactInfo.email}</span>
-                </div>
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
                     <Clock className="h-5 w-5 text-gray-400" />
@@ -218,7 +213,7 @@ const EventPageSimple = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       {/* Hero Section */}
       <div
         className="relative bg-gradient-to-r from-purple-900 via-blue-900 to-indigo-900 pb-6"
@@ -230,42 +225,44 @@ const EventPageSimple = () => {
         }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-60"></div>
-        <div className="relative container mx-auto px-4 py-4 flex flex-col lg:flex-row items-end gap-0 min-h-[180px] lg:min-h-[220px]">
-          {/* Hero Image (left, mais baixa) */}
-          <div className="relative z-20 lg:-mb-44 -mb-28 lg:ml-0 flex-shrink-0 flex justify-start w-full lg:w-auto lg:justify-start">
+        <div className="relative container mx-auto px-2 sm:px-4 py-4 flex flex-col lg:flex-row items-end gap-0 min-h-[180px] lg:min-h-[220px]">
+          {/* Hero Image */}
+          <div className="relative z-20 lg:-mb-44 -mb-28 lg:ml-0 flex-shrink-0 flex justify-center w-full lg:w-auto lg:justify-start">
             <img
               src={event.image}
               alt={event.title}
-              className="w-48 h-60 object-cover rounded-xl shadow-2xl border-4 border-white/10"
+              className="w-40 h-52 sm:w-48 sm:h-60 object-cover rounded-xl shadow-2xl border-4 border-white/10"
               style={{ boxShadow: '0 10px 40px 0 rgba(44,0,80,0.25)' }}
             />
           </div>
-          {/* Hero Info (ao lado direito da imagem, menos centralizado) */}
-          <div className="flex-1 text-white z-10 flex flex-col justify-center lg:items-start items-center text-left ml-0 lg:ml-8">
-            <h1 className="text-xl lg:text-2xl font-bold mb-2 max-w-xl leading-tight">{event.title}</h1>
-            <div className="text-sm mb-1">{event.address}</div>
+          {/* Hero Info */}
+          <div className="flex-1 text-white z-10 flex flex-col justify-center lg:items-start items-center text-left ml-0 lg:ml-8 mt-4 lg:mt-0">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 max-w-xl leading-tight text-center lg:text-left text-gray-800" style={{ fontWeight: 600 }}>
+              {event.title}
+            </h1>
+            <div className="text-xs sm:text-sm mb-1 text-gray-600">{event.address}</div>
             <div className="inline-block bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold mb-3">
               {event.dateLabel}
             </div>
             <div className="space-y-1 mb-2">
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4 text-gray-300" />
-                <span className="text-xs">Data: {formatDate(event.date)}</span>
+                <span className="text-xs text-gray-600">Data: {formatDate(event.date)}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-gray-300" />
-                <span className="text-xs">Local: {event.location} - {event.address}</span>
+                <span className="text-xs text-gray-600">Local: {event.location} - {event.address}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-gray-300" />
-                <span className="text-xs">Abertura dos portões: {formatTime(event.time)}</span>
+                <span className="text-xs text-gray-600">Abertura dos portões: {formatTime(event.time)}</span>
               </div>
             </div>
           </div>
-          {/* Botão de compra (direita, isolado, único) */}
+          {/* Botão de compra */}
           <div className="relative z-20 flex-shrink-0 flex justify-center lg:justify-end w-full lg:w-auto mt-4 lg:mt-0">
             <button
-              className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px] w-full lg:w-auto"
+              className="py-3 px-4 sm:px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[160px] sm:min-w-[220px] w-full lg:w-auto"
               onClick={() => {
                 setLoading(true);
                 // Simula um tempo de carregamento e navega para o checkout
@@ -309,12 +306,12 @@ const EventPageSimple = () => {
           {/* Sidebar Navigation - Horizontal on mobile, vertical on desktop */}
           <div className="lg:w-64 flex-shrink-0">
             <nav className="bg-white rounded-lg shadow-sm lg:overflow-hidden">
-              <div className="flex lg:flex-col overflow-x-auto whitespace-nowrap lg:whitespace-normal scrollbar-hide">
+              <div className="flex lg:flex-col overflow-x-auto whitespace-nowrap lg:whitespace-normal scrollbar-hide gap-1">
                 {tabItems.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-shrink-0 w-full px-4 py-3 text-left text-sm font-semibold border-b-4 lg:border-b-0 lg:border-l-4 transition-colors ${
+                    className={`flex-shrink-0 w-full px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold border-b-4 lg:border-b-0 lg:border-l-4 transition-colors ${
                       activeTab === tab.id
                         ? 'bg-gray-100 border-pink-600 text-pink-600'
                         : 'border-transparent text-gray-700 hover:bg-gray-50'
@@ -329,7 +326,7 @@ const EventPageSimple = () => {
 
           {/* Main Content */}
           <div className="flex-1">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6 overflow-x-auto">
               {getTabContent(activeTab)}
             </div>
           </div>
