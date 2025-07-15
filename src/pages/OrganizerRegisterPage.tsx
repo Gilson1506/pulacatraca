@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Chrome, User, Building, Phone, FileText, MapPin, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import QrScanner from '../components/QrScanner';
 
 const OrganizerRegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -34,8 +33,6 @@ const OrganizerRegisterPage = () => {
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [showQrScanner, setShowQrScanner] = useState(false);
-  const [qrResult, setQrResult] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -496,37 +493,6 @@ const OrganizerRegisterPage = () => {
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
             {currentStep === 4 && renderStep4()}
-            {/* Adicione um botão para abrir o scanner e exiba o resultado lido */}
-            <div className="mb-6">
-              <button
-                type="button"
-                onClick={() => setShowQrScanner(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Ler QR Code
-              </button>
-              {qrResult && (
-                <div className="mt-2 text-green-700 font-semibold">QR Code lido: {qrResult}</div>
-              )}
-            </div>
-            {showQrScanner && (
-              <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-                <div className="bg-white p-6 rounded-lg shadow-lg relative">
-                  <button
-                    onClick={() => setShowQrScanner(false)}
-                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                  >
-                    Fechar
-                  </button>
-                  <QrScanner
-                    onResult={result => {
-                      setQrResult(result);
-                      setShowQrScanner(false);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-8">
               {currentStep > 1 && (
