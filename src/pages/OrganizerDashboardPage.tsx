@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send
 } from 'lucide-react';
-import { QrReader } from 'react-qr-reader';
+import QrScanner from '../components/QrScanner';
+// import { QrReader } from 'react-qr-reader';
 
 // Interfaces
 interface Event {
@@ -1190,14 +1191,12 @@ const OrganizerCheckIns = () => {
     { id: '3', eventId: '2', participantName: 'Pedro Oliveira', ticketType: 'Pista', checkInTime: '2025-07-25T11:00:00', status: 'duplicado' },
     { id: '4', eventId: '3', participantName: 'Ana Costa', ticketType: 'Pista', checkInTime: '2025-07-25T12:00:00', status: 'invalido' }
   ]);
-  const [showQRScanner, setShowQRScanner] = useState(false); // Não abre automaticamente
-  const [scanError, setScanError] = useState('');
-  const [lastScan, setLastScan] = useState<string | null>(null);
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [qrResult, setQrResult] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
 
   const handleQRCodeScan = (data: string | null) => {
     if (data) {
-      setLastScan(data);
       // Simular validação do QR code
       const alreadyChecked = checkIns.some(c => c.id === data);
       const status: 'ok' | 'duplicado' | 'invalido' = alreadyChecked ? 'duplicado' : 'ok';
@@ -1210,9 +1209,9 @@ const OrganizerCheckIns = () => {
         status
       };
       setCheckIns(prev => [newCheckIn, ...prev]);
-      setScanError('');
       setManualCode('');
-      setShowQRScanner(false); // Fecha modal após check-in
+      setQrResult(data);
+      setShowQrScanner(false);
     }
   };
 
@@ -1220,8 +1219,6 @@ const OrganizerCheckIns = () => {
     e.preventDefault();
     if (manualCode.trim()) {
       handleQRCodeScan(manualCode.trim());
-    } else {
-      setScanError('Digite um código válido.');
     }
   };
 
@@ -1230,57 +1227,50 @@ const OrganizerCheckIns = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Check-ins</h2>
         <button
-          className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
-          onClick={() => { setShowQRScanner(true); setScanError(''); setManualCode(''); }}
+          type="button"
+          onClick={() => setShowQrScanner(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Abrir Scanner
+          Ler QR Code
         </button>
       </div>
-      {/* QR Code Scanner Modal */}
-      {showQRScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 flex flex-col items-center relative">
+      {qrResult && (
+        <div className="mt-2 text-green-700 font-semibold">QR Code lido: {qrResult}</div>
+      )}
+      {showQrScanner && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg relative">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              onClick={() => setShowQRScanner(false)}
-              aria-label="Fechar"
+              onClick={() => setShowQrScanner(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
             >
-              ×
+              Fechar
             </button>
-            <h3 className="text-xl font-bold mb-4">Escanear QR Code do Ingresso</h3>
-            <div className="w-full max-w-xs aspect-square mb-4">
-              <QrReader
-                constraints={{ facingMode: 'environment' }}
-                onResult={(result, error) => {
-                  if (result) handleQRCodeScan(result.getText());
-                  if (error) setScanError('Erro ao ler QR code.');
-                }}
-              />
-            </div>
-            <form onSubmit={handleManualSubmit} className="w-full flex flex-col items-center mb-2">
-              <input
-                type="text"
-                className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                placeholder="Digite o código manualmente"
-                value={manualCode}
-                onChange={e => setManualCode(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium w-full"
-              >
-                Registrar Check-in Manual
-              </button>
-            </form>
-            {scanError && <div className="text-red-600 mb-2">{scanError}</div>}
-            {lastScan && (
-              <div className="mb-2 text-green-700 font-semibold">Último QR lido: {lastScan}</div>
-            )}
-            <div className="w-full text-center text-gray-500 text-sm mb-2">Aponte a câmera para o QR code do ingresso ou digite o código manualmente.<br/>Se solicitado, permita o acesso à câmera do dispositivo.</div>
+            <QrScanner
+              onResult={result => {
+                handleQRCodeScan(result);
+              }}
+            />
           </div>
         </div>
       )}
-      {/* Check-ins Display */}
+      {/* Input manual para check-in */}
+      <form onSubmit={handleManualSubmit} className="w-full flex flex-col items-center mb-2">
+        <input
+          type="text"
+          className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+          placeholder="Digite o código manualmente"
+          value={manualCode}
+          onChange={e => setManualCode(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium w-full"
+        >
+          Registrar Check-in Manual
+        </button>
+      </form>
+      {/* Tabela de check-ins */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -1312,89 +1302,22 @@ const OrganizerCheckIns = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{checkIn.ticketType}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{checkIn.checkInTime}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      checkIn.status === 'ok' ? 'bg-green-100 text-green-800' :
-                      checkIn.status === 'duplicado' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`
+                      ${checkIn.status === 'ok' ? 'bg-green-100 text-green-800' : ''}
+                      ${checkIn.status === 'duplicado' ? 'bg-yellow-100 text-yellow-800' : ''}
+                      ${checkIn.status === 'invalido' ? 'bg-red-100 text-red-800' : ''}
+                      px-3 py-1 rounded-full text-xs font-medium`
+                    }>
                       {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
                     </span>
                   </td>
-                  {/* Remover coluna de ações */}
+                  <td className="px-6 py-4">-</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  );
-};
-
-// Configurações do Organizador
-const OrganizerSettings = () => {
-  const [name, setName] = useState('Organizador Exemplo');
-  const [email, setEmail] = useState('organizador@teste.com');
-  const [password, setPassword] = useState('');
-  const [preferences, setPreferences] = useState('');
-  const [success, setSuccess] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Aqui você pode integrar com backend ou localStorage
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 2000);
-  };
-
-  return (
-    <div className="p-6 max-w-lg mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Configurações do Organizador</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-          <input
-            type="text"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-          <input
-            type="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
-          <input
-            type="password"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Deixe em branco para não alterar"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Preferências</label>
-          <textarea
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-            value={preferences}
-            onChange={e => setPreferences(e.target.value)}
-            placeholder="Ex: Receber notificações, modo escuro, etc."
-          />
-        </div>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
-        >
-          Salvar Configurações
-        </button>
-        {success && <div className="text-green-600 mt-2">Configurações salvas!</div>}
-      </form>
     </div>
   );
 };
@@ -1407,13 +1330,14 @@ const Sidebar = ({ active, setActive }: { active: string, setActive: (v: string)
       <button onClick={() => setActive('events')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
       <button onClick={() => setActive('sales')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
       <button onClick={() => setActive('finance')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
+      <button onClick={() => setActive('withdrawals')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='withdrawals'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Saques</button>
       <button onClick={() => setActive('checkin')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='checkin'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Check-in</button>
       <button onClick={() => setActive('settings')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
     </nav>
   </aside>
 );
 
-// Main Organizer Dashboard Page
+// Main OrganizerDashboardPage component
 const OrganizerDashboardPage = () => {
   const [active, setActive] = useState('dashboard');
   return (
@@ -1424,8 +1348,9 @@ const OrganizerDashboardPage = () => {
         {active === 'events' && <OrganizerEvents />}
         {active === 'sales' && <OrganizerSales />}
         {active === 'finance' && <OrganizerBankAccounts />}
+        {active === 'withdrawals' && <OrganizerWithdrawals />}
         {active === 'checkin' && <OrganizerCheckIns />}
-        {active === 'settings' && <OrganizerSettings />}
+        {active === 'settings' && <Settings />}
       </main>
     </div>
   );
