@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/browser';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 const QrScanner: React.FC<{ onResult: (result: string) => void }> = ({ onResult }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -16,9 +16,9 @@ const QrScanner: React.FC<{ onResult: (result: string) => void }> = ({ onResult 
         (result, err) => {
           if (result && isMounted) {
             onResult(result.getText());
-            codeReader.reset();
+            codeReader.stopContinuousDecode();
           }
-          if (err && !(err instanceof NotFoundException)) {
+          if (err) {
             setError('Erro ao acessar a câmera ou ler o QR Code.');
           }
         }
@@ -27,7 +27,7 @@ const QrScanner: React.FC<{ onResult: (result: string) => void }> = ({ onResult 
 
     return () => {
       isMounted = false;
-      codeReader.reset();
+      codeReader.stopContinuousDecode();
     };
   }, [onResult]);
 
