@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send
+  Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, User
 } from 'lucide-react';
 import QrScanner from '../components/QrScanner';
 
@@ -1321,28 +1321,45 @@ const OrganizerCheckIns = () => {
   );
 };
 
-// Sidebar Component
-const Sidebar = ({ active, setActive }: { active: string, setActive: (v: string) => void }) => (
-  <aside className="bg-white shadow-md rounded-lg p-4 w-full md:w-64 mb-6 md:mb-0">
-    <nav className="flex md:flex-col gap-2">
-      <button onClick={() => setActive('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='dashboard'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Dashboard</button>
-      <button onClick={() => setActive('events')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
-      <button onClick={() => setActive('sales')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
-      <button onClick={() => setActive('finance')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
-      <button onClick={() => setActive('withdrawals')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='withdrawals'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Saques</button>
-      <button onClick={() => setActive('checkin')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='checkin'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Check-in</button>
-      <button onClick={() => setActive('settings')} className={`flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
-    </nav>
-  </aside>
-);
-
 // Main OrganizerDashboardPage component
 const OrganizerDashboardPage = () => {
   const [active, setActive] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Fecha o menu ao navegar
+  const handleSetActive = (v: string) => {
+    setActive(v);
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-      <Sidebar active={active} setActive={setActive} />
-      <main className="flex-1 p-4 md:p-8">
+      {/* Botão de abrir menu no mobile */}
+      <div className="md:hidden flex items-center justify-between p-2 bg-white shadow-sm sticky top-0 z-30">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-full bg-pink-100 text-pink-600">
+          <User className="h-7 w-7" />
+        </button>
+        <h2 className="text-lg font-bold text-gray-900">Painel do Organizador</h2>
+      </div>
+      {/* Sidebar como drawer no mobile, fixa no desktop */}
+      <div>
+        {/* Drawer overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-40" onClick={() => setSidebarOpen(false)}></div>
+        )}
+        <aside className={`bg-white shadow-md rounded-lg p-2 md:p-4 w-64 md:w-64 mb-4 md:mb-0 md:sticky md:top-6 z-50 transition-transform duration-200 fixed md:static top-0 left-0 h-full md:h-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`} style={{maxWidth: '90vw'}}>
+          <nav className="flex flex-col gap-2 w-full">
+            <button onClick={() => handleSetActive('dashboard')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='dashboard'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Dashboard</button>
+            <button onClick={() => handleSetActive('events')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
+            <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
+            <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
+            <button onClick={() => handleSetActive('withdrawals')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='withdrawals'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Saques</button>
+            <button onClick={() => handleSetActive('checkin')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='checkin'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Check-in</button>
+            <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
+          </nav>
+        </aside>
+      </div>
+      <main className="flex-1 p-2 sm:p-4 md:p-8 w-full">
         {active === 'dashboard' && <DashboardOverview />}
         {active === 'events' && <OrganizerEvents />}
         {active === 'sales' && <OrganizerSales />}
