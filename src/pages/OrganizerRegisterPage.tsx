@@ -22,7 +22,6 @@ const OrganizerRegisterPage = () => {
     city: '',
     state: '',
     // Documentos
-    rg: '',
     cpf: '',
     // Termos
     acceptTerms: false,
@@ -158,21 +157,6 @@ const OrganizerRegisterPage = () => {
             required
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             placeholder="000.000.000-00"
-          />
-        </div>
-        <div>
-          <label htmlFor="rg" className="block text-sm font-medium text-gray-700">
-            RG *
-          </label>
-          <input
-            type="text"
-            id="rg"
-            name="rg"
-            value={formData.rg}
-            onChange={handleInputChange}
-            required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            placeholder="00.000.000-0"
           />
         </div>
       </div>
@@ -460,7 +444,7 @@ const OrganizerRegisterPage = () => {
             <img
               src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
               alt="Logo PULACATRACA"
-              className="h-36 w-auto mx-auto mb-6"
+              className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
             />
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">Cadastro de Organizador</h1>
             <p className="text-gray-600">
