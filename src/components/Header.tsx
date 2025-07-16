@@ -125,9 +125,9 @@ const Header = () => {
             </Link>
             <button
               type="button"
-              onClick={() => setIsMenuOpen(true)}
+              onClick={() => setIsMenuOpen((open) => !open)}
               className="p-2 rounded-full hover:bg-gray-100 focus:outline-none"
-              aria-label="Abrir menu"
+              aria-label="Abrir ou fechar menu"
             >
               <User className="h-7 w-7 text-pink-600" />
             </button>
