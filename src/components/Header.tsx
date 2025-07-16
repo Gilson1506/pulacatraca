@@ -26,7 +26,8 @@ const Header = () => {
     <>
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-20 w-full">
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center justify-between h-20 w-full">
             <div className="flex items-center flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <img
@@ -112,6 +113,25 @@ const Header = () => {
               )}
             </div>
           </div>
+          {/* Mobile Header */}
+          <div className="flex md:hidden items-center justify-between h-16 w-full">
+            <Link to="/" className="flex items-center">
+              <img
+                src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+                alt="Logo PULACATRACA"
+                className="h-16 w-auto cursor-pointer max-h-20"
+                onClick={() => navigate('/')}
+              />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              className="p-2 rounded-full hover:bg-gray-100 focus:outline-none"
+              aria-label="Abrir menu"
+            >
+              <User className="h-7 w-7 text-pink-600" />
+            </button>
+          </div>
 
           {/* Mobile Menu */}
           {isMenuOpen && (
@@ -141,6 +161,14 @@ const Header = () => {
                     <Search className="h-5 w-5" />
                   </button>
                 </form>
+                <button
+                  type="button"
+                  onClick={() => setIsLocationModalOpen(true)}
+                  className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <MapPin className="h-4 w-4 text-pink-600" />
+                  <span className="truncate">{selectedLocation}</span>
+                </button>
               </div>
               <div className="space-y-2">
                 {!user && (
