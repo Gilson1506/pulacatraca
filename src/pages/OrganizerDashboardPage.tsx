@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, User
+  Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, User, Menu
 } from 'lucide-react';
 import QrScanner from '../components/QrScanner';
 
@@ -1337,7 +1337,7 @@ const OrganizerDashboardPage = () => {
       {/* Botão de abrir menu no mobile */}
       <div className="md:hidden flex items-center justify-between p-2 bg-white shadow-sm sticky top-0 z-30">
         <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-full bg-pink-100 text-pink-600">
-          <User className="h-7 w-7" />
+          <Menu className="h-7 w-7" />
         </button>
         <h2 className="text-lg font-bold text-gray-900">Painel do Organizador</h2>
       </div>
