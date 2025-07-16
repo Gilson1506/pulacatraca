@@ -1,7 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
-import { Event } from '../pages/HomePage'; // Importando a interface do HomePage
+
+interface Event {
+  id: string;
+  title: string;
+  date: string;
+  endDate?: string;
+  location: string;
+  city: string;
+  state: string;
+  image: string;
+  price: number;
+  category: string;
+}
 
 interface EventCardProps {
   event: Event;
@@ -24,7 +36,9 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
     if (event.endDate) {
       const { day: endDay, month: endMonth, year: endYear } = formatDate(event.endDate);
 
-      // Layout horizontal para datas de início e fim
+      // Mostrar ano apenas se for passagem de ano
+      const showYear = startYear !== endYear;
+
       return (
         <div className="flex flex-col items-center">
           <div className="flex items-center justify-center gap-2">
@@ -45,19 +59,24 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
 
           {/* Ano(s) */}
-          <span className="text-xs text-gray-500 mt-1">
-            {startYear === endYear ? startYear : `${startYear} - ${endYear}`}
-          </span>
+          {showYear && (
+            <span className="text-xs text-gray-500 mt-1">
+              {`${startYear} - ${endYear}`}
+            </span>
+          )}
         </div>
       );
     }
-    
-    // Evento de dia único
+    // Evento de dia único: só mostra o ano se não for o ano atual
+    const currentYear = new Date().getFullYear();
+    const showYear = startYear !== currentYear;
     return (
       <>
         <span className="text-3xl font-bold text-pink-600">{startDay}</span>
         <span className="text-sm font-semibold text-gray-900 mt-1">{startMonth}</span>
-        <span className="text-xs text-gray-500">{startYear}</span>
+        {showYear && (
+          <span className="text-xs text-gray-500">{startYear}</span>
+        )}
       </>
     );
   };
@@ -79,12 +98,12 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
         {/* Detalhes do Evento (Direita) */}
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-800 text-base leading-tight truncate" title={event.title}>
+          <h3 className="font-semibold text-gray-800 text-base leading-tight truncate drop-shadow-md" title={event.title}>
             {event.title}
           </h3>
           <div className="flex items-center mt-2">
             <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0 text-blue-500" />
-            <p className="text-sm truncate text-blue-500 font-medium" title={`${event.city}, ${event.state}`}>
+            <p className="text-sm truncate font-medium" style={{ fontFamily: 'Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', fontWeight: 600, textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>
               {`${event.city}, ${event.state}`}
             </p>
           </div>

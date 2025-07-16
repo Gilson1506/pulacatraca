@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Clock, Phone, Mail, AlertCircle, CheckCircle, Info, Share2, Heart } from 'lucide-react';
+import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
 
 const EventPageSimple = () => {
   const [activeTab, setActiveTab] = useState('informacoes');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [showImageModal, setShowImageModal] = useState(false);
+  const imageModalRef = useRef<HTMLDivElement>(null);
 
   // Mock event data - adaptado para o estilo Baladapp
   const event = {
@@ -44,7 +47,7 @@ const EventPageSimple = () => {
     },
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {
       day: 'numeric',
@@ -53,12 +56,12 @@ const EventPageSimple = () => {
     });
   };
 
-  const formatTime = (time) => {
+  const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     return `${hours}h${minutes}`;
   };
 
-  const getTabContent = (tab) => {
+  const getTabContent = (tab: string) => {
     switch (tab) {
       case 'informacoes':
         return (
@@ -228,80 +231,92 @@ const EventPageSimple = () => {
         <div className="relative container mx-auto px-2 sm:px-4 py-4 flex flex-col lg:flex-row items-end gap-0 min-h-[180px] lg:min-h-[220px]">
           {/* Hero Image */}
           <div className="relative z-20 lg:-mb-44 -mb-28 lg:ml-0 flex-shrink-0 flex justify-center w-full lg:w-auto lg:justify-start">
-            <img
-              src={event.image}
-              alt={event.title}
-              className="w-40 h-52 sm:w-48 sm:h-60 object-cover rounded-xl shadow-2xl border-4 border-white/10"
+            <div
+              className="w-40 h-52 sm:w-48 sm:h-60 bg-white rounded-xl shadow-2xl border-4 border-white/10 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-400 transition-all"
               style={{ boxShadow: '0 10px 40px 0 rgba(44,0,80,0.25)' }}
-            />
+              onClick={() => setShowImageModal(true)}
+              title="Clique para ampliar"
+            >
+              <img
+                src={event.image}
+                alt={event.title}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            {/* Modal de visualização da imagem */}
+            {showImageModal && (
+              <div ref={imageModalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80" onClick={() => setShowImageModal(false)}>
+                <img src={event.image} alt={event.title} className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white" />
+                <button className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-40 rounded-full px-3 py-1 hover:bg-opacity-70 transition" onClick={() => setShowImageModal(false)}>&times;</button>
+              </div>
+            )}
           </div>
           {/* Hero Info */}
           <div className="flex-1 text-white z-10 flex flex-col justify-center lg:items-start items-center text-left ml-0 lg:ml-8 mt-4 lg:mt-0">
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 max-w-xl leading-tight text-center lg:text-left text-gray-800" style={{ fontWeight: 600 }}>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 max-w-xl leading-tight text-center lg:text-left text-white drop-shadow-lg" style={{ fontWeight: 700 }}>
               {event.title}
             </h1>
-            <div className="text-xs sm:text-sm mb-1 text-gray-600">{event.address}</div>
+            <div className="text-xs sm:text-sm mb-1 text-white/90 drop-shadow-md">{event.address}</div>
             <div className="inline-block bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold mb-3">
               {event.dateLabel}
             </div>
             <div className="space-y-1 mb-2">
               <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-300" />
-                <span className="text-xs text-gray-600">Data: {formatDate(event.date)}</span>
+                <Calendar className="h-4 w-4 text-white/80" />
+                <span className="text-xs text-white/90">Data: {formatDate(event.date)}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-300" />
-                <span className="text-xs text-gray-600">Local: {event.location} - {event.address}</span>
+                <MapPin className="h-4 w-4 text-white/80" />
+                <span className="text-xs text-white/90">Local: {event.location} - {event.address}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-gray-300" />
-                <span className="text-xs text-gray-600">Abertura dos portões: {formatTime(event.time)}</span>
+                <Clock className="h-4 w-4 text-white/80" />
+                <span className="text-xs text-white/90">Abertura dos portões: {formatTime(event.time)}</span>
               </div>
             </div>
-          </div>
-          {/* Botão de compra */}
-          <div className="relative z-20 flex-shrink-0 flex justify-center lg:justify-end w-full lg:w-auto mt-4 lg:mt-0">
-            <button
-              className="py-3 px-4 sm:px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[160px] sm:min-w-[220px] w-full lg:w-auto"
-              onClick={() => {
-                setLoading(true);
-                // Simula um tempo de carregamento e navega para o checkout
-                setTimeout(() => {
-                  setLoading(false);
-                  // Passa os dados do evento e do primeiro tipo de ingresso para o checkout
-                  navigate('/checkout', {
-                    state: {
-                      event: {
-                        id: 'evt-angra-2025',
-                        title: event.title,
-                        date: event.date,
-                        location: event.address,
-                        image: event.image,
-                      },
-                      ticket: event.tickets[0], // Pega o primeiro tipo de ingresso como padrão
-                    },
-                  });
-                }, 1400);
-              }}
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                  </svg>
-                  Processando...
-                </span>
-              ) : (
-                'COMPRAR INGRESSOS'
-              )}
-            </button>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-4 lg:py-8" style={{ marginTop: '16vh' }}>
+      {/* Botão de compra isolado, mais à direita e mais abaixo */}
+      <div className="w-full flex justify-end pr-6 lg:pr-16" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', zIndex: 30, position: 'relative' }}>
+        <button
+          className="py-3 px-4 sm:px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[160px] sm:min-w-[220px] w-full max-w-xs lg:w-auto"
+          onClick={() => {
+            setLoading(true);
+            setTimeout(() => {
+              setLoading(false);
+              navigate('/checkout', {
+                state: {
+                  event: {
+                    id: 'evt-angra-2025',
+                    title: event.title,
+                    date: event.date,
+                    location: event.address,
+                    image: event.image,
+                  },
+                  ticket: event.tickets[0],
+                },
+              });
+            }, 1400);
+          }}
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+              </svg>
+              Processando...
+            </span>
+          ) : (
+            'COMPRAR INGRESSOS'
+          )}
+        </button>
+      </div>
+
+      <div className="container mx-auto px-4 py-4 lg:py-8" style={{ marginTop: '7vh' }}>
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Navigation - Horizontal on mobile, vertical on desktop */}
           <div className="lg:w-64 flex-shrink-0">

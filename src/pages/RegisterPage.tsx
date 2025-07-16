@@ -57,7 +57,7 @@ const RegisterPage = () => {
           <img
             src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
             alt="Logo PULACATRACA"
-            className="h-36 w-auto mx-auto mb-6"
+            className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
           />
         </Link>
 
