@@ -115,12 +115,12 @@ const Header = () => {
           </div>
           {/* Mobile Header */}
           <div className="flex md:hidden items-center justify-between h-20 w-full">
-            <div className="flex-1 flex justify-center">
+            <div className="flex-1 flex justify-start"> {/* alinhamento à esquerda no mobile */}
               <Link to="/" className="flex items-center">
                 <img
                   src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
                   alt="Logo PULACATRACA"
-                  className="h-20 sm:h-24 w-auto cursor-pointer max-h-24"
+                  className="h-28 sm:h-32 w-auto cursor-pointer max-h-32 ml-0" // h-20 -> h-28 (aumento de ~30%)
                   onClick={() => navigate('/')}
                 />
               </Link>

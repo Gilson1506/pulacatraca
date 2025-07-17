@@ -10,7 +10,8 @@ const Footer = () => {
               <img
                 src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
                 alt="Logo PULACATRACA"
-                className="h-24 sm:h-28 md:h-40 w-auto object-contain"
+                className="h-32 sm:h-36 md:h-40 w-auto object-contain ml-0 md:ml-0" // h-24 -> h-32 (aumento de ~30%)
+                style={{ marginLeft: '0' }} // garantir alinhamento à esquerda no mobile
               />
             </div>
         {/* Espaço vazio para centralizar */}
