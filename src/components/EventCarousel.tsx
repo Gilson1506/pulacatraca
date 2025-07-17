@@ -54,7 +54,7 @@ const EventCarousel = () => {
   }, []);
 
   return (
-    <div className="relative h-48 sm:h-72 md:h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
+    <div className="relative h-40 sm:h-56 md:h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
       {/* Slides */}
       <div 
         className="flex transition-transform duration-500 ease-in-out h-full"
