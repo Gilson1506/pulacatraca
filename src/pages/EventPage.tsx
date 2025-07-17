@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRef } from 'react';
+import { useEffect } from 'react';
 
 const EventPageSimple = () => {
   const [activeTab, setActiveTab] = useState('informacoes');
@@ -9,6 +10,22 @@ const EventPageSimple = () => {
   const navigate = useNavigate();
   const [showImageModal, setShowImageModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
+  const [showArrow, setShowArrow] = useState(false);
+
+  useEffect(() => {
+    let arrowTimeout: ReturnType<typeof setTimeout>;
+    let interval: ReturnType<typeof setInterval>;
+    function showAnimatedArrow() {
+      setShowArrow(true);
+      arrowTimeout = setTimeout(() => setShowArrow(false), 3500);
+    }
+    showAnimatedArrow();
+    interval = setInterval(showAnimatedArrow, 20000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(arrowTimeout);
+    };
+  }, []);
 
   // Mock event data - adaptado para o estilo Baladapp
   const event = {
@@ -230,16 +247,16 @@ const EventPageSimple = () => {
         <div className="absolute inset-0 bg-black bg-opacity-60"></div>
         <div className="relative container mx-auto px-2 sm:px-4 py-4 flex flex-col lg:flex-row items-end gap-0 min-h-[180px] lg:min-h-[220px]">
           {/* Hero Image */}
-          <div className="relative z-20 lg:-mb-44 -mb-28 lg:ml-0 flex-shrink-0 flex justify-center w-full lg:w-auto lg:justify-start">
+          <div className="relative z-20 lg:-mb-44 -mb-8 lg:ml-0 flex-shrink-0 flex justify-center w-full lg:w-auto lg:justify-start">
             <div
-              className="w-40 h-52 sm:w-48 sm:h-60 bg-white rounded-xl shadow-2xl border-4 border-white/10 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-400 transition-all"
+              className="w-28 h-36 sm:w-40 sm:h-52 md:w-48 md:h-60 bg-white rounded-xl shadow-2xl border-4 border-white/10 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-400 transition-all"
               style={{ boxShadow: '0 10px 40px 0 rgba(44,0,80,0.25)' }}
               onClick={() => setShowImageModal(true)}
               title="Clique para ampliar"
             >
-              <img
-                src={event.image}
-                alt={event.title}
+            <img
+              src={event.image}
+              alt={event.title}
                 className="object-cover w-full h-full"
               />
             </div>
@@ -250,9 +267,18 @@ const EventPageSimple = () => {
                 <button className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-40 rounded-full px-3 py-1 hover:bg-opacity-70 transition" onClick={() => setShowImageModal(false)}>&times;</button>
               </div>
             )}
+            {/* Seta animada para ampliar imagem (mobile only) */}
+            {showArrow && (
+              <div className="absolute top-2 right-0 block lg:hidden z-30 animate-bounce flex flex-col items-end">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path d="M20 12H4m0 0l6-6m-6 6l6 6" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="block text-xs text-pink-500 mr-1">Clique para ampliar</span>
+              </div>
+            )}
           </div>
           {/* Hero Info */}
-          <div className="flex-1 text-white z-10 flex flex-col justify-center lg:items-start items-center text-left ml-0 lg:ml-8 mt-4 lg:mt-0">
+          <div className="flex-1 text-white z-10 flex flex-col justify-center lg:items-start items-center text-left ml-0 lg:ml-8 mt-8 lg:mt-0">
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 max-w-xl leading-tight text-center lg:text-left text-white drop-shadow-lg" style={{ fontWeight: 700 }}>
               {event.title}
             </h1>
@@ -279,41 +305,41 @@ const EventPageSimple = () => {
       </div>
 
       {/* Botão de compra isolado, mais à direita e mais abaixo */}
-      <div className="w-full flex justify-end pr-6 lg:pr-16" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', zIndex: 30, position: 'relative' }}>
-        <button
+      <div className="w-full flex justify-center lg:justify-end pr-0 lg:pr-16" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', zIndex: 30, position: 'relative' }}>
+            <button
           className="py-3 px-4 sm:px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[160px] sm:min-w-[220px] w-full max-w-xs lg:w-auto"
-          onClick={() => {
-            setLoading(true);
-            setTimeout(() => {
-              setLoading(false);
-              navigate('/checkout', {
-                state: {
-                  event: {
-                    id: 'evt-angra-2025',
-                    title: event.title,
-                    date: event.date,
-                    location: event.address,
-                    image: event.image,
-                  },
+              onClick={() => {
+                setLoading(true);
+                setTimeout(() => {
+                  setLoading(false);
+                  navigate('/checkout', {
+                    state: {
+                      event: {
+                        id: 'evt-angra-2025',
+                        title: event.title,
+                        date: event.date,
+                        location: event.address,
+                        image: event.image,
+                      },
                   ticket: event.tickets[0],
-                },
-              });
-            }, 1400);
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-              </svg>
-              Processando...
-            </span>
-          ) : (
-            'COMPRAR INGRESSOS'
-          )}
-        </button>
+                    },
+                  });
+                }, 1400);
+              }}
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Processando...
+                </span>
+              ) : (
+                'COMPRAR INGRESSOS'
+              )}
+            </button>
       </div>
 
       <div className="container mx-auto px-4 py-4 lg:py-8" style={{ marginTop: '7vh' }}>
@@ -321,21 +347,27 @@ const EventPageSimple = () => {
           {/* Sidebar Navigation - Horizontal on mobile, vertical on desktop */}
           <div className="lg:w-64 flex-shrink-0">
             <nav className="bg-white rounded-lg shadow-sm lg:overflow-hidden">
-              <div className="flex lg:flex-col overflow-x-auto whitespace-nowrap lg:whitespace-normal scrollbar-hide gap-1">
-                {tabItems.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-shrink-0 w-full px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold border-b-4 lg:border-b-0 lg:border-l-4 transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-gray-100 border-pink-600 text-pink-600'
-                        : 'border-transparent text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              {!showImageModal && (
+                <div className="relative">
+                  <div id="tab-scroll" className="flex lg:flex-col overflow-x-auto whitespace-nowrap lg:whitespace-normal scrollbar-hide gap-1 sticky top-0 z-30 bg-white/95 border-b-2 border-pink-200 shadow-md md:shadow-none md:border-0">
+                    {tabItems.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex-shrink-0 w-full px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold border-b-4 lg:border-b-0 lg:border-l-4 transition-colors ${
+                          activeTab === tab.id
+                            ? 'bg-gray-100 border-pink-600 text-pink-600'
+                            : 'border-transparent text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Setas para rolar tabItems no mobile */}
+                  <TabScrollArrows />
+                </div>
+              )}
             </nav>
           </div>
 
@@ -350,5 +382,63 @@ const EventPageSimple = () => {
     </div>
   );
 };
+
+// Componente para as setas de rolagem do tabItems
+function TabScrollArrows() {
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(false);
+  React.useEffect(() => {
+    const el = document.getElementById('tab-scroll');
+    if (!el) return;
+    function update() {
+      setCanScrollLeft(el.scrollLeft > 0);
+      setCanScrollRight(el.scrollLeft + el.offsetWidth < el.scrollWidth - 2);
+    }
+    update();
+    el.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+  if (typeof window === 'undefined') return null;
+  return (
+    <>
+      {canScrollLeft && (
+        <button
+          type="button"
+          className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow-md border border-pink-200 block md:hidden z-40"
+          style={{ display: 'block' }}
+          onClick={() => {
+            const el = document.getElementById('tab-scroll');
+            if (el) el.scrollBy({ left: -120, behavior: 'smooth' });
+          }}
+          aria-label="Ver abas anteriores"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M15 6l-6 6 6 6" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+      {canScrollRight && (
+        <button
+          type="button"
+          className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow-md border border-pink-200 block md:hidden z-40"
+          style={{ display: 'block' }}
+          onClick={() => {
+            const el = document.getElementById('tab-scroll');
+            if (el) el.scrollBy({ left: 120, behavior: 'smooth' });
+          }}
+          aria-label="Ver mais abas"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M9 6l6 6-6 6" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+    </>
+  );
+}
 
 export default EventPageSimple;

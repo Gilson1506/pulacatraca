@@ -1248,27 +1248,27 @@ const OrganizerCheckIns = () => {
             <QrScanner
               onResult={result => {
                 handleQRCodeScan(result);
-              }}
-            />
-          </div>
+                }}
+              />
+            </div>
         </div>
       )}
       {/* Input manual para check-in */}
-      <form onSubmit={handleManualSubmit} className="w-full flex flex-col items-center mb-2">
-        <input
-          type="text"
-          className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-          placeholder="Digite o código manualmente"
-          value={manualCode}
-          onChange={e => setManualCode(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium w-full"
-        >
-          Registrar Check-in Manual
-        </button>
-      </form>
+            <form onSubmit={handleManualSubmit} className="w-full flex flex-col items-center mb-2">
+              <input
+                type="text"
+                className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                placeholder="Digite o código manualmente"
+                value={manualCode}
+                onChange={e => setManualCode(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium w-full"
+              >
+                Registrar Check-in Manual
+              </button>
+            </form>
       {/* Tabela de check-ins */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -1321,6 +1321,77 @@ const OrganizerCheckIns = () => {
   );
 };
 
+// Configurações do Organizador
+const OrganizerSettings = () => {
+  const [form, setForm] = useState({
+    name: 'Organizador Exemplo',
+    email: 'organizador@email.com',
+    phone: '(62) 99999-9999',
+    password: '',
+    confirmPassword: '',
+    notifications: true
+  });
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuccess('');
+    setError('');
+    if (form.password && form.password !== form.confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+    setSuccess('Configurações salvas com sucesso!');
+    setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
+  };
+
+  return (
+    <div className="p-6 max-w-xl mx-auto">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Configurações da Conta</h2>
+      {success && <div className="mb-4 p-3 bg-green-50 text-green-700 rounded">{success}</div>}
+      {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">{error}</div>}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+          <input type="text" name="name" value={form.name} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+          <input type="email" name="email" value={form.email} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+          <input type="text" name="phone" value={form.phone} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
+            <input type="password" name="password" value={form.password} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nova Senha</label>
+            <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" name="notifications" checked={form.notifications} onChange={handleChange} id="notifications" className="h-4 w-4 text-pink-600 border-gray-300 rounded" />
+          <label htmlFor="notifications" className="text-sm text-gray-700">Receber notificações por e-mail</label>
+        </div>
+        <button type="submit" className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors">Salvar Alterações</button>
+      </form>
+    </div>
+  );
+};
+
 // Main OrganizerDashboardPage component
 const OrganizerDashboardPage = () => {
   const [active, setActive] = useState('dashboard');
@@ -1340,7 +1411,7 @@ const OrganizerDashboardPage = () => {
           <Menu className="h-7 w-7" />
         </button>
         <h2 className="text-lg font-bold text-gray-900">Painel do Organizador</h2>
-      </div>
+    </div>
       {/* Sidebar como drawer no mobile, fixa no desktop */}
       <div>
         {/* Drawer overlay */}
@@ -1356,8 +1427,8 @@ const OrganizerDashboardPage = () => {
             <button onClick={() => handleSetActive('withdrawals')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='withdrawals'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Saques</button>
             <button onClick={() => handleSetActive('checkin')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='checkin'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Check-in</button>
             <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
-          </nav>
-        </aside>
+    </nav>
+  </aside>
       </div>
       <main className="flex-1 p-2 sm:p-4 md:p-8 w-full">
         {active === 'dashboard' && <DashboardOverview />}
@@ -1366,7 +1437,7 @@ const OrganizerDashboardPage = () => {
         {active === 'finance' && <OrganizerBankAccounts />}
         {active === 'withdrawals' && <OrganizerWithdrawals />}
         {active === 'checkin' && <OrganizerCheckIns />}
-        {active === 'settings' && <Settings />}
+        {active === 'settings' && <OrganizerSettings />}
       </main>
     </div>
   );

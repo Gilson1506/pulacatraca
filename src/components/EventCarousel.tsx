@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 interface FeaturedEvent {
   id: string;
@@ -55,7 +54,7 @@ const EventCarousel = () => {
   }, []);
 
   return (
-    <div className="relative h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
+    <div className="relative h-48 sm:h-72 md:h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
       {/* Slides */}
       <div 
         className="flex transition-transform duration-500 ease-in-out h-full"
@@ -63,12 +62,13 @@ const EventCarousel = () => {
       >
         {featuredEvents.map((event) => (
           <div key={event.id} className="w-full flex-shrink-0 relative">
-            <div 
-              className="w-full h-full bg-cover bg-center relative"
-              style={{ 
-                backgroundImage: `url(${event.image})` 
-              }}
-            >
+            <div className="w-full h-full relative">
+              <img 
+                src={event.image}
+                alt={event.title}
+                className="w-full h-full object-cover rounded-xl"
+                draggable="false"
+              />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white space-y-6 max-w-4xl px-4">
                   {/* Conteúdo removido conforme solicitado */}

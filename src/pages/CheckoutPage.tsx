@@ -85,18 +85,18 @@ const CheckoutPage = () => {
     <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 drop-shadow-md">Finalizar compra</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-700 mb-6 sm:mb-8 drop-shadow">Finalizar compra</h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Side: Order Summary & Payment */}
             <div className="lg:col-span-2 space-y-6">
               {/* Event Details */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 drop-shadow-sm">Resumo do Pedido</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Resumo do Pedido</h2>
                 <div className="flex items-start space-x-4">
                   <img src={event.image} alt={event.title} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-700 drop-shadow-sm">{event.title}</h3>
+                    <h3 className="font-medium text-gray-600 drop-shadow-sm">{event.title}</h3>
                     <p className="text-sm text-gray-500">{new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
                     <p className="text-sm text-gray-500">{event.location}</p>
                   </div>
@@ -124,7 +124,7 @@ const CheckoutPage = () => {
 
               {/* Payment Method */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 drop-shadow-sm">Método de pagamento</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Método de pagamento</h2>
                 <div className="space-y-3">
                   <div
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -135,7 +135,7 @@ const CheckoutPage = () => {
                     <div className="flex justify-between items-center">
                       <div className="flex items-center">
                         <CreditCard className="h-5 w-5 mr-3 text-gray-600" />
-                        <span className="font-semibold text-gray-700 drop-shadow-sm">Cartão de Crédito</span>
+                        <span className="font-medium text-gray-600 drop-shadow-sm">Cartão de Crédito</span>
                       </div>
                       <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
                         {paymentMethod === 'card' && <div className="h-2 w-2 rounded-full bg-pink-500"></div>}
@@ -152,7 +152,7 @@ const CheckoutPage = () => {
                     <div className="flex justify-between items-center">
                       <div className="flex items-center">
                         <QrCode className="h-5 w-5 mr-3 text-gray-600" />
-                        <span className="font-semibold text-gray-700 drop-shadow-sm">PIX</span>
+                        <span className="font-medium text-gray-600 drop-shadow-sm">PIX</span>
                       </div>
                       <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
                         {paymentMethod === 'pix' && <div className="h-2 w-2 rounded-full bg-pink-500"></div>}
@@ -166,23 +166,23 @@ const CheckoutPage = () => {
             {/* Right Side: Price Summary & Checkout Button */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-sm p-6 lg:sticky lg:top-24">
-                <h2 className="text-xl font-bold mb-4 text-gray-800 drop-shadow-sm">Resumo</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Resumo</h2>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">Subtotal ({quantity} {quantity > 1 ? 'ingressos' : 'ingresso'})</span>
-                    <span className="font-medium text-gray-700 drop-shadow-sm">R$ {subtotal.toFixed(2)}</span>
+                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">Taxa de Compra</span>
-                    <span className="font-medium text-gray-700 drop-shadow-sm">R$ {taxaCompra.toFixed(2)}</span>
+                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {taxaCompra.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">Taxa de Pagamento</span>
-                    <span className="font-medium text-gray-700 drop-shadow-sm">R$ {taxaPagamento.toFixed(2)}</span>
+                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {taxaPagamento.toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="border-t my-4"></div>
-                <div className="flex justify-between font-bold text-lg drop-shadow-md">
+                <div className="flex justify-between font-semibold text-lg drop-shadow">
                   <span>Total</span>
                   <span>R$ {totalPrice.toFixed(2)}</span>
                 </div>

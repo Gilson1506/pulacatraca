@@ -3,37 +3,33 @@ import React from 'react';
 const Footer = () => {
   return (
     <footer className="bg-white w-full pt-0">
-      {/* Top Row: Logo (left) and Flags (right) */}
-      <div className="container mx-auto grid grid-cols-4 items-center px-0 pb-0 mt-0 mb-0" style={{marginBottom: '0.25rem'}}>
+      {/* Top Row: Logo (left) */}
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 items-center px-0 pb-0 mt-0 mb-0" style={{marginBottom: '0'}}>
         {/* Logo acima da coluna Políticas */}
-        <div className="flex justify-center">
-          <img
-            src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
-            alt="Logo PULACATRACA"
-            className="h-52 w-auto object-contain"
-          />
-        </div>
+        <div className="flex justify-start md:justify-center mb-0 md:mb-0 pt-2 pb-1">
+              <img
+                src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+                alt="Logo PULACATRACA"
+                className="h-24 sm:h-28 md:h-40 w-auto object-contain"
+              />
+            </div>
         {/* Espaço vazio para centralizar */}
-        <div></div>
-        <div></div>
-        {/* Bandeiras acima da coluna Certificados */}
-        <div className="flex justify-center gap-3">
-          <img src="https://flagcdn.com/w40/br.png" alt="Brasil" className="h-6 w-auto rounded shadow" />
-          <img src="https://flagcdn.com/w40/us.png" alt="Estados Unidos" className="h-6 w-auto rounded shadow" />
-        </div>
+        <div className="hidden md:block"></div>
+        <div className="hidden md:block"></div>
+        {/* Bandeiras removidas */}
       </div>
       {/* Divider */}
-      <div className="border-t border-gray-200 w-full mb-0"></div>
+      <div className="border-t border-gray-200 w-full mb-0 mt-0"></div>
       {/* Middle Row: Centralized Columns */}
-      <div className="container mx-auto flex flex-col md:flex-row items-center justify-center text-center px-0 pb-0 gap-1 md:gap-2 mt-1">
-        {/* Políticas */}
-        <div className="flex flex-col items-center w-full md:w-1/4 mb-2 md:mb-0">
+      <div className="container mx-auto flex flex-row flex-wrap md:flex-row items-start justify-center text-center px-0 pb-0 gap-2 md:gap-2 mt-1 overflow-x-auto">
+          {/* Políticas */}
+        <div className="flex flex-col items-center min-w-[150px] w-auto md:w-1/4 mb-2 md:mb-0">
           <span className="font-semibold mb-2">Políticas</span>
           <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Privacidade</a>
           <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Termos de Uso</a>
-        </div>
+          </div>
         {/* Apps */}
-        <div className="flex flex-col items-center w-full md:w-1/4 mb-2 md:mb-0">
+        <div className="flex flex-col items-center min-w-[150px] w-auto md:w-1/4 mb-2 md:mb-0">
           <span className="font-semibold mb-2">Baixe o App</span>
           <div className="flex gap-2">
             <a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" className="h-8" /></a>
@@ -41,7 +37,7 @@ const Footer = () => {
           </div>
         </div>
         {/* Redes Sociais */}
-        <div className="flex flex-col items-center w-full md:w-1/4 mb-2 md:mb-0">
+        <div className="flex flex-col items-center min-w-[150px] w-auto md:w-1/4 mb-2 md:mb-0">
           <span className="font-semibold mb-2">Redes Sociais</span>
           <div className="flex gap-3">
             <a href="#" aria-label="Instagram"><svg className="h-6 w-6 text-gray-600 hover:text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5A4.25 4.25 0 0 0 7.75 20.5h8.5A4.25 4.25 0 0 0 20.5 16.25v-8.5A4.25 4.25 0 0 0 16.25 3.5h-8.5zm4.25 3.25a5.25 5.25 0 1 1 0 10.5a5.25 5.25 0 0 1 0-10.5zm0 1.5a3.75 3.75 0 1 0 0 7.5a3.75 3.75 0 0 0 0-7.5zm5.25.75a1 1 0 1 1 0 2a1 1 0 0 1 0-2z"/></svg></a>
@@ -50,7 +46,7 @@ const Footer = () => {
           </div>
         </div>
         {/* Certificados */}
-        <div className="flex flex-col items-center w-full md:w-1/4">
+        <div className="flex flex-col items-center min-w-[150px] w-auto md:w-1/4">
           <span className="font-semibold mb-2">Certificados</span>
           <div className="flex gap-2">
             <a href="https://i.postimg.cc/XvkvQp61/logo-premio-xl-e4d59a6604da164a9e5731647efb091f-Copia-2.png" target="_blank" rel="noopener noreferrer">

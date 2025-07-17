@@ -114,15 +114,17 @@ const Header = () => {
             </div>
           </div>
           {/* Mobile Header */}
-          <div className="flex md:hidden items-center justify-between h-16 w-full">
-            <Link to="/" className="flex items-center">
-              <img
-                src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
-                alt="Logo PULACATRACA"
-                className="h-16 w-auto cursor-pointer max-h-20"
-                onClick={() => navigate('/')}
-              />
-            </Link>
+          <div className="flex md:hidden items-center justify-between h-20 w-full">
+            <div className="flex-1 flex justify-center">
+              <Link to="/" className="flex items-center">
+                <img
+                  src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+                  alt="Logo PULACATRACA"
+                  className="h-20 sm:h-24 w-auto cursor-pointer max-h-24"
+                  onClick={() => navigate('/')}
+                />
+              </Link>
+            </div>
             <button
               type="button"
               onClick={() => setIsMenuOpen((open) => !open)}

@@ -60,9 +60,9 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
           {/* Ano(s) */}
           {showYear && (
-            <span className="text-xs text-gray-500 mt-1">
+          <span className="text-xs text-gray-500 mt-1">
               {`${startYear} - ${endYear}`}
-            </span>
+          </span>
           )}
         </div>
       );
@@ -75,7 +75,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <span className="text-3xl font-bold text-pink-600">{startDay}</span>
         <span className="text-sm font-semibold text-gray-900 mt-1">{startMonth}</span>
         {showYear && (
-          <span className="text-xs text-gray-500">{startYear}</span>
+        <span className="text-xs text-gray-500">{startYear}</span>
         )}
       </>
     );

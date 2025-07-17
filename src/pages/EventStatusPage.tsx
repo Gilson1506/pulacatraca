@@ -119,12 +119,12 @@ const EventStatusPage = () => {
             <div className="text-center text-gray-500 py-12">Nenhum pedido encontrado.</div>
           )}
           {pedidos.filter(p=>p.status===tab).map(pedido => (
-            <div key={pedido.id} className="border border-gray-200 rounded-lg p-6 flex items-center space-x-4">
-              <img src={pedido.image} alt={pedido.title} className="w-20 h-20 object-cover rounded-lg" />
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{pedido.title}</h3>
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-1">
-                  <div className="flex items-center space-x-1">
+            <div key={pedido.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <img src={pedido.image} alt={pedido.title} className="w-20 h-20 object-cover rounded-lg mb-2 sm:mb-0 flex-shrink-0" />
+              <div className="flex-1 w-full">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 break-words">{pedido.title}</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm text-gray-600 mb-1">
+                  <div className="flex items-center space-x-1 mb-1 sm:mb-0">
                     <Calendar className="h-4 w-4" />
                     <span>{pedido.date} às {pedido.time}</span>
                   </div>
@@ -135,8 +135,8 @@ const EventStatusPage = () => {
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusPedidoColor(pedido.status)}`}>{getStatusPedidoText(pedido.status)}</span>
               </div>
-              <div className="text-right">
-                <div className="text-lg font-bold text-pink-600 mb-1">{formatCurrency(pedido.value)}</div>
+              <div className="text-right w-full sm:w-auto flex flex-row sm:flex-col justify-between sm:justify-end items-center sm:items-end gap-2 sm:gap-0 mt-2 sm:mt-0">
+                <div className="text-lg font-bold text-pink-600 mb-0 sm:mb-1">{formatCurrency(pedido.value)}</div>
                 <button className="text-xs text-pink-600 hover:text-pink-700 font-semibold">Ver detalhes</button>
               </div>
             </div>
