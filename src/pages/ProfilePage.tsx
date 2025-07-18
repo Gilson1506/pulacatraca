@@ -1,100 +1,351 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate, Routes, Route, NavLink, useMatch } from 'react-router-dom';
-import { QrCode, User, Settings, Heart, LogOut, BarChart3 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Footer from '../components/Footer';
+import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight } from 'lucide-react';
 
-interface Ticket {
-  id: string;
-  eventName: string;
-  eventDate: string;
-  eventLocation: string;
-  ticketType: string;
-  quantity: number;
-  qrCode: string;
-  status: 'ativo' | 'usado' | 'expirado';
+function getInitials(name: string) {
+  if (!name) return '?';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+const dummyContent = (
+  user: { name: string; email: string },
+  handleBackToMenu: () => void,
+  setActiveMenu: (key: string) => void,
+  handleMenuSelect: (key: string) => void
+) => ({
+  tickets: (
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-pink-600 mb-2">Próximos eventos</h2>
+        <div className="border-b border-gray-200 mb-4" />
+        {/* Exemplo de ingresso, pode ser substituído por map dos ingressos do usuário */}
+        {(() => {
+          const tickets = [
+            {
+              id: 1,
+              date: '2025-11-29',
+              image: 'https://i.postimg.cc/3w6kQb8V/aw-festival.jpg',
+              title: 'Awê Festival',
+              city: 'São José do Rio Preto - SP',
+              location: 'Exposições Alberto Bertelli Lucatto',
+              status: 'ativo',
+            },
+            {
+              id: 2,
+              date: '2025-12-15',
+              image: 'https://i.postimg.cc/QCJNJNgc/Imagem-Whats-App-2025-07-14-s-20-38-33-6d804a5e.jpg',
+              title: 'Carnarock Goiânia',
+              city: 'Goiânia - GO',
+              location: 'Arena Goiânia',
+              status: 'ativo',
+            },
+          ];
+          if (tickets.length === 0) {
+            return (
+              <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
+                Nenhum ingresso disponível
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-4">
+              {tickets.map((ticket) => (
+                <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Data (desktop only) */}
+                  <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
+                    <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.date).getDate()}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(ticket.date).getFullYear()}</span>
+                  </div>
+                  {/* Imagem sempre primeiro no mobile */}
+                  <img src={ticket.image} alt={ticket.title} className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" />
+                  {/* Detalhes */}
+                  <div className="flex-1 flex flex-col justify-center px-2 py-2 text-center sm:text-left order-2">
+                    <div className="font-bold text-lg text-gray-800 leading-tight">{ticket.title}</div>
+                    <div className="text-sm text-pink-700 font-semibold leading-tight">{ticket.city}</div>
+                    <div className="text-xs text-gray-500 leading-tight">{ticket.location}</div>
+                  </div>
+                  {/* Botão */}
+                  <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
+                    <button className="border border-pink-500 text-pink-600 font-bold rounded-lg px-6 py-2 hover:bg-pink-50 transition-colors text-xs shadow-sm w-full sm:w-auto">
+                      VER INGRESSOS
+                    </button>
+                  </div>
+                  {/* Data (mobile only, abaixo do botão) */}
+                  <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
+                    <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.date).getDate()}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(ticket.date).getFullYear()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold text-pink-600 mb-2">Eventos passados</h2>
+        <div className="border-b border-gray-200 mb-4" />
+        <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
+          Nenhum ingresso disponível
+        </div>
+      </div>
+    </div>
+  ),
+  orders: (
+    <div className="w-full max-w-2xl mx-auto">
+      <h2 className="text-xl font-bold text-pink-600 mb-2">Histórico</h2>
+      <div className="border-b border-gray-200 mb-4" />
+      <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
+        Nenhum pedido encontrado.
+      </div>
+    </div>
+  ),
+  info: (
+    <div className="w-full max-w-2xl mx-auto">
+      {/* Botão de voltar */}
+      <button
+        onClick={handleBackToMenu}
+        className="flex items-center gap-2 mb-6 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+        style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+      >
+        <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Voltar
+      </button>
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-6">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-16 h-16 rounded-full bg-pink-600 flex items-center justify-center text-white text-2xl font-bold uppercase">
+            {getInitials(user.name)}
+          </div>
+          <div>
+            <div className="text-lg font-semibold text-gray-900">{user.name}</div>
+            <div className="text-gray-500 text-sm">{user.email}</div>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {/* Meu perfil */}
+          <button className="w-full flex items-center justify-between py-4 group hover:bg-pink-50 transition rounded-xl px-2" onClick={() => setActiveMenu('edit-profile')}>
+            <div>
+              <div className="font-medium text-gray-900">Meu perfil</div>
+              <div className="text-xs text-gray-500">Confira suas informações</div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-600" />
+          </button>
+          {/* Alterar senha */}
+          <button className="w-full flex items-center justify-between py-4 group hover:bg-pink-50 transition rounded-xl px-2" onClick={() => setActiveMenu('change-password')}>
+            <div>
+              <div className="font-medium text-gray-900">Alterar senha</div>
+              <div className="text-xs text-gray-500">Atualize sua senha de acesso</div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-600" />
+          </button>
+          {/* Telefone */}
+          <button className="w-full flex items-center justify-between py-4 group hover:bg-pink-50 transition rounded-xl px-2" onClick={() => setActiveMenu('phone')}>
+            <div>
+              <div className="font-medium text-gray-900">Telefone</div>
+              <div className="text-xs text-pink-500">Não verificado</div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-600" />
+          </button>
+          {/* Excluir conta */}
+          <button className="w-full flex items-center justify-between py-4 group hover:bg-pink-50 transition rounded-xl px-2" onClick={() => setActiveMenu('delete-account')}>
+            <div>
+              <div className="font-medium text-gray-900">Excluir conta</div>
+              <div className="text-xs text-gray-500">Remover permanentemente</div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-pink-600" />
+          </button>
+          {/* Sair */}
+          <button className="w-full flex items-center justify-between py-4 group hover:bg-pink-50 transition rounded-xl px-2" onClick={() => handleMenuSelect('logout')}>
+            <div>
+              <div className="font-medium text-gray-900">Sair</div>
+              <div className="text-xs text-gray-500">Encerrar sessão</div>
+            </div>
+            <LogOut className="h-5 w-5 text-gray-400 group-hover:text-pink-600" />
+          </button>
+        </div>
+      </div>
+    </div>
+  ),
+  'edit-profile': (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <button
+        onClick={() => setActiveMenu('info')}
+        className="flex items-center gap-2 mb-6 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+        style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+      >
+        <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Voltar
+      </button>
+      <form className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-4 w-full max-w-lg">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Editar dados</h2>
+        <input className="w-full border rounded px-3 py-2" placeholder="Nome completo" defaultValue={user.name} />
+        <input className="w-full border rounded px-3 py-2" placeholder="Email" defaultValue={user.email} />
+        <div className="flex gap-2">
+          <select className="w-1/2 border rounded px-3 py-2">
+            <option>Brasil</option>
+            <option>Portugal</option>
+            <option>Angola</option>
+            <option>Moçambique</option>
+            <option>Outro</option>
+          </select>
+          <input className="w-1/2 border rounded px-3 py-2" placeholder="Telefone" />
+        </div>
+        <div className="flex gap-2">
+          <select className="w-1/2 border rounded px-3 py-2">
+            <option>CPF</option>
+            <option>RG</option>
+            <option>Passaporte</option>
+            <option>Outro</option>
+          </select>
+          <input className="w-1/2 border rounded px-3 py-2" placeholder="Número do documento" />
+        </div>
+        <input className="w-full border rounded px-3 py-2" placeholder="CEP" />
+        <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors mt-4">Salvar</button>
+      </form>
+    </div>
+  ),
+  'change-password': (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <button
+        onClick={() => setActiveMenu('info')}
+        className="flex items-center gap-2 mb-6 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+        style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+      >
+        <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Voltar
+      </button>
+      <form className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-4 w-full max-w-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Alterar senha</h2>
+        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Senha atual" />
+        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Nova senha" />
+        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Confirmar nova senha" />
+        <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors mt-4">Salvar</button>
+      </form>
+    </div>
+  ),
+  phone: (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <button
+        onClick={() => setActiveMenu('info')}
+        className="flex items-center gap-2 mb-6 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+        style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+      >
+        <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Voltar
+      </button>
+      <form className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-4 w-full max-w-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Verificar telefone</h2>
+        <input className="w-full border rounded px-3 py-2" type="tel" placeholder="Digite seu número de telefone" />
+        <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors mt-4">Enviar código</button>
+        <input className="w-full border rounded px-3 py-2" type="text" placeholder="Código de verificação" />
+        <button type="button" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors">Verificar</button>
+      </form>
+    </div>
+  ),
+  'delete-account': (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-6 w-full max-w-md items-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-2 text-center">Excluir conta</h2>
+        <p className="text-gray-700 text-center">Tem certeza que deseja excluir sua conta? <br/>Esta ação é <span className='text-red-600 font-semibold'>irreversível</span> e todos os seus dados serão permanentemente removidos.</p>
+        <div className="flex gap-4 justify-center mt-4">
+          <button
+            onClick={() => setActiveMenu('info')}
+            className="flex items-center gap-2 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+            style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+          >
+            <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Cancelar
+          </button>
+          <button
+            onClick={() => {/* ação de exclusão */}}
+            className="flex items-center gap-2 text-red-600 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+            style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+          >
+            Excluir conta
+          </button>
+        </div>
+      </div>
+    </div>
+  ),
+  support: (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <button
+        onClick={() => setActiveMenu('info')}
+        className="flex items-center gap-2 mb-6 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
+        style={{ boxShadow: 'none', border: 'none', background: 'none' }}
+      >
+        <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Voltar
+      </button>
+      <form className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-4 w-full max-w-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Suporte por SMS</h2>
+        <input className="w-full border rounded px-3 py-2" type="tel" placeholder="Seu número de telefone" />
+        <textarea className="w-full border rounded px-3 py-2" rows={4} placeholder="Digite sua mensagem"></textarea>
+        <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors mt-4">Enviar SMS</button>
+      </form>
+      <div className="w-full max-w-md mt-6">
+        <h3 className="text-lg font-semibold mb-2">Mensagens</h3>
+        <div className="bg-gray-50 rounded-lg p-4 min-h-[80px] flex flex-col gap-2">
+          {(Array.isArray(window.__supportMessages) ? window.__supportMessages : []).map((msg: {id: number, text: string, from: string}) => (
+            <div key={msg.id} className={`text-sm ${msg.from === 'system' ? 'text-gray-700' : 'text-pink-600'}`}>{msg.text}</div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ),
+});
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
-  // Detecta rota ativa para highlight
-  const matchTickets = useMatch('/profile/tickets');
-  const matchOrders = useMatch('/profile/orders');
-  const matchProfile = useMatch('/profile/info');
-  const matchFavorites = useMatch('/profile/favorites');
-  const matchSettings = useMatch('/profile/settings');
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [message, setMessage] = useState('');
-  // Estado para menu mobile
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [supportMessages, setSupportMessages] = useState([
+    // Mensagem automática inicial
+    { id: 1, text: 'Olá! Como podemos ajudar?', from: 'system', read: false }
+  ]);
+  const [supportBadge, setSupportBadge] = useState(1); // Começa com 1 mensagem automática
 
-  // Redirecionar organizador para o dashboard
   useEffect(() => {
     if (user && user.isOrganizer) {
       navigate('/organizer-dashboard', { replace: true });
     }
   }, [user, navigate]);
 
+  // Sempre que abrir o suporte, cria nova mensagem automática e zera badge
   useEffect(() => {
-    if (location.state?.message) {
-      setMessage(location.state.message);
-      if (location.state.newTickets) {
-        setTickets(prev => [...prev, ...location.state.newTickets]);
-      }
-      // Limpar o state
-      window.history.replaceState({}, document.title);
+    if (activeMenu === 'support') {
+      setSupportMessages(prev => [
+        ...prev,
+        { id: prev.length + 1, text: 'Mensagem automática do sistema.', from: 'system', read: false }
+      ]);
+      setSupportBadge(0);
     }
+  }, [activeMenu]);
 
-    // Mock tickets existentes
-    const mockTickets: Ticket[] = [
-      {
-        id: '1',
-        eventName: 'Festa Julina Sorocaba',
-        eventDate: '2025-07-15',
-        eventLocation: 'Arena Sorocaba',
-        ticketType: 'Pista',
-        quantity: 2,
-        qrCode: 'QR-ABC123',
-        status: 'ativo'
-      },
-      {
-        id: '2',
-        eventName: 'Stand Up Comedy Night',
-        eventDate: '2025-06-20',
-        eventLocation: 'Teatro Municipal',
-        ticketType: 'VIP',
-        quantity: 1,
-        qrCode: 'QR-XYZ789',
-        status: 'usado'
-      }
-    ];
-
-    setTickets(prev => prev.length === 0 ? mockTickets : prev);
-  }, [location.state]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleMenuSelect = (key: string) => {
+    if (key === 'logout') {
+      logout();
+      navigate('/');
+      return;
+    }
+    if (key === 'home') {
+      navigate('/');
+      return;
+    }
+    // Se for suporte e badge zerado, incrementa badge ao receber resposta
+    if (key === 'support' && supportBadge === 0) {
+      // Simula resposta automática após 2s
+      setTimeout(() => {
+        setSupportMessages(prev => [
+          ...prev,
+          { id: prev.length + 1, text: 'Sua mensagem foi recebida! Em breve responderemos.', from: 'system', read: false }
+        ]);
+        setSupportBadge(b => b + 1);
+      }, 2000);
+    }
+    setActiveMenu(key);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ativo': return 'bg-green-100 text-green-800';
-      case 'usado': return 'bg-gray-100 text-gray-800';
-      case 'expirado': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'ativo': return 'Ativo';
-      case 'usado': return 'Usado';
-      case 'expirado': return 'Expirado';
-      default: return 'Desconhecido';
-    }
-  };
+  const handleBackToMenu = () => setActiveMenu(null);
 
   if (!user) {
     return (
@@ -113,394 +364,113 @@ const ProfilePage = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      {/* Botão de abrir menu no mobile */}
-      <div className="lg:hidden flex items-center justify-between px-4 mb-4">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-full bg-pink-100 text-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500">
-          <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
-        </button>
-        <h2 className="text-lg font-bold text-gray-900">Meu Perfil</h2>
-        <div></div>
-      </div>
-      <div className="container mx-auto px-4">
-        <div className="max-w-6xl mx-auto">
-          {message && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800">{message}</p>
-            </div>
+  const menuCards = [
+    { key: 'tickets', label: 'Meus ingressos', icon: <QrCode className="h-8 w-8" />, color: 'from-pink-100 to-pink-50' },
+    { key: 'orders', label: 'Meus pedidos', icon: <BarChart3 className="h-8 w-8" />, color: 'from-pink-100 to-pink-50' },
+    { key: 'info', label: 'Meus dados', icon: <User className="h-8 w-8" />, color: 'from-pink-100 to-pink-50', showStatus: true },
+    {
+      key: 'support',
+      label: 'Atendimento',
+      icon: (
+        <span className="relative">
+          <MessageCircle className="h-8 w-8 animate-bounce" />
+          {supportBadge > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold animate-pulse">
+              {supportBadge}
+            </span>
           )}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Sidebar */}
-            {/* Overlay para mobile */}
-            {sidebarOpen && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}></div>
-            )}
-            <aside className={`bg-white rounded-lg shadow-sm p-6 w-72 max-w-full z-50 fixed top-0 left-0 h-full transform transition-transform duration-200 lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:block`} style={{maxWidth: '90vw'}}>
-              <div className="flex items-center justify-between mb-6 lg:mb-6">
-                <div className="flex items-center space-x-4">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-pink-600 flex items-center justify-center text-white text-3xl font-bold uppercase">
-                      {user.name ? user.name.charAt(0) : '?'}
-                    </div>
-                  )}
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-                    <p className="text-gray-600">{user.email}</p>
-                  </div>
-                </div>
-                {/* Botão de fechar no mobile */}
-                <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 ml-2 rounded-full text-gray-500 hover:text-gray-800 focus:outline-none" aria-label="Fechar menu">
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+        </span>
+      ),
+      color: 'from-pink-100 to-pink-50'
+    },
+    { key: 'logout', label: 'Sair', icon: <LogOut className="h-8 w-8" />, color: 'from-pink-100 to-pink-50' },
+    { key: 'home', label: 'Voltar para o site', icon: <ArrowLeft className="h-8 w-8" />, color: 'from-pink-100 to-pink-50' },
+  ];
+
+  // Mobile: menu ou conteúdo
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      <main className="flex-1 p-4 md:p-8 flex flex-col items-center justify-center w-full">
+        {/* Estado inicial: menu com perfil */}
+        {(!activeMenu || (!isMobile && !activeMenu)) && (
+          <>
+            <div className="flex flex-col items-center mb-10 transition-all duration-300">
+              <div className="w-20 h-20 rounded-full bg-pink-600 flex items-center justify-center text-white text-3xl font-bold uppercase mb-2 shadow-md">
+                {getInitials(user.name)}
               </div>
-              <nav className="space-y-2">
-                <NavLink to="/profile/tickets" className={({isActive}) => `w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${isActive || matchTickets ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-50'}`} end onClick={() => setSidebarOpen(false)}>
-                  <QrCode className="h-5 w-5" />
-                  <span>Meus ingressos</span>
-                </NavLink>
-                <NavLink to="/profile/orders" className={({isActive}) => `w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${isActive || matchOrders ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => setSidebarOpen(false)}>
-                  <BarChart3 className="h-5 w-5" />
-                  <span>Meus Pedidos</span>
-                </NavLink>
-                <NavLink to="/profile/info" className={({isActive}) => `w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${isActive || matchProfile ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => setSidebarOpen(false)}>
-                  <User className="h-5 w-5" />
-                  <span>Perfil</span>
-                </NavLink>
-                <NavLink to="/profile/favorites" className={({isActive}) => `w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${isActive || matchFavorites ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => setSidebarOpen(false)}>
-                  <Heart className="h-5 w-5" />
-                  <span>Favoritos</span>
-                </NavLink>
-                <NavLink to="/profile/settings" className={({isActive}) => `w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors ${isActive || matchSettings ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => setSidebarOpen(false)}>
-                  <Settings className="h-5 w-5" />
-                  <span>Configurações</span>
-                </NavLink>
-                <button
-                  onClick={() => { handleLogout(); setSidebarOpen(false); }}
-                  className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut className="h-5 w-5" />
-                  <span>Sair</span>
-                </button>
-              </nav>
-            </aside>
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              <Routes>
-                <Route path="tickets" element={<ProfileTickets tickets={tickets} getStatusColor={getStatusColor} getStatusText={getStatusText} />} />
-                <Route path="orders" element={<ProfileOrders />} />
-                <Route path="info" element={<ProfileInfo user={user} />} />
-                <Route path="favorites" element={<ProfileFavorites />} />
-                <Route path="settings" element={<ProfileSettings />} />
-                <Route path="*" element={<ProfileTickets tickets={tickets} getStatusColor={getStatusColor} getStatusText={getStatusText} />} />
-              </Routes>
+              <div className="text-lg font-semibold text-gray-900 text-center">{user.name}</div>
+            </div>
+            <div
+              className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 justify-center mx-auto"
+            >
+              {menuCards.map((item, idx) => (
+                <React.Fragment key={item.key}>
+                  <button
+                    onClick={() => handleMenuSelect(item.key)}
+                    className={
+                      `group relative flex items-center md:flex-col md:items-center justify-between md:justify-center p-4 md:p-8 rounded-2xl border-2 border-pink-400 bg-gradient-to-br ${item.color} shadow-md hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-400 w-full md:min-w-[160px] md:min-h-[160px]`
+                    }
+                    tabIndex={0}
+                    aria-label={item.label}
+                  >
+                    <span className="mr-4 md:mr-0 text-pink-600 group-hover:scale-110 transition-transform flex-shrink-0">{item.icon}</span>
+                    <span className="font-semibold text-lg text-gray-800 mb-1 md:mb-0 text-left md:text-center flex-1">
+                      {item.label}
+                      {item.showStatus && (
+                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${user.email.includes('verificado') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{user.email.includes('verificado') ? 'Verificado' : 'Não verificado'}</span>
+                      )}
+                    </span>
+                    {/* Animação de destaque */}
+                    <span className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-pink-500 transition-all pointer-events-none"></span>
+                  </button>
+                  {/* Divider para mobile, exceto no último item */}
+                  {idx < menuCards.length - 1 && (
+                    <div className="block md:hidden w-[100vw] -ml-4 border-b border-pink-300" />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </>
+        )}
+        {/* Conteúdo selecionado */}
+        {activeMenu && (
+          <div className="w-full max-w-4xl mx-auto">
+            {/* Mobile: botão de voltar */}
+            {isMobile && (
+              <button
+                onClick={handleBackToMenu}
+                className="flex items-center gap-2 mb-6 text-pink-600 font-semibold text-base focus:outline-none"
+              >
+                <ArrowLeft className="h-5 w-5" /> Voltar ao menu
+              </button>
+            )}
+            {/* Desktop: menu no topo */}
+            {!isMobile && (
+              <div className="flex justify-center gap-4 mb-8 animate-fade-in">
+                {menuCards.filter(item => item.key !== 'logout' && item.key !== 'home').map(item => (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveMenu(item.key)}
+                    className={`flex flex-col items-center px-6 py-2 rounded-lg border-b-2 ${activeMenu === item.key ? 'border-pink-600 text-pink-600' : 'border-transparent text-gray-500 hover:text-pink-600'} transition-colors`}
+                  >
+                    <span>{item.icon}</span>
+                    <span className="text-xs mt-1 font-medium">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="bg-white rounded-xl shadow p-6 min-h-[200px] animate-fade-in">
+              {/* Aqui você pode renderizar o conteúdo real de cada página */}
+              {dummyContent(user, handleBackToMenu, setActiveMenu, handleMenuSelect)[activeMenu as keyof ReturnType<typeof dummyContent>] || <div>Conteúdo</div>}
             </div>
           </div>
-        </div>
-      </div>
+        )}
+      </main>
+      <Footer />
     </div>
   );
 };
-
-// Componentes de cada seção do perfil
-
-interface ProfileTicketsProps {
-  tickets: Ticket[];
-  getStatusColor: (status: string) => string;
-  getStatusText: (status: string) => string;
-}
-
-function ProfileTickets({ tickets, getStatusColor, getStatusText }: ProfileTicketsProps) {
-  const navigate = useNavigate();
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Meus Ingressos</h2>
-      {tickets.length === 0 ? (
-        <div className="text-center py-12">
-          <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum ingresso encontrado</h3>
-          <p className="text-gray-500 mb-6">Você ainda não comprou nenhum ingresso.</p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors"
-          >
-            Explorar eventos
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {tickets.map((ticket: Ticket) => (
-            <div key={ticket.id} className="border border-gray-200 rounded-lg p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{ticket.eventName}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>{getStatusText(ticket.status)}</span>
-                  </div>
-                  <div className="text-gray-600 text-sm mb-1">{ticket.eventDate} • {ticket.eventLocation}</div>
-                  <div className="text-gray-500 text-xs">Tipo: {ticket.ticketType} • Qtd: {ticket.quantity}</div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="text-xs text-gray-400">#{ticket.qrCode}</span>
-                  <button className="text-pink-600 hover:underline text-xs">Ver QR Code</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface ProfileInfoProps {
-  user: { name: string; email: string; avatar?: string; phone?: string };
-}
-function ProfileInfo({ user }: ProfileInfoProps) {
-  const [form, setForm] = useState({
-    name: user.name || '',
-    email: user.email || '',
-    phone: user.phone || '',
-  });
-  const [editing, setEditing] = useState(false);
-  const [success, setSuccess] = useState('');
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setEditing(false);
-    setSuccess('Dados atualizados com sucesso!');
-    setTimeout(() => setSuccess(''), 2000);
-  };
-
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Perfil</h2>
-      <div className="bg-white rounded-lg shadow-sm p-6 max-w-lg">
-        {success && <div className="mb-4 p-2 bg-green-50 text-green-700 rounded">{success}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
-              disabled={!editing}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
-              disabled={!editing}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-            <input
-              type="text"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
-              disabled={!editing}
-            />
-          </div>
-          <div className="flex gap-2 mt-4">
-            {!editing ? (
-              <button type="button" onClick={() => setEditing(true)} className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors">Editar</button>
-            ) : (
-              <>
-                <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors">Salvar</button>
-                <button type="button" onClick={() => { setEditing(false); setForm({ name: user.name, email: user.email, phone: user.phone || '' }); }} className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors">Cancelar</button>
-              </>
-            )}
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// Mock para pedidos
-const mockOrders = [
-  {
-    id: 'A123',
-    date: '2024-06-01',
-    total: 120.00,
-    status: 'Pago',
-    items: [
-      { name: 'Festa Julina Sorocaba', quantity: 2, price: 60.00 }
-    ]
-  },
-  {
-    id: 'B456',
-    date: '2024-05-15',
-    total: 200.00,
-    status: 'Cancelado',
-    items: [
-      { name: 'Stand Up Comedy Night', quantity: 1, price: 200.00 }
-    ]
-  }
-];
-
-function ProfileOrders() {
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Meus Pedidos</h2>
-      {mockOrders.length === 0 ? (
-        <div className="text-gray-500">Você ainda não fez nenhum pedido.</div>
-      ) : (
-        <div className="space-y-4">
-          {mockOrders.map(order => (
-            <div key={order.id} className="border border-gray-200 rounded-lg p-4 bg-white">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2 gap-2">
-                <div>
-                  <span className="font-semibold text-gray-900">Pedido #{order.id}</span>
-                  <span className="ml-2 text-xs text-gray-500">{order.date}</span>
-                </div>
-                <div className="text-sm">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.status === 'Pago' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{order.status}</span>
-                </div>
-              </div>
-              <ul className="text-sm text-gray-700 mb-2">
-                {order.items.map((item, idx) => (
-                  <li key={idx}>{item.quantity}x {item.name} <span className="text-gray-400">R$ {item.price.toFixed(2)}</span></li>
-                ))}
-              </ul>
-              <div className="text-right font-bold text-gray-900">Total: R$ {order.total.toFixed(2)}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Mock para favoritos
-const mockFavorites = [
-  {
-    id: 'E1',
-    name: 'Festa Julina Sorocaba',
-    date: '2025-07-15',
-    location: 'Arena Sorocaba',
-    image: 'https://via.placeholder.com/300x200?text=Festa+Julina'
-  },
-  {
-    id: 'E2',
-    name: 'Stand Up Comedy Night',
-    date: '2025-06-20',
-    location: 'Teatro Municipal',
-    image: 'https://via.placeholder.com/300x200?text=Stand+Up'
-  }
-];
-
-function ProfileFavorites() {
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Eventos Favoritos</h2>
-      {mockFavorites.length === 0 ? (
-        <div className="text-gray-500">Você ainda não favoritou nenhum evento.</div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {mockFavorites.map(event => (
-            <div key={event.id} className="bg-white rounded-lg shadow-sm border p-3 flex flex-col">
-              <img src={event.image} alt={event.name} className="rounded-md h-32 w-full object-cover mb-2" />
-              <div className="font-semibold text-gray-900">{event.name}</div>
-              <div className="text-xs text-gray-500 mb-1">{event.date} • {event.location}</div>
-              <button className="mt-auto text-pink-600 hover:underline text-xs self-end">Remover</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProfileSettings() {
-  const [form, setForm] = useState({
-    password: '',
-    confirmPassword: '',
-    notifications: true,
-  });
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (form.password && form.password !== form.confirmPassword) {
-      setError('As senhas não coincidem.');
-      return;
-    }
-    setSuccess('Configurações salvas com sucesso!');
-    setTimeout(() => setSuccess(''), 2000);
-    setForm(f => ({ ...f, password: '', confirmPassword: '' }));
-  };
-
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Configurações</h2>
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 max-w-lg space-y-4">
-        {success && <div className="p-2 bg-green-50 text-green-700 rounded">{success}</div>}
-        {error && <div className="p-2 bg-red-50 text-red-700 rounded">{error}</div>}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
-            autoComplete="new-password"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
-          <input
-            type="password"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500"
-            autoComplete="new-password"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="notifications"
-            checked={form.notifications}
-            onChange={handleChange}
-            className="h-4 w-4 text-pink-600 border-gray-300 rounded"
-            id="notifications"
-          />
-          <label htmlFor="notifications" className="text-sm text-gray-700">Receber notificações por e-mail</label>
-        </div>
-        <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors">Salvar configurações</button>
-      </form>
-    </div>
-  );
-}
 
 export default ProfilePage;

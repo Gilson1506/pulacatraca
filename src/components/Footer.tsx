@@ -18,7 +18,7 @@ const Footer = () => {
         <div className="hidden md:block"></div>
         <div className="hidden md:block"></div>
         {/* Bandeiras removidas */}
-      </div>
+          </div>
       {/* Divider */}
       <div className="border-t border-gray-200 w-full mb-0 mt-0"></div>
       {/* Middle Row: Centralized Columns */}

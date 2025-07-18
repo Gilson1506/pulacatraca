@@ -350,20 +350,20 @@ const EventPageSimple = () => {
               {!showImageModal && (
                 <div className="relative">
                   <div id="tab-scroll" className="flex lg:flex-col overflow-x-auto whitespace-nowrap lg:whitespace-normal scrollbar-hide gap-1 sticky top-0 z-30 bg-white/95 border-b-2 border-pink-200 shadow-md md:shadow-none md:border-0">
-                    {tabItems.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                {tabItems.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
                         className={`flex-shrink-0 w-full px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold border-b-4 lg:border-b-0 lg:border-l-4 transition-colors ${
-                          activeTab === tab.id
-                            ? 'bg-gray-100 border-pink-600 text-pink-600'
-                            : 'border-transparent text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
+                      activeTab === tab.id
+                        ? 'bg-gray-100 border-pink-600 text-pink-600'
+                        : 'border-transparent text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
                   {/* Setas para rolar tabItems no mobile */}
                   <TabScrollArrows />
                 </div>

@@ -139,30 +139,7 @@ const Header = () => {
           {isMenuOpen && (
             <div className="md:hidden py-4 border-t border-gray-200">
               <div className="mb-4">
-                <form className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      placeholder="Digite o evento que procura"
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (searchQuery.trim().length > 0) {
-                        navigate(`/search?q=${encodeURIComponent(searchQuery)}&location=${encodeURIComponent(selectedLocation)}`);
-                      }
-                    }}
-                    className="w-full py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors flex items-center justify-center"
-                    aria-label="Buscar"
-                  >
-                    <Search className="h-5 w-5" />
-                  </button>
-                </form>
+                {/* Campo de busca removido do menu mobile */}
                 <button
                   type="button"
                   onClick={() => setIsLocationModalOpen(true)}

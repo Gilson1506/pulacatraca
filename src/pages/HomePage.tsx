@@ -1,6 +1,7 @@
 import React from 'react';
 import EventCarousel from '../components/EventCarousel';
 import EventCard from '../components/EventCard';
+import MobileEventSearchBar from '../components/MobileEventSearchBar';
 
 const HomePage = () => {
   const events = [
@@ -143,6 +144,10 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
+      {/* Mobile SearchBar sticky abaixo do Header, antes do carrossel */}
+      <div className="md:hidden sticky top-20 z-40 bg-white border-b shadow">
+        <MobileEventSearchBar />
+      </div>
       {/* Hero Carousel */}
       <div className="container mx-auto px-4">
         <EventCarousel />

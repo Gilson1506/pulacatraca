@@ -60,7 +60,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
           {/* Ano(s) */}
           {showYear && (
-          <span className="text-xs text-gray-500 mt-1">
+          <span className="text-xs font-normal text-gray-500 mt-1" style={{ fontFamily: 'Open Sans, Nunito Sans, Roboto, Arial, sans-serif' }}>
               {`${startYear} - ${endYear}`}
           </span>
           )}
@@ -75,7 +75,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <span className="text-3xl font-bold text-pink-600">{startDay}</span>
         <span className="text-sm font-semibold text-gray-900 mt-1">{startMonth}</span>
         {showYear && (
-        <span className="text-xs text-gray-500">{startYear}</span>
+        <span className="text-xs font-normal text-gray-500" style={{ fontFamily: 'Open Sans, Nunito Sans, Roboto, Arial, sans-serif' }}>{startYear}</span>
         )}
       </>
     );
@@ -91,19 +91,19 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
         {/* Imagem ao centro (MOBILE) */}
         <div className="relative w-32 flex-shrink-0">
-          <img 
-            src={event.image} 
-            alt={event.title} 
+        <img 
+          src={event.image} 
+          alt={event.title} 
             className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
-          />
+        />
         </div>
         {/* Detalhes do Evento à direita (MOBILE) */}
         <div className="flex-1 flex flex-col justify-between p-2 min-w-0">
           <div className="flex items-center mb-1 min-w-0">
             <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0 text-blue-500" />
-            <p className="text-sm font-medium break-words truncate max-w-full" style={{ fontFamily: 'Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', fontWeight: 600, textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>{`${event.city}, ${event.state}`}</p>
+            <p className="text-sm font-normal break-words truncate max-w-full" style={{ fontFamily: 'Open Sans, Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>{`${event.city}, ${event.state}`}</p>
           </div>
-          <h3 className="font-semibold text-gray-800 text-base leading-tight drop-shadow-md break-words line-clamp-2 max-w-full" title={event.title}>
+          <h3 className="font-bold text-gray-800 text-base leading-tight drop-shadow-md break-words line-clamp-2 max-w-full" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }} title={event.title}>
             {event.title}
           </h3>
         </div>
@@ -126,14 +126,12 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
           {/* Detalhes à direita */}
           <div className="flex-1 flex flex-col justify-between p-4">
-            <h3 className="font-semibold text-gray-800 text-base leading-tight truncate drop-shadow-md mb-2" title={event.title}>
+            <h3 className="font-bold text-gray-800 text-base leading-tight truncate drop-shadow-md mb-2" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }} title={event.title}>
               {event.title}
             </h3>
             <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0 text-blue-500" />
-              <p className="text-sm truncate font-medium" style={{ fontFamily: 'Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', fontWeight: 600, textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>
-                {`${event.city}, ${event.state}`}
-              </p>
+            <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0 text-blue-500" />
+            <p className="text-sm truncate font-normal" style={{ fontFamily: 'Open Sans, Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>{`${event.city}, ${event.state}`}</p>
             </div>
           </div>
         </div>
