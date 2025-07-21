@@ -442,7 +442,11 @@ const OrganizerRegisterPage = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <img
+<<<<<<< HEAD
               src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
+=======
+              src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
+>>>>>>> 26cca1a0decc68183fb8792645cb76c8003d7388
               alt="Logo PULACATRACA"
               className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
             />
