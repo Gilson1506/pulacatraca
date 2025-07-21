@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-<<<<<<< HEAD
 
 @keyframes highlight {
   0% {
@@ -25,5 +24,3 @@
 .animate-highlight {
   animation: highlight 1s ease-in-out;
 }
-=======
->>>>>>> 26cca1a0decc68183fb8792645cb76c8003d7388

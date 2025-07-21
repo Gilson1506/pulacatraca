@@ -15,17 +15,11 @@ import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 const AppRoutes = () => {
   const location = useLocation();
   const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard');
-<<<<<<< HEAD
   const hideHeader = location.pathname.startsWith('/event/'); // Não mostrar header em páginas que usam HeroContainer
 
   return (
     <div className="flex flex-col min-h-screen">
       {!hideHeader && <Header />}
-=======
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
->>>>>>> 26cca1a0decc68183fb8792645cb76c8003d7388
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<HomePage />} />

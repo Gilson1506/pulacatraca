@@ -55,11 +55,7 @@ const RegisterPage = () => {
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 mb-8 transition-colors"
         >
           <img
-<<<<<<< HEAD
             src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
-=======
-            src="https://i.postimg.cc/gkmcWg5B/PULAKATACA-removebg-preview-1.png"
->>>>>>> 26cca1a0decc68183fb8792645cb76c8003d7388
             alt="Logo PULACATRACA"
             className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
           />
