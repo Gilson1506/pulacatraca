@@ -433,12 +433,12 @@ const EventPageSimple = () => {
             </div>
 
             <nav className="bg-white rounded-lg shadow-sm lg:overflow-hidden sticky top-24">
-              <div className="flex lg:flex-col">
+              <div className="flex lg:flex-col overflow-x-auto whitespace-nowrap scrollbar-hide">
                 {tabItems.map((tab) => (
                   <a
                     key={tab.id}
                     href={`#${tab.id}`}
-                    className={`flex-shrink-0 w-full px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold transition-colors ${
+                    className={`flex-shrink-0 w-auto lg:w-full px-4 py-3 text-left text-sm font-semibold transition-colors ${
                       activeSection === tab.id
                         ? 'bg-gray-100 text-pink-600 border-l-4 border-pink-600'
                         : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'

@@ -538,9 +538,10 @@ const OrganizerSales = () => {
       }
     }
   };
-  const [sales] = useState<Sale[]>(mockSales);
+  const [sales, setSales] = useState<Sale[]>(mockSales);
   const [filter, setFilter] = useState<'todos' | 'pendente' | 'confirmado' | 'cancelado'>('todos');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [isExporting, setIsExporting] = useState(false);
 
   // Filtrar vendas
   const filteredSales = useMemo(() => {
@@ -574,16 +575,33 @@ const OrganizerSales = () => {
         </div>
         <button 
           onClick={async () => {
+            setIsExporting(true);
             try {
               await handleExportSalesReport();
             } catch (error) {
-              console.error('Erro ao chamar exportação:', error);
+              console.error('Erro ao gerar PDF:', error);
+              alert('Erro ao gerar o relatório. Por favor, tente novamente.');
+            } finally {
+              setIsExporting(false);
             }
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          disabled={isExporting}
+          className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors ${isExporting ? 'opacity-75 cursor-not-allowed' : ''}`}
         >
-          <Download className="h-5 w-5" />
-          <span>Exportar Relatório</span>
+          {isExporting ? (
+            <>
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+              </svg>
+              <span>Gerando...</span>
+            </>
+          ) : (
+            <>
+              <Download className="h-5 w-5" />
+              <span>Exportar Relatório</span>
+            </>
+          )}
         </button>
       </div>
 
