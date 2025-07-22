@@ -440,9 +440,9 @@ const OrganizerRegisterPage = () => {
         {/* Register Card */}
         <div className="bg-white rounded-lg shadow-md p-8">
           {/* Logo */}
-                      <div className="text-center mb-8">
-              <img
-                src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
+          <div className="text-center mb-8">
+            <img
+              src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
               alt="Logo PULACATRACA"
               className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
             />

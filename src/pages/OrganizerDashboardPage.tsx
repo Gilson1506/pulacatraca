@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, QrCode, Settings, PlusCircle, AlertCircle, DollarSign, Users, Eye, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, User, Menu
+  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
 } from 'lucide-react';
+import EventFormModal from '../components/EventFormModal';
 import QrScanner from '../components/QrScanner';
 
 // Interfaces
@@ -145,10 +146,6 @@ const DashboardOverview = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-        <button className="flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
-          <PlusCircle className="h-5 w-5" />
-          Novo Evento
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -238,8 +235,9 @@ const OrganizerEvents = () => {
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [filter, setFilter] = useState<'todos' | 'ativo' | 'adiado' | 'cancelado'>('todos');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showEventModal, setShowEventModal] = useState(false);
+
+
+  const [showEventFormModal, setShowEventFormModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   const filteredEvents = events.filter(event =>
@@ -256,10 +254,26 @@ const OrganizerEvents = () => {
     }
   };
 
-  const handleStatusChange = (eventId: string, newStatus: 'ativo' | 'adiado' | 'cancelado') => {
-    setEvents(prev => prev.map(event => 
-      event.id === eventId ? { ...event, status: newStatus } : event
-    ));
+
+
+  const handleSubmitEvent = (eventData: Event) => {
+    if (selectedEvent) {
+      // Edição
+      setEvents(prev => prev.map(event => 
+        event.id === eventData.id ? eventData : event
+      ));
+    } else {
+      // Criação
+      const newEvent = {
+        ...eventData,
+        id: String(Math.max(...events.map(e => Number(e.id))) + 1),
+        ticketsSold: 0,
+        revenue: 0
+      };
+      setEvents(prev => [...prev, newEvent]);
+    }
+    setSelectedEvent(null);
+    setShowEventFormModal(false);
   };
 
   return (
@@ -271,13 +285,21 @@ const OrganizerEvents = () => {
           <p className="text-gray-600">Gerencie todos os seus eventos em um só lugar</p>
         </div>
         <button 
-          onClick={() => setShowEventModal(true)}
+          onClick={() => setShowEventFormModal(true)}
           className="flex items-center gap-2 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-medium"
         >
           <PlusCircle className="h-5 w-5" />
           Novo Evento
         </button>
       </div>
+
+      {/* Event Form Modal */}
+      <EventFormModal
+        isOpen={showEventFormModal}
+        onClose={() => setShowEventFormModal(false)}
+        event={selectedEvent}
+        onSubmit={handleSubmitEvent}
+      />
 
       {/* Filters and Search */}
       <div className="flex flex-col lg:flex-row gap-4">
@@ -291,7 +313,7 @@ const OrganizerEvents = () => {
           />
         </div>
         
-        <div className="flex gap-2">
+                <div className="flex gap-2">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
@@ -302,244 +324,245 @@ const OrganizerEvents = () => {
             <option value="adiado">Adiados</option>
             <option value="cancelado">Cancelados</option>
           </select>
-          
-          <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-4 py-3 ${viewMode === 'grid' ? 'bg-pink-600 text-white' : 'bg-white text-gray-700'}`}
-            >
-              <div className="grid grid-cols-2 gap-1 w-4 h-4">
-                <div className="bg-current rounded-sm"></div>
-                <div className="bg-current rounded-sm"></div>
-                <div className="bg-current rounded-sm"></div>
-                <div className="bg-current rounded-sm"></div>
-              </div>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-4 py-3 ${viewMode === 'list' ? 'bg-pink-600 text-white' : 'bg-white text-gray-700'}`}
-            >
-              <div className="space-y-1">
-                <div className="w-4 h-0.5 bg-current"></div>
-                <div className="w-4 h-0.5 bg-current"></div>
-                <div className="w-4 h-0.5 bg-current"></div>
-              </div>
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Events Display */}
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.map(event => (
-            <div key={event.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="aspect-video bg-gradient-to-br from-pink-500 to-purple-600 relative">
-                <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-                <div className="absolute top-4 left-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(event.status)}`}>
-                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                  </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {filteredEvents.map(event => (
+          <div key={event.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+            <div className="aspect-video bg-gradient-to-br from-pink-500 to-purple-600 relative">
+              {event.image ? (
+                <img 
+                  src={event.image} 
+                  alt={event.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+              <div className="absolute top-4 left-4">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(event.status)}`}>
+                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                </span>
+              </div>
+              <div className="absolute bottom-4 left-4 text-white">
+                <h3 className="font-semibold text-lg line-clamp-1">{event.name}</h3>
+                <p className="text-sm opacity-90">{event.date} • {event.time}</p>
+              </div>
+            </div>
+            
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                <Calendar className="h-4 w-4 flex-shrink-0" />
+                <span className="line-clamp-1">{event.location}</span>
+              </div>
+              
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm">
+                  <span className="text-gray-600">Vendidos: </span>
+                  <span className="font-semibold">{event.ticketsSold}/{event.totalTickets}</span>
                 </div>
-                <div className="absolute bottom-4 left-4 text-white">
-                  <h3 className="font-semibold text-lg">{event.name}</h3>
-                  <p className="text-sm opacity-90">{event.date} • {event.time}</p>
+                <div className="text-sm">
+                  <span className="text-gray-600">Receita: </span>
+                  <span className="font-semibold text-green-600">R$ {event.revenue.toLocaleString()}</span>
                 </div>
               </div>
               
-              <div className="p-6">
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-                  <Calendar className="h-4 w-4" />
-                  <span>{event.location}</span>
-                </div>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm">
-                    <span className="text-gray-600">Vendidos: </span>
-                    <span className="font-semibold">{event.ticketsSold}/{event.totalTickets}</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-600">Receita: </span>
-                    <span className="font-semibold text-green-600">R$ {event.revenue.toLocaleString()}</span>
-                  </div>
-                </div>
-                
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                  <div 
-                    className="bg-pink-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(event.ticketsSold / event.totalTickets) * 100}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setSelectedEvent(event)}
-                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div 
+                  className="bg-pink-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(event.ticketsSold / event.totalTickets) * 100}%` }}
+                ></div>
+              </div>
+              
+              <div className="flex gap-2">
+                                  <button 
+                    onClick={() => {
+                      setSelectedEvent(event);
+                      setShowEventFormModal(true);
+                    }}
+                    className="flex-1 px-3 py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors text-sm font-medium"
                   >
-                    <Eye className="h-4 w-4 inline mr-1" />
-                    Ver
-                  </button>
-                  <button className="flex-1 px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">
                     <Edit3 className="h-4 w-4 inline mr-1" />
                     Editar
                   </button>
-                  <button className="px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-                    <Share2 className="h-4 w-4" />
-                  </button>
-                </div>
+                <button className="px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                  <Share2 className="h-4 w-4" />
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ingressos</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receita</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredEvents.map(event => (
-                  <tr key={event.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
-                          <Calendar className="h-5 w-5 text-pink-600" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{event.name}</div>
-                          <div className="text-sm text-gray-500">{event.location}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{event.date}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{event.ticketsSold}/{event.totalTickets}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">R$ {event.revenue.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <div className="flex gap-2">
-                        <button className="text-blue-600 hover:text-blue-700">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-700">
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-700">
-                          <Share2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Event Detail Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">{selectedEvent.name}</h3>
-                <button 
-                  onClick={() => setSelectedEvent(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-                    <p className="text-sm text-gray-900">{selectedEvent.date}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Horário</label>
-                    <p className="text-sm text-gray-900">{selectedEvent.time}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Local</label>
-                  <p className="text-sm text-gray-900">{selectedEvent.location}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                  <p className="text-sm text-gray-900">{selectedEvent.description}</p>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedEvent.status)}`}>
-                      {selectedEvent.status.charAt(0).toUpperCase() + selectedEvent.status.slice(1)}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ingressos</label>
-                    <p className="text-sm text-gray-900">{selectedEvent.ticketsSold}/{selectedEvent.totalTickets}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Receita</label>
-                    <p className="text-sm font-medium text-green-600">R$ {selectedEvent.revenue.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <button className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
-                  Editar Evento
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                  Compartilhar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
 
 // Sales Component
 const OrganizerSales = () => {
-  const [sales, setSales] = useState<Sale[]>(mockSales);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [organizerName] = useState('Organizador Exemplo'); // TODO: Integrar com backend para pegar nome real
+  // Função para exportar relatório de vendas em PDF
+  const handleExportSalesReport = async () => {
+    try {
+      // Importar jsPDF
+      const { jsPDF } = await import('jspdf');
+      // Importar autoTable
+      const autoTable = await import('jspdf-autotable');
+
+      // Criar novo documento
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Adicionar logo
+      const logoBase64 = await new Promise<string>((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = '/public/logo.png';
+      });
+
+      doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25); // Ajustado tamanho para 25x25mm
+
+      // Configurações do documento
+      doc.setFont('helvetica');
+      doc.setFontSize(20);
+      doc.setTextColor(40);
+
+            // Cabeçalho com logo e título
+      doc.text('Relatório de Vendas', 50, 25);
+      doc.setFontSize(12);
+      // Usar nome do organizador do estado local
+      doc.text(`Organizador: ${organizerName}`, 50, 32);
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 50, 38);
+
+      // Linha divisória
+      doc.setDrawColor(236, 72, 153); // Rosa do Pulakatraca
+      doc.setLineWidth(0.5);
+      doc.line(14, 45, 196, 45);
+
+      // Detalhes do Evento
+      doc.setFontSize(12);
+      doc.setTextColor(40);
+      doc.text('Detalhes do Evento', 14, 55);
+      doc.setFontSize(10);
+      doc.text(`Nome: ${selectedEvent?.name || 'Todos os Eventos'}`, 14, 63);
+      if (selectedEvent) {
+        doc.text(`Data: ${new Date(selectedEvent.date).toLocaleDateString('pt-BR')}`, 14, 69);
+        doc.text(`Local: ${selectedEvent.location}`, 14, 75);
+        doc.text(`Categoria: ${selectedEvent.category}`, 14, 81);
+      }
+
+      // Linha divisória
+      doc.line(14, 85, 196, 85);
+
+      // Informações gerais
+      doc.setFontSize(12);
+      doc.text('Resumo das Vendas', 14, 95);
+      doc.setFontSize(10);
+      doc.text(`Total de Vendas: ${totalSales}`, 14, 103);
+      doc.text(`Receita Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 109);
+      doc.text(`Vendas Pendentes: ${pendingSales}`, 14, 115);
+      
+      // Filtros aplicados
+      doc.setFontSize(12);
+      doc.text('Filtros Aplicados', 14, 125);
+      doc.setFontSize(10);
+      doc.text(`Status: ${filter === 'todos' ? 'Todos' : filter.charAt(0).toUpperCase() + filter.slice(1)}`, 14, 133);
+      if (dateRange.start && dateRange.end) {
+        doc.text(`Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} a ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`, 14, 139);
+      }
+
+      // Tabela de vendas
+      const headers = [
+        ['ID', 'Evento', 'Comprador', 'Ingresso', 'Qtd', 'Valor', 'Data', 'Status']
+      ];
+
+      const data = filteredSales.map(sale => [
+        sale.id,
+        sale.eventName.substring(0, 20) + (sale.eventName.length > 20 ? '...' : ''),
+        sale.buyerName.substring(0, 20) + (sale.buyerName.length > 20 ? '...' : ''),
+        sale.ticketType,
+        sale.quantity.toString(),
+        `R$ ${sale.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        new Date(sale.date).toLocaleDateString('pt-BR'),
+        sale.status.charAt(0).toUpperCase() + sale.status.slice(1)
+      ]);
+
+      // Configurar e desenhar a tabela
+      autoTable.default(doc, {
+        startY: 145, // Ajustado para começar após os detalhes do evento
+        head: headers,
+        body: data,
+        theme: 'striped',
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [236, 72, 153], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { top: 90 }
+      });
+
+      // Rodapé
+      const pageCount = doc.getNumberOfPages();
+      doc.setFontSize(8);
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(
+          `Página ${i} de ${pageCount}`,
+          doc.internal.pageSize.width / 2,
+          doc.internal.pageSize.height - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Salvar o PDF
+      doc.save(`relatorio_vendas_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      if (error instanceof Error) {
+        alert(`Erro ao gerar o relatório: ${error.message}`);
+      } else {
+        alert('Erro ao gerar o relatório. Por favor, tente novamente.');
+      }
+    }
+  };
+  const [sales] = useState<Sale[]>(mockSales);
   const [filter, setFilter] = useState<'todos' | 'pendente' | 'confirmado' | 'cancelado'>('todos');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
-  const filteredSales = sales.filter(sale => {
-    const matchesFilter = filter === 'todos' || sale.status === filter;
-    const matchesDate = !dateRange.start || !dateRange.end || 
-      (sale.date >= dateRange.start && sale.date <= dateRange.end);
-    return matchesFilter && matchesDate;
-  });
+  // Filtrar vendas
+  const filteredSales = useMemo(() => {
+    return sales.filter(sale => {
+      const matchesFilter = filter === 'todos' || sale.status === filter;
+      const matchesDate = !dateRange.start || !dateRange.end || 
+        (sale.date >= dateRange.start && sale.date <= dateRange.end);
+      return matchesFilter && matchesDate;
+    });
+  }, [sales, filter, dateRange]);
 
-  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.amount, 0);
-  const totalSales = filteredSales.length;
+  // Calcular totais
+  const totalRevenue = useMemo(() => filteredSales.reduce((sum, sale) => sum + sale.amount, 0), [filteredSales]);
+  const totalSales = useMemo(() => filteredSales.length, [filteredSales]);
+  const pendingSales = useMemo(() => filteredSales.filter(sale => sale.status === 'pendente').length, [filteredSales]);
 
   const updateSaleStatus = (saleId: string, newStatus: 'confirmado' | 'cancelado') => {
-    setSales(prev => prev.map(sale => 
+    const updatedSales = sales.map(sale => 
       sale.id === saleId ? { ...sale, status: newStatus } : sale
-    ));
+    );
+    // Aqui você adicionaria a lógica para atualizar no backend
+    console.log('Atualizando status da venda:', { saleId, newStatus, updatedSales });
   };
 
   return (
@@ -549,9 +572,18 @@ const OrganizerSales = () => {
           <h2 className="text-2xl font-bold text-gray-900">Controle de Vendas</h2>
           <p className="text-gray-600">Gerencie todas as vendas dos seus eventos</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+        <button 
+          onClick={async () => {
+            try {
+              await handleExportSalesReport();
+            } catch (error) {
+              console.error('Erro ao chamar exportação:', error);
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
           <Download className="h-5 w-5" />
-          Exportar Relatório
+          <span>Exportar Relatório</span>
         </button>
       </div>
 
@@ -594,6 +626,17 @@ const OrganizerSales = () => {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex flex-col lg:flex-row gap-4">
           <select
+            value={selectedEvent?.id || ''}
+            onChange={(e) => setSelectedEvent(mockEvents.find(event => event.id === e.target.value) || null)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+          >
+            <option value="">Todos os Eventos</option>
+            {mockEvents.map(event => (
+              <option key={event.id} value={event.id}>{event.name}</option>
+            ))}
+          </select>
+
+          <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -620,136 +663,79 @@ const OrganizerSales = () => {
       </div>
 
       {/* Sales Display */}
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSales.map(sale => (
-            <div key={sale.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-lg text-gray-900">{sale.eventName}</h4>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    sale.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
-                    sale.status === 'confirmado' ? 'bg-green-100 text-green-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                  <div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprador</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredSales.map(sale => (
+                <tr key={sale.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
+                        <Calendar className="h-5 w-5 text-pink-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
+                        <div className="text-sm text-gray-500">Comprador: {sale.buyerName}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
                     <p>Comprador: {sale.buyerName}</p>
                     <p>Email: {sale.buyerEmail}</p>
-                  </div>
-                  <div>
-                    <p>Tipo de Ingresso: {sale.ticketType}</p>
-                    <p>Quantidade: {sale.quantity}</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-900">
-                  <p>Valor Total: R$ {sale.amount.toLocaleString()}</p>
-                  <p>Data: {sale.date}</p>
-                </div>
-              </div>
-              <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-                {sale.status === 'pendente' && (
-                  <>
-                    <button 
-                      onClick={() => updateSaleStatus(sale.id, 'confirmado')}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                    >
-                      Confirmar
-                    </button>
-                    <button 
-                      onClick={() => updateSaleStatus(sale.id, 'cancelado')}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                    >
-                      Cancelar
-                    </button>
-                  </>
-                )}
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                  <Share2 className="h-4 w-4 inline mr-1" />
-                  Compartilhar
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprador</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      sale.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
+                      sale.status === 'confirmado' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{sale.quantity}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-green-600">R$ {sale.amount.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{sale.date}</td>
+                  <td className="px-6 py-4 text-sm font-medium">
+                    <div className="flex gap-2">
+                      {sale.status === 'pendente' && (
+                        <>
+                          <button 
+                            onClick={() => updateSaleStatus(sale.id, 'confirmado')}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => updateSaleStatus(sale.id, 'cancelado')}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      <button className="text-gray-600 hover:text-gray-700">
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredSales.map(sale => (
-                  <tr key={sale.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
-                          <Calendar className="h-5 w-5 text-pink-600" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
-                          <div className="text-sm text-gray-500">Comprador: {sale.buyerName}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <p>Comprador: {sale.buyerName}</p>
-                      <p>Email: {sale.buyerEmail}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        sale.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
-                        sale.status === 'confirmado' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{sale.quantity}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">R$ {sale.amount.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{sale.date}</td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <div className="flex gap-2">
-                        {sale.status === 'pendente' && (
-                          <>
-                            <button 
-                              onClick={() => updateSaleStatus(sale.id, 'confirmado')}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => updateSaleStatus(sale.id, 'cancelado')}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                        <button className="text-gray-600 hover:text-gray-700">
-                          <Share2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -990,6 +976,57 @@ const OrganizerWithdrawals = () => {
     ));
   };
 
+  const handleExportSalesReport = () => {
+    // Cabeçalho do CSV
+    const headers = [
+      'ID da Venda',
+      'Evento',
+      'Comprador',
+      'Email',
+      'Tipo de Ingresso',
+      'Quantidade',
+      'Valor Total',
+      'Data',
+      'Status',
+      'Forma de Pagamento'
+    ].join(',');
+
+    // Converter cada venda em uma linha do CSV
+    const rows = sales.filter(sale => {
+      const matchesFilter = filter === 'todos' || sale.status === filter;
+      const matchesDate = !dateRange.start || !dateRange.end || 
+        (sale.date >= dateRange.start && sale.date <= dateRange.end);
+      return matchesFilter && matchesDate;
+    }).map(sale => [
+      sale.id,
+      sale.eventName,
+      sale.buyerName,
+      sale.buyerEmail,
+      sale.ticketType,
+      sale.quantity,
+      sale.amount.toFixed(2).replace('.', ','),
+      sale.date,
+      sale.status.charAt(0).toUpperCase() + sale.status.slice(1),
+      sale.paymentMethod
+    ].join(','));
+
+    // Juntar cabeçalho e linhas
+    const csvContent = [headers, ...rows].join('\\n');
+
+    // Criar blob e link para download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    // Configurar e simular clique no link
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_vendas_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -1228,29 +1265,40 @@ const OrganizerCheckIns = () => {
         <button
           type="button"
           onClick={() => setShowQrScanner(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Ler QR Code
+          <Camera className="h-5 w-5" />
+          Scanner QR Code
         </button>
       </div>
       {qrResult && (
         <div className="mt-2 text-green-700 font-semibold">QR Code lido: {qrResult}</div>
       )}
       {showQrScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg relative">
-            <button
-              onClick={() => setShowQrScanner(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-            >
-              Fechar
-            </button>
-            <QrScanner
-              onResult={result => {
-                handleQRCodeScan(result);
-                }}
-              />
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg relative w-full max-w-lg">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Scanner QR Code</h3>
+              <button
+                onClick={() => setShowQrScanner(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
             </div>
+            <div className="p-4">
+              <div className="aspect-square w-full max-w-sm mx-auto overflow-hidden rounded-lg">
+                <QrScanner
+                  onResult={result => {
+                    handleQRCodeScan(result);
+                  }}
+                />
+              </div>
+              <p className="text-sm text-gray-600 text-center mt-4">
+                Posicione o QR Code no centro da câmera para fazer o check-in
+              </p>
+            </div>
+          </div>
         </div>
       )}
       {/* Input manual para check-in */}
