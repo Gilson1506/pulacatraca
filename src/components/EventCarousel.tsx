@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface FeaturedEvent {
   id: string;
@@ -61,7 +62,7 @@ const EventCarousel = () => {
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
         {featuredEvents.map((event) => (
-          <div key={event.id} className="w-full flex-shrink-0 relative">
+          <Link to={`/event/${event.id}`} key={event.id} className="w-full flex-shrink-0 relative cursor-pointer">
             <div className="w-full h-full relative">
               <img 
                 src={event.image}
@@ -75,7 +76,7 @@ const EventCarousel = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

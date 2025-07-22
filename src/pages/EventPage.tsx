@@ -64,38 +64,33 @@ const EventPageSimple = () => {
 
   // Mock event data - adaptado para o estilo Baladapp
   const event = {
-    title: 'ANGRA | TEMPLE OF SHADOWS 20th ANNIVERSARY TOUR - GOIÂNIA',
-    description: 'No dia 30 de Julho, em nosso palco sagrado do Bolshoi teremos mais uma vez a honra de receber a banda Angra! O evento teve início em 2023 com a turnê histórica.',
-    date: '2025-07-30',
-    time: '19:00',
-    location: 'Bolshoi Pub',
-    address: 'Goiânia / GO',
-    dateLabel: '30.07 | QUARTA - FEIRA 19h00',
-    image: 'https://i.postimg.cc/t4nDCVB7/Imagem-Whats-App-2025-07-14-s-17-58-16-03e9661e.jpg',
+    title: 'Reveillon Mil Sorrisos',
+    description: 'Prepare-se para uma virada de ano inesquecível na Praia dos Milagres. Muita música, gente bonita e energia positiva para começar o ano com o pé direito.',
+    date: '2025-12-27',
+    time: '22:00',
+    location: 'Praia dos Milagres',
+    address: 'São Miguel dos Milagres, AL',
+    dateLabel: '27.12 a 02.01 | SEMANA DO RÉVEILLON',
+    image: 'https://i.postimg.cc/QCJNJNgc/Imagem-Whats-App-2025-07-14-s-20-38-33-6d804a5e.jpg',
     tickets: [
-      { id: 'area-unica', name: 'ÁREA ÚNICA (não open bar)', price: 120.00, available: 150 },
+      { id: 'passaporte-all', name: 'Passaporte Todos os Dias', price: 2500.00, available: 500 },
     ],
     sections: [
       {
-        name: 'ÁREA ÚNICA (não open bar)',
-        details: ['Clube do whiskie', 'Mezanino', 'Pista', 'Salão drink', 'Salão bar'],
-        note: 'Não haverá reserva de mesa, as mesas serão por ordem de chegada.'
+        name: 'ÁREA VIP',
+        details: ['Acesso a todas as festas', 'Open Bar Premium', 'Área de descanso', 'Banheiros exclusivos'],
+        note: 'Garanta seu passaporte e viva a melhor semana da sua vida.'
       },
     ],
-    attractions: ['Angra'],
+    attractions: ['Atração Surpresa', 'DJs Internacionais', 'Bandas Nacionais'],
     importantNotes: [
       'É obrigatória a apresentação do ingresso em forma digital ou impressa, juntamente com o DOCUMENTO OFICIAL COM FOTO para a entrada no evento.',
-      'Os Ingressos desta oferta são referentes à ANGRA | TEMPLE OF SHADOWS 20th ANNIVERSARY TOUR - GOIÂNIA',
-      'A organização do evento, possível mudança de horário ou local são de responsabilidade do ORGANIZADOR.',
-      'Não comparecer no evento invalida seu ingresso e não permite reembolso.',
+      'O passaporte é pessoal e intransferível.',
+      'A programação pode sofrer alterações sem aviso prévio.',
     ],
     contactInfo: {
-      phone: '62 3434-8450',
-      hours: [
-        '08h00 às 20h00 - Seg a Sex',
-        '10h00 às 20h00 - Sáb (Disque 3)',
-        '10h00 às 14h00 - Dom (Disque 3)',
-      ],
+      phone: '82 99999-9999',
+      hours: ['10h00 às 22h00 - Todos os dias'],
     },
   };
 
@@ -273,35 +268,56 @@ const EventPageSimple = () => {
         <div className="container mx-auto px-2 sm:px-4 py-4 flex flex-col lg:flex-row items-end gap-0 min-h-[180px] lg:min-h-[220px]">
           {/* Hero Image */}
           <div className="relative z-20 lg:-mb-44 -mb-8 lg:ml-0 flex-shrink-0 flex justify-center w-full lg:w-auto lg:justify-start">
+            <div className="w-full flex flex-col items-center">
+              {/* Container da imagem com aspect ratio fixo */}
+              <div
+                className="w-11/12 max-w-[340px] aspect-square mx-auto sm:w-[380px] sm:h-[380px] relative bg-black/10 backdrop-blur-sm rounded-lg sm:rounded-xl shadow-lg lg:shadow-2xl overflow-hidden cursor-pointer hover:ring-1 hover:ring-pink-400 transition-all"
+                onClick={() => setShowImageModal(true)}
+                title="Clique para ampliar"
+              >
+                <img
+                  src={event.image}
+                  alt={event.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </div>
+          {/* Modal de visualização da imagem */}
+          {showImageModal && (
             <div
-              className="w-64 h-64 sm:w-72 sm:h-72 md:w-48 md:h-60 bg-transparent lg:bg-white rounded-xl shadow-2xl lg:border-4 border-0 border-white/10 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-pink-400 transition-all"
-              style={{ boxShadow: '0 10px 40px 0 rgba(44,0,80,0.25)' }}
-              onClick={() => setShowImageModal(true)}
-              title="Clique para ampliar"
+              ref={imageModalRef}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+              onClick={() => setShowImageModal(false)}
             >
               <img
                 src={event.image}
                 alt={event.title}
-                className="object-cover w-full h-full"
+                className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white"
               />
+              <button
+                className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-40 rounded-full px-3 py-1 hover:bg-opacity-70 transition"
+                onClick={() => setShowImageModal(false)}
+              >
+                &times;
+              </button>
             </div>
-            {/* Modal de visualização da imagem */}
-            {showImageModal && (
-              <div ref={imageModalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80" onClick={() => setShowImageModal(false)}>
-                <img src={event.image} alt={event.title} className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white" />
-                <button className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-40 rounded-full px-3 py-1 hover:bg-opacity-70 transition" onClick={() => setShowImageModal(false)}>&times;</button>
-              </div>
-            )}
-            {/* Seta animada para ampliar imagem (mobile only) */}
-            {showArrow && (
-              <div className="absolute top-2 right-0 block lg:hidden z-30 animate-bounce flex flex-col items-end">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                  <path d="M20 12H4m0 0l6-6m-6 6l6 6" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span className="block text-xs text-pink-500 mr-1">Clique para ampliar</span>
-              </div>
-            )}
-          </div>
+          )}
+          {/* Seta animada para ampliar imagem (mobile only) */}
+          {showArrow && (
+            <div className="absolute top-2 right-0 block lg:hidden z-30 animate-bounce flex flex-col items-end">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 12H4m0 0l6-6m-6 6l6 6"
+                  stroke="#ec4899"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="block text-xs text-pink-500 mr-1">Clique para ampliar</span>
+            </div>
+          )}
           {/* Hero Info - Apenas em desktop */}
           <div className="flex-1 text-white z-10 hidden lg:flex flex-col justify-center items-start text-left ml-8">
             <h1 className="text-2xl font-bold mb-4 max-w-xl leading-tight text-white drop-shadow-lg" style={{ fontWeight: 700 }}>

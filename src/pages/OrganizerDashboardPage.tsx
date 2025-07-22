@@ -419,99 +419,123 @@ const OrganizerSales = () => {
         format: 'a4'
       });
 
-      // Adicionar logo
-      const logoBase64 = await new Promise<string>((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        };
-        img.src = '/public/logo.png';
-      });
-
-      doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25); // Ajustado tamanho para 25x25mm
-
+      // Configurações básicas do documento
+      const margin = 20;
+      const pageWidth = doc.internal.pageSize.width;
+      
+      // Título simples
+      doc.setFontSize(20);
+      doc.setTextColor(236, 72, 153);
+      doc.text('PULAKATRACA', margin, 30);
+      
       // Configurações do documento
       doc.setFont('helvetica');
-      doc.setFontSize(20);
+      doc.setFontSize(16);
       doc.setTextColor(40);
+      
+      // Posição inicial do conteúdo
+      const contentStartY = 50;
 
-            // Cabeçalho com logo e título
-      doc.text('Relatório de Vendas', 50, 25);
+            // Título e informações básicas
+      doc.setFontSize(16);
+      doc.setTextColor(40);
+      doc.text('Relatório de Vendas', margin, contentStartY);
       doc.setFontSize(12);
-      // Usar nome do organizador do estado local
-      doc.text(`Organizador: ${organizerName}`, 50, 32);
-      doc.setFontSize(10);
-      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 50, 38);
-
-      // Linha divisória
-      doc.setDrawColor(236, 72, 153); // Rosa do Pulakatraca
-      doc.setLineWidth(0.5);
-      doc.line(14, 45, 196, 45);
+      doc.text(`Organizador: ${organizerName}`, margin, contentStartY + 10);
+      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, margin, contentStartY + 20);
 
       // Detalhes do Evento
+      let currentY = contentStartY + 30;
+      
       doc.setFontSize(12);
-      doc.setTextColor(40);
-      doc.text('Detalhes do Evento', 14, 55);
-      doc.setFontSize(10);
-      doc.text(`Nome: ${selectedEvent?.name || 'Todos os Eventos'}`, 14, 63);
+      doc.text(`Evento: ${selectedEvent?.name || 'Todos os Eventos'}`, margin, currentY);
+      
       if (selectedEvent) {
-        doc.text(`Data: ${new Date(selectedEvent.date).toLocaleDateString('pt-BR')}`, 14, 69);
-        doc.text(`Local: ${selectedEvent.location}`, 14, 75);
-        doc.text(`Categoria: ${selectedEvent.category}`, 14, 81);
+        currentY += 10;
+        doc.text(`Data: ${new Date(selectedEvent.date).toLocaleDateString('pt-BR')}`, margin, currentY);
+        currentY += 10;
+        doc.text(`Local: ${selectedEvent.location}`, margin, currentY);
+        currentY += 10;
+        doc.text(`Categoria: ${selectedEvent.category}`, margin, currentY);
       }
 
       // Linha divisória
-      doc.line(14, 85, 196, 85);
+      currentY += 10;
+      doc.line(margin, currentY, pageWidth - margin, currentY);
 
-      // Informações gerais
-      doc.setFontSize(12);
-      doc.text('Resumo das Vendas', 14, 95);
-      doc.setFontSize(10);
-      doc.text(`Total de Vendas: ${totalSales}`, 14, 103);
-      doc.text(`Receita Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 109);
-      doc.text(`Vendas Pendentes: ${pendingSales}`, 14, 115);
+      // Resumo das Vendas
+      currentY += 10;
+      doc.setFontSize(14);
+      doc.setTextColor(236, 72, 153);
+      doc.text('Resumo das Vendas', margin, currentY);
       
-      // Filtros aplicados
-      doc.setFontSize(12);
-      doc.text('Filtros Aplicados', 14, 125);
-      doc.setFontSize(10);
-      doc.text(`Status: ${filter === 'todos' ? 'Todos' : filter.charAt(0).toUpperCase() + filter.slice(1)}`, 14, 133);
+      doc.setTextColor(40);
+      doc.setFontSize(11);
+      currentY += 10;
+      doc.text(`Total de Vendas: ${totalSales}`, margin, currentY);
+      currentY += 10;
+      doc.text(`Receita Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, currentY);
+      currentY += 10;
+      doc.text(`Vendas Pendentes: ${pendingSales}`, margin, currentY);
+
+      // Linha divisória
+      currentY += 10;
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+
+      // Filtros Aplicados
+      currentY += 10;
+      doc.setFontSize(14);
+      doc.setTextColor(236, 72, 153);
+      doc.text('Filtros Aplicados', margin, currentY);
+      
+      doc.setTextColor(40);
+      doc.setFontSize(11);
+      currentY += 10;
+      doc.text(`Status: ${filter === 'todos' ? 'Todos' : filter.charAt(0).toUpperCase() + filter.slice(1)}`, margin, currentY);
+      
       if (dateRange.start && dateRange.end) {
-        doc.text(`Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} a ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`, 14, 139);
+        currentY += 10;
+        doc.text(`Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} a ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`, margin, currentY);
       }
 
-      // Tabela de vendas
+      // Resumo simples
+      currentY += 20;
+      doc.text(`Total de Vendas: ${totalSales}`, margin, currentY);
+      currentY += 10;
+      doc.text(`Receita Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, currentY);
+      currentY += 10;
+      doc.text(`Vendas Pendentes: ${pendingSales}`, margin, currentY);
+      
+      // Tabela de vendas básica
+      currentY += 20;
       const headers = [
-        ['ID', 'Evento', 'Comprador', 'Ingresso', 'Qtd', 'Valor', 'Data', 'Status']
+        ['Evento', 'Comprador', 'Valor', 'Status']
       ];
 
       const data = filteredSales.map(sale => [
-        sale.id,
-        sale.eventName.substring(0, 20) + (sale.eventName.length > 20 ? '...' : ''),
-        sale.buyerName.substring(0, 20) + (sale.buyerName.length > 20 ? '...' : ''),
-        sale.ticketType,
-        sale.quantity.toString(),
+        sale.eventName.substring(0, 30),
+        sale.buyerName.substring(0, 30),
         `R$ ${sale.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        new Date(sale.date).toLocaleDateString('pt-BR'),
         sale.status.charAt(0).toUpperCase() + sale.status.slice(1)
       ]);
 
-      // Configurar e desenhar a tabela
+      // Tabela simples
       autoTable.default(doc, {
-        startY: 145, // Ajustado para começar após os detalhes do evento
+        startY: currentY + 4,
         head: headers,
         body: data,
         theme: 'striped',
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [236, 72, 153], textColor: 255 },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
-        margin: { top: 90 }
+        styles: { 
+          fontSize: 10,
+          cellPadding: 4,
+          font: 'helvetica'
+        },
+        headStyles: { 
+          fillColor: [236, 72, 153],
+          textColor: 255,
+          fontSize: 10
+        },
+        margin: { left: margin, right: margin }
       });
 
       // Rodapé
