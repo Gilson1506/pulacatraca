@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Footer from '../components/Footer';
 import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight } from 'lucide-react';
@@ -71,9 +71,9 @@ const dummyContent = (
                   </div>
                   {/* Botão */}
                   <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
-                    <button className="border border-pink-500 text-pink-600 font-bold rounded-lg px-6 py-2 hover:bg-pink-50 transition-colors text-xs shadow-sm w-full sm:w-auto">
+                    <Link to={`/ingresso/${ticket.id}`} className="border border-pink-500 text-pink-600 font-bold rounded-lg px-6 py-2 hover:bg-pink-50 transition-colors text-xs shadow-sm w-full sm:w-auto">
                       VER INGRESSOS
-                    </button>
+                    </Link>
                   </div>
                   {/* Data (mobile only, abaixo do botão) */}
                   <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">

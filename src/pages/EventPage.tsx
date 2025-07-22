@@ -8,23 +8,8 @@ const EventPageSimple = () => {
   const navigate = useNavigate();
   const [showImageModal, setShowImageModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
-  const [showArrow, setShowArrow] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-  useEffect(() => {
-    let arrowTimeout: ReturnType<typeof setTimeout>;
-    const interval: ReturnType<typeof setInterval> = setInterval(showAnimatedArrow, 20000);
-    function showAnimatedArrow() {
-      setShowArrow(true);
-      arrowTimeout = setTimeout(() => setShowArrow(false), 3500);
-    }
-    showAnimatedArrow();
-    return () => {
-      clearInterval(interval);
-      clearTimeout(arrowTimeout);
-    };
-  }, []);
 
   // Novo useEffect para observar as seções
   useEffect(() => {
@@ -301,21 +286,6 @@ const EventPageSimple = () => {
               >
                 &times;
               </button>
-            </div>
-          )}
-          {/* Seta animada para ampliar imagem (mobile only) */}
-          {showArrow && (
-            <div className="absolute top-2 right-0 block lg:hidden z-30 animate-bounce flex flex-col items-end">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M20 12H4m0 0l6-6m-6 6l6 6"
-                  stroke="#ec4899"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="block text-xs text-pink-500 mr-1">Clique para ampliar</span>
             </div>
           )}
           {/* Hero Info - Apenas em desktop */}

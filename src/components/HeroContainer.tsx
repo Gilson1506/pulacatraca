@@ -17,7 +17,7 @@ const HeroContainer: React.FC<HeroContainerProps> = ({ backgroundImage, children
         backgroundRepeat: 'no-repeat',
       }}
     >
-      <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-lg"></div>
       <div className="relative z-10">
         <Header className="bg-transparent shadow-none" />
         {children}

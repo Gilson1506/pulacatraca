@@ -11,11 +11,12 @@ import ProfilePage from './pages/ProfilePage';
 import CheckInPage from './pages/CheckInPage';
 import OrganizerRegisterPage from './pages/OrganizerRegisterPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
+import TicketPage from './pages/TicketPage';
 
 const AppRoutes = () => {
   const location = useLocation();
-  const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard');
-  const hideHeader = location.pathname.startsWith('/event/'); // Não mostrar header em páginas que usam HeroContainer
+  const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard') || location.pathname.startsWith('/ingresso');
+  const hideHeader = location.pathname.startsWith('/event/') || location.pathname.startsWith('/ingresso');
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -26,6 +27,7 @@ const AppRoutes = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/event/:id" element={<EventPage />} />
+          <Route path="/ingresso/:ticketId" element={<TicketPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/profile/*" element={<ProfilePage />} />
           <Route path="/checkin" element={<CheckInPage />} />
