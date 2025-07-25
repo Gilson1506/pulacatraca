@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Calendar, MapPin, Users, Clock, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, MapPin, Users, Clock, CheckCircle, XCircle, AlertCircle, Eye, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface Event {
   id: string;
@@ -30,48 +31,59 @@ interface Pedido {
   value: number;
 }
 
-const pedidosMock: Pedido[] = [
-  {
-    id: '1',
-    title: 'O Embaixador Classic',
-    date: '2025-08-15',
-    time: '20:00',
-    location: 'Arena Goiânia',
-    city: 'Goiânia',
-    state: 'GO',
-    image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=1',
-    status: 'em_processo',
-    value: 200.00
-  },
-  {
-    id: '2',
-    title: 'Festa Julina Sorocaba',
-    date: '2025-07-15',
-    time: '19:00',
-    location: 'Arena Sorocaba',
-    city: 'Sorocaba',
-    state: 'SP',
-    image: 'https://images.pexels.com/photos/1105666/pexels-photo-1105666.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=1',
-    status: 'pendente',
-    value: 150.00
-  },
-  {
-    id: '3',
-    title: 'Stand Up Comedy Night',
-    date: '2025-06-20',
-    time: '20:00',
-    location: 'Teatro Municipal',
-    city: 'São Paulo',
-    state: 'SP',
-    image: 'https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=1',
-    status: 'confirmado',
-    value: 99.90
-  }
-];
-
 const EventStatusPage = () => {
-  const [pedidos] = useState<Pedido[]>(pedidosMock);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [tab, setTab] = useState<'em_processo' | 'pendente' | 'confirmado'>('em_processo');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPedidos();
+  }, []);
+
+  const fetchPedidos = async () => {
+    try {
+      setIsLoading(true);
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          event:events(
+            title,
+            date,
+            time,
+            location,
+            city,
+            state,
+            image_url
+          ),
+          status,
+          total_amount
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Mapear os pedidos para o formato necessário
+      const formattedOrders: Pedido[] = orders?.map(order => ({
+        id: order.id,
+        title: order.event.title,
+        date: order.event.date,
+        time: order.event.time,
+        location: order.event.location,
+        city: order.event.city,
+        state: order.event.state,
+        image: order.event.image_url || 'https://via.placeholder.com/400x300',
+        status: order.status,
+        value: order.total_amount
+      })) || [];
+
+      setPedidos(formattedOrders);
+    } catch (error) {
+      console.error('Erro ao buscar pedidos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusPedidoText = (status: string) => {
     switch (status) {
@@ -103,6 +115,17 @@ const EventStatusPage = () => {
     }).format(value);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Carregando pedidos...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -126,7 +149,7 @@ const EventStatusPage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm text-gray-600 mb-1">
                   <div className="flex items-center space-x-1 mb-1 sm:mb-0">
                     <Calendar className="h-4 w-4" />
-                    <span>{pedido.date} às {pedido.time}</span>
+                    <span>{formatDate(pedido.date)} às {pedido.time}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <MapPin className="h-4 w-4" />

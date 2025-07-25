@@ -1,20 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  isOrganizer?: boolean;
-}
+import { supabase, getUser, signInWithEmail, signInWithGoogle, signUp, signOut } from '../lib/supabase';
+import type { UserProfile } from '../types/supabase';
+import { AuthError } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  user: UserProfile | null;
+  login: (email: string, password: string) => Promise<UserProfile>;
   loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  register: (name: string, email: string, password: string, role?: 'user' | 'organizer') => Promise<UserProfile>;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -29,113 +24,181 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Simular verificação de token ao carregar
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Simular usuário logado
-      setUser({
-        id: '1',
-        name: 'João Silva',
-        email: 'joao@example.com',
-        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-      });
-    }
-    setLoading(false);
+    // Check for existing session
+    const checkUser = async () => {
+      try {
+        const profile = await getUser();
+        console.log('Perfil verificado na inicialização:', profile); // DEBUG
+        if (profile && (profile.role === 'user' || profile.role === 'organizer')) {
+          setUser(profile);
+        }
+      } catch (error) {
+        console.error('Error checking auth state:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Subscribe to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Evento de autenticação:', event, 'Sessão:', session); // DEBUG
+      
+      if (event === 'SIGNED_IN' && session?.user?.id) {
+        try {
+          console.log('Iniciando processo de SIGNED_IN para usuário:', session.user.id); // DEBUG
+          const profile = await getUser();
+          console.log('Perfil obtido após SIGNED_IN:', profile); // DEBUG
+          
+          if (!profile) {
+            console.error('Perfil não encontrado após SIGNED_IN para usuário:', session.user.id); // DEBUG
+            return;
+          }
+
+          if (profile.role !== 'user' && profile.role !== 'organizer') {
+            console.error('Role inválida para usuário:', session.user.id, 'Role:', profile.role); // DEBUG
+            return;
+          }
+
+          console.log('Atualizando estado do usuário com perfil:', profile); // DEBUG
+          setUser(profile);
+          
+          console.log('Redirecionando usuário baseado na role:', profile.role); // DEBUG
+          if (profile.role === 'organizer') {
+            navigate('/organizer-dashboard');
+          } else {
+            navigate('/');
+          }
+        } catch (error) {
+          console.error('Erro ao processar SIGNED_IN:', error); // DEBUG
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('Usuário fez logout, redirecionando para home'); // DEBUG
+        setUser(null);
+        navigate('/');
+      }
+    });
+
+    checkUser();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<UserProfile> => {
     setLoading(true);
-    // Login de teste para organizador
-    if (email === 'organizador@teste.com' && password === '123456') {
-      const mockUser: User = {
-        id: 'org-1',
-        name: 'Organizador Teste',
-        email: email,
-        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
-        isOrganizer: true
-      };
-      setUser(mockUser);
-      localStorage.setItem('token', 'mock-token-org');
-      setLoading(false);
-      return;
+    try {
+      console.log('Iniciando processo de login para:', email); // DEBUG
+      const { user: authUser, session } = await signInWithEmail(email, password);
+      
+      if (!authUser) {
+        console.error('Login falhou: Nenhum usuário retornado'); // DEBUG
+        throw new Error('Login failed: No user returned');
+      }
+
+      console.log('Login bem sucedido, buscando perfil para:', authUser.id); // DEBUG
+      const profile = await getUser();
+      console.log('Perfil obtido em login():', profile); // DEBUG
+      
+      if (!profile) {
+        console.error('Login falhou: Perfil não encontrado para usuário:', authUser.id); // DEBUG
+        await signOut(); // Garante que o usuário seja deslogado
+        throw new Error('Perfil não encontrado. Por favor, contate o suporte.');
+      }
+      
+      if (profile.role !== 'user' && profile.role !== 'organizer') {
+        console.error('Login falhou: Role inválida:', profile.role); // DEBUG
+        await signOut();
+        throw new Error('Acesso não autorizado para esta role.');
+      }
+
+      console.log('Login completo, atualizando estado com perfil:', profile); // DEBUG
+      setUser(profile);
+      
+      // Redirecionamento imediato após login bem-sucedido
+      console.log('Redirecionando usuário baseado na role:', profile.role); // DEBUG
+      if (profile.role === 'organizer') {
+        navigate('/organizer-dashboard');
+      } else {
+        navigate('/');
+      }
+
+      return profile;
+    } catch (error: unknown) {
+      console.error('Erro durante o login:', error); // DEBUG
+      if (error instanceof AuthError || error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao fazer login');
     }
-    // Simular login
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: 'João Silva',
-      email: email,
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
+    // Removido o finally block para não desativar o loading durante o redirecionamento
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (): Promise<void> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao@gmail.com',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
+    try {
+      await signInWithGoogle();
+      // Auth state change listener will handle updating the user
+    } catch (error: unknown) {
+      console.error('Google login error:', error);
+      if (error instanceof AuthError || error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loginWithApple = async () => {
+  const register = async (name: string, email: string, password: string, role: 'user' | 'organizer' = 'user'): Promise<UserProfile> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao@icloud.com',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
+    try {
+      const { user: newUser } = await signUp(email, password, { name, role });
+      if (!newUser) throw new Error('Registro falhou');
+      const profile: UserProfile = {
+        id: newUser.id,
+        email: newUser.email || '',
+        name,
+        role,
+        created_at: new Date().toISOString(),
+        is_active: true,
+        is_verified: false,
+      } as unknown as UserProfile;
+      return profile;
+    } catch (error: unknown) {
+      console.error('Registration error:', error);
+      if (error instanceof AuthError || error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: name,
-      email: email,
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async (): Promise<void> => {
+    try {
+      await signOut();
+      setUser(null);
+      navigate('/');
+    } catch (error: unknown) {
+      console.error('Logout error:', error);
+      if (error instanceof AuthError || error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unknown error occurred');
+    }
   };
 
   const value = {
     user,
     login,
     loginWithGoogle,
-    loginWithApple,
     register,
     logout,
     loading

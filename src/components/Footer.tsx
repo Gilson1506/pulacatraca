@@ -8,7 +8,7 @@ const Footer = () => {
         {/* Mobile Layout */}
         <div className="flex flex-col items-center md:hidden px-4 py-2">
           <img
-            src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
+            src="/logo-com-qr.png"
             alt="Logo PULACATRACA"
             className="h-24 w-auto object-contain"
           />
@@ -23,7 +23,7 @@ const Footer = () => {
         <div className="hidden md:grid md:grid-cols-4 items-center px-4 pb-0 mt-0">
           <div className="flex justify-center pt-2 pb-1">
             <img
-              src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
+              src="/logo-com-qr.png"
               alt="Logo PULACATRACA"
               className="h-40 w-auto object-contain"
             />
@@ -93,43 +93,6 @@ const Footer = () => {
               <a href="#" aria-label="WhatsApp"><svg className="h-6 w-6 text-gray-600 hover:text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A12.07 12.07 0 0 0 12 0C5.37 0 0 5.37 0 12c0 2.12.55 4.18 1.6 6.02L0 24l6.18-1.6A12.07 12.07 0 0 0 12 24c6.63 0 12-5.37 12-12c0-3.19-1.24-6.19-3.48-8.52zM12 22c-1.85 0-3.66-.5-5.22-1.44l-.37-.22l-3.67.95l.98-3.57l-.24-.38A9.98 9.98 0 0 1 2 12c0-5.52 4.48-10 10-10s10 4.48 10 10s-4.48 10-10 10zm5.2-7.8c-.28-.14-1.65-.81-1.9-.9c-.25-.09-.43-.14-.61.14c-.18.28-.7.9-.86 1.08c-.16.18-.32.2-.6.07c-.28-.14-1.18-.44-2.25-1.4c-.83-.74-1.39-1.65-1.55-1.93c-.16-.28-.02-.43.12-.57c.13-.13.28-.34.42-.51c.14-.17.18-.29.28-.48c.09-.19.05-.36-.02-.5c-.07-.14-.61-1.47-.84-2.01c-.22-.53-.45-.46-.61-.47c-.16-.01-.35-.01-.54-.01c-.19 0-.5.07-.76.36c-.26.29-1 1-1 2.43c0 1.43 1.02 2.81 1.16 3c.14.19 2.01 3.08 4.87 4.2c.68.29 1.21.46 1.62.59c.68.22 1.3.19 1.79.12c.55-.08 1.65-.67 1.89-1.32c.23-.65.23-1.2.16-1.32c-.07-.12-.25-.19-.53-.33z"/></svg></a>
             </div>
           </div>
-
-          {/* Certificados */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/4">
-            <span className="font-semibold mb-2">Certificados</span>
-            <div className="flex gap-2">
-              <a href="https://i.postimg.cc/XvkvQp61/logo-premio-xl-e4d59a6604da164a9e5731647efb091f-Copia-2.png" target="_blank" rel="noopener noreferrer">
-                <img src="https://i.postimg.cc/XvkvQp61/logo-premio-xl-e4d59a6604da164a9e5731647efb091f-Copia-2.png" alt="Certificado 1" className="h-24 w-auto object-contain" />
-              </a>
-              <a href="https://i.postimg.cc/d3pQLCG3/reclame-aqui.png" target="_blank" rel="noopener noreferrer">
-                <img src="https://i.postimg.cc/d3pQLCG3/reclame-aqui.png" alt="Certificado 2" className="h-24 w-auto object-contain" />
-              </a>
-              <a href="https://i.postimg.cc/3xMJhgKb/ethiack-badgewhite.png" target="_blank" rel="noopener noreferrer">
-                <img src="https://i.postimg.cc/3xMJhgKb/ethiack-badgewhite.png" alt="Certificado 3" className="h-24 w-auto object-contain" />
-              </a>
-              <a href="https://i.postimg.cc/7LwHGwJ3/images-3.png" target="_blank" rel="noopener noreferrer">
-                <img src="https://i.postimg.cc/7LwHGwJ3/images-3.png" alt="Certificado 4" className="h-24 w-auto object-contain" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Certificados em Mobile */}
-      <div className="md:hidden container mx-auto px-4 py-2">
-        <div className="flex justify-center gap-2">
-          <a href="https://i.postimg.cc/XvkvQp61/logo-premio-xl-e4d59a6604da164a9e5731647efb091f-Copia-2.png" target="_blank" rel="noopener noreferrer">
-            <img src="https://i.postimg.cc/XvkvQp61/logo-premio-xl-e4d59a6604da164a9e5731647efb091f-Copia-2.png" alt="Certificado 1" className="h-16 w-auto object-contain" />
-          </a>
-          <a href="https://i.postimg.cc/d3pQLCG3/reclame-aqui.png" target="_blank" rel="noopener noreferrer">
-            <img src="https://i.postimg.cc/d3pQLCG3/reclame-aqui.png" alt="Certificado 2" className="h-16 w-auto object-contain" />
-          </a>
-          <a href="https://i.postimg.cc/3xMJhgKb/ethiack-badgewhite.png" target="_blank" rel="noopener noreferrer">
-            <img src="https://i.postimg.cc/3xMJhgKb/ethiack-badgewhite.png" alt="Certificado 3" className="h-16 w-auto object-contain" />
-          </a>
-          <a href="https://i.postimg.cc/7LwHGwJ3/images-3.png" target="_blank" rel="noopener noreferrer">
-            <img src="https://i.postimg.cc/7LwHGwJ3/images-3.png" alt="Certificado 4" className="h-16 w-auto object-contain" />
-          </a>
         </div>
       </div>
 

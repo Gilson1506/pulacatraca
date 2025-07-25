@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Chrome, User, Building, Phone, FileText, MapPin, CreditCard } from 'lucide-react';
+import { ArrowLeft, Mail, User, Building, Phone, FileText, MapPin, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const OrganizerRegisterPage = () => {
@@ -30,6 +30,7 @@ const OrganizerRegisterPage = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -57,31 +58,38 @@ const OrganizerRegisterPage = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccess(false);
+
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem.');
       setIsLoading(false);
       return;
     }
+
     if (!formData.acceptTerms || !formData.acceptPrivacy) {
       setError('Você deve aceitar os termos e política de privacidade.');
       setIsLoading(false);
       return;
     }
+
     try {
-      // Simular cadastro de organizador
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      // Registrar como usuário normal mas com flag de organizador
-      await register(formData.name, formData.email, formData.password);
-      // Redirecionar para dashboard com mensagem de sucesso
-      navigate('/profile', { 
-        state: { 
-          message: 'Cadastro de organizador realizado com sucesso! Sua conta está em análise e você receberá um email em até 24 horas.',
-          isOrganizer: true
-        }
-      });
+      // Registrar como organizador
+      await register(formData.name, formData.email, formData.password, 'organizer');
+
+      // Redireciona direto para o dashboard do organizador
+      navigate('/organizer-dashboard', { replace: true });
+      return;
     } catch (err) {
-      setError('Erro ao criar conta de organizador. Tente novamente.');
-    } finally {
+      console.error(err);
+      if (err instanceof Error) {
+        if (err.message?.includes('already registered')) {
+          setError('Este email já está registrado. Por favor, faça login.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Erro ao criar conta de organizador. Tente novamente.');
+      }
       setIsLoading(false);
     }
   };
@@ -427,8 +435,8 @@ const OrganizerRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
-      <div className="max-w-2xl w-full">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
         {/* Back Button */}
         <Link
           to="/register"
@@ -442,7 +450,7 @@ const OrganizerRegisterPage = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <img
-              src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
+              src="/logo-com-qr.png"
               alt="Logo PULACATRACA"
               className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
             />
@@ -471,6 +479,14 @@ const OrganizerRegisterPage = () => {
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+              <p className="text-green-600 text-sm">Cadastro realizado com sucesso! Redirecionando...</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             {/* Step Content */}
             {currentStep === 1 && renderStep1()}
@@ -501,9 +517,19 @@ const OrganizerRegisterPage = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50"
+                    className="px-6 py-3 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-md flex items-center justify-center disabled:opacity-50"
                   >
-                    {isLoading ? 'Criando conta...' : 'Finalizar cadastro'}
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        Criando conta...
+                      </span>
+                    ) : (
+                      'Finalizar cadastro'
+                    )}
                   </button>
                 )}
               </div>
