@@ -39,17 +39,9 @@ export const getUser = async () => {
     if (profileError) {
       console.error('7. Erro ao buscar perfil:', profileError); // DEBUG
       
-      // Verificar se o perfil existe
-      const { count, error: countError } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact' })
-        .eq('id', user.id);
-      
-      console.log('8. Verificação de existência do perfil:', { count, error: countError }); // DEBUG
-      
-      if (!countError && count === 0) {
-        // Se o perfil não existe, vamos criá-lo
-        console.log('9. Criando perfil para usuário...'); // DEBUG
+      // Se o erro for "not found", tentar criar o perfil
+      if (profileError.code === 'PGRST116') {
+        console.log('8. Perfil não encontrado, criando automaticamente...'); // DEBUG
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
           .insert([
@@ -67,11 +59,11 @@ export const getUser = async () => {
           .single();
 
         if (insertError) {
-          console.error('10. Erro ao criar perfil:', insertError); // DEBUG
+          console.error('9. Erro ao criar perfil:', insertError); // DEBUG
           return null;
         }
 
-        console.log('11. Perfil criado com sucesso:', newProfile); // DEBUG
+        console.log('10. Perfil criado com sucesso:', newProfile); // DEBUG
         return newProfile;
       }
 
@@ -79,14 +71,14 @@ export const getUser = async () => {
     }
 
     if (!profileData) {
-      console.error('12. Perfil não encontrado para o usuário:', user.id); // DEBUG
+      console.error('11. Perfil não encontrado para o usuário:', user.id); // DEBUG
       return null;
     }
 
-    console.log('13. Perfil encontrado com sucesso:', profileData); // DEBUG
+    console.log('12. Perfil encontrado com sucesso:', profileData); // DEBUG
     return profileData;
   } catch (error) {
-    console.error('14. Erro inesperado ao buscar usuário:', error); // DEBUG
+    console.error('13. Erro inesperado ao buscar usuário:', error); // DEBUG
     return null;
   }
 };

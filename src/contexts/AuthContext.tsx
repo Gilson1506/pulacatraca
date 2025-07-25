@@ -51,11 +51,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_IN' && session?.user?.id) {
         try {
           console.log('Iniciando processo de SIGNED_IN para usuário:', session.user.id); // DEBUG
+          
+          // Aguardar um pouco para garantir que a sessão esteja estabelecida
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           const profile = await getUser();
           console.log('Perfil obtido após SIGNED_IN:', profile); // DEBUG
           
           if (!profile) {
             console.error('Perfil não encontrado após SIGNED_IN para usuário:', session.user.id); // DEBUG
+            // Tentar criar o perfil se não existir
+            console.log('Tentando criar perfil automaticamente...'); // DEBUG
+            const newProfile = await getUser(); // getUser já tenta criar o perfil se não existir
+            if (!newProfile) {
+              console.error('Falha ao criar perfil automaticamente'); // DEBUG
+              return;
+            }
+            setUser(newProfile);
+            navigate('/');
             return;
           }
 
@@ -101,29 +114,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Login failed: No user returned');
       }
 
-      console.log('Login bem sucedido, buscando perfil para:', authUser.id); // DEBUG
-      const profile = await getUser();
-      console.log('Perfil obtido em login():', profile); // DEBUG
+      console.log('Login bem sucedido para usuário:', authUser.id); // DEBUG
+      console.log('Aguardando onAuthStateChange para buscar perfil...'); // DEBUG
       
-      if (!profile) {
-        console.error('Login falhou: Perfil não encontrado para usuário:', authUser.id); // DEBUG
-        await signOut(); // Garante que o usuário seja deslogado
-        throw new Error('Perfil não encontrado. Por favor, contate o suporte.');
-      }
+      // Não buscamos o perfil aqui, deixamos o onAuthStateChange fazer isso
+      // para evitar chamadas duplicadas
       
-      if (profile.role !== 'user' && profile.role !== 'organizer') {
-        console.error('Login falhou: Role inválida:', profile.role); // DEBUG
-        await signOut();
-        throw new Error('Acesso não autorizado para esta role.');
-      }
-
-      console.log('Login completo, atualizando estado com perfil:', profile); // DEBUG
-      setUser(profile);
-      
-      // O redirecionamento será feito pelo onAuthStateChange listener
-      // Não precisamos fazer redirecionamento manual aqui
-      
-      return profile;
+      return { id: authUser.id, email: authUser.email || '', name: '', role: 'user' } as UserProfile;
     } catch (error: unknown) {
       console.error('Erro durante o login:', error); // DEBUG
       if (error instanceof AuthError || error instanceof Error) {
