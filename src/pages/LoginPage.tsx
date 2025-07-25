@@ -19,14 +19,10 @@ const LoginPage = () => {
     try {
       const result = await login(email, password);
       
-      // Redirecionar baseado na role do usuário como fallback
-      if (result.role === 'organizer') {
-        window.location.href = '/organizer-dashboard';
-      } else {
-        window.location.href = '/';
-      }
+      // O redirecionamento é feito automaticamente pelo AuthContext
+      // Não precisamos fazer redirecionamento manual aqui
       
-      // Não chamamos setIsLoading(false) aqui pois a página será recarregada
+      setIsLoading(false);
     } catch (err) {
       console.error(err);
       if (err instanceof Error) {

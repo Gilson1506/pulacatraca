@@ -120,14 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Login completo, atualizando estado com perfil:', profile); // DEBUG
       setUser(profile);
       
-      // Redirecionamento imediato após login bem-sucedido
-      console.log('Redirecionando usuário baseado na role:', profile.role); // DEBUG
-      if (profile.role === 'organizer') {
-        navigate('/organizer-dashboard');
-      } else {
-        navigate('/');
-      }
-
+      // O redirecionamento será feito pelo onAuthStateChange listener
+      // Não precisamos fazer redirecionamento manual aqui
+      
       return profile;
     } catch (error: unknown) {
       console.error('Erro durante o login:', error); // DEBUG
@@ -135,8 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       throw new Error('Erro desconhecido ao fazer login');
+    } finally {
+      setLoading(false);
     }
-    // Removido o finally block para não desativar o loading durante o redirecionamento
   };
 
   const loginWithGoogle = async (): Promise<void> => {
