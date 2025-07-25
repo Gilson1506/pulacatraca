@@ -25,8 +25,8 @@ const RegisterPage = () => {
     }
 
     try {
-      await register(name, email, password);
-      navigate('/');
+      const redirectRoute = await register(name, email, password);
+      navigate(redirectRoute);
     } catch (err) {
       setError('Erro ao criar conta. Tente novamente.');
     } finally {
@@ -37,8 +37,8 @@ const RegisterPage = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      await loginWithGoogle();
-      navigate('/');
+      const redirectRoute = await loginWithGoogle();
+      navigate(redirectRoute);
     } catch (err) {
       setError('Erro ao fazer login com Google. Tente novamente.');
     } finally {

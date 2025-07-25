@@ -10,12 +10,13 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string>;
+  loginWithGoogle: () => Promise<string>;
+  loginWithApple: () => Promise<string>;
+  register: (name: string, email: string, password: string) => Promise<string>;
   logout: () => void;
   loading: boolean;
+  getDashboardRoute: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<string> => {
     setLoading(true);
     // Login de teste para organizador
     if (email === 'organizador@teste.com' && password === '123456') {
@@ -61,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(mockUser);
       localStorage.setItem('token', 'mock-token-org');
       setLoading(false);
-      return;
+      return '/organizer-dashboard';
     }
     // Simular login
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -76,9 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(mockUser);
     localStorage.setItem('token', 'mock-token');
     setLoading(false);
+    return '/profile';
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (): Promise<string> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -92,9 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(mockUser);
     localStorage.setItem('token', 'mock-token');
     setLoading(false);
+    return '/profile';
   };
 
-  const loginWithApple = async () => {
+  const loginWithApple = async (): Promise<string> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -108,9 +111,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(mockUser);
     localStorage.setItem('token', 'mock-token');
     setLoading(false);
+    return '/profile';
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string): Promise<string> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -124,11 +128,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(mockUser);
     localStorage.setItem('token', 'mock-token');
     setLoading(false);
+    return '/profile';
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('token');
+  };
+
+  const getDashboardRoute = () => {
+    if (!user) return '/';
+    return user.isOrganizer ? '/organizer-dashboard' : '/profile';
   };
 
   const value = {
@@ -138,7 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loginWithApple,
     register,
     logout,
-    loading
+    loading,
+    getDashboardRoute
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

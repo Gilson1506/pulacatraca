@@ -21,8 +21,8 @@ const LoginPage = () => {
     setError('');
 
     try {
-      await login(email, password);
-      navigate('/');
+      const redirectRoute = await login(email, password);
+      navigate(redirectRoute);
     } catch (err) {
       setError('Credenciais inválidas. Tente novamente.');
     } finally {
@@ -33,8 +33,8 @@ const LoginPage = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      await loginWithGoogle();
-      navigate('/');
+      const redirectRoute = await loginWithGoogle();
+      navigate(redirectRoute);
     } catch (err) {
       setError('Erro ao fazer login com Google. Tente novamente.');
     } finally {
