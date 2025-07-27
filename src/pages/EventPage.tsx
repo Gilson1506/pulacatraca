@@ -1,15 +1,188 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2, Loader2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
+import { supabase } from '../lib/supabase';
 
-const EventPageSimple = () => {
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  dateLabel: string;
+  image: string;
+  tickets: {
+    id: string;
+    name: string;
+    price: number;
+    available: number;
+  }[];
+  sections: {
+    name: string;
+    details: string[];
+    note?: string;
+  }[];
+  attractions: string[];
+  importantNotes: string[];
+  contactInfo: {
+    phone: string;
+    hours: string[];
+  };
+}
+
+interface SupabaseTicket {
+  id: string;
+  name: string;
+  price: number;
+  available_quantity: number;
+}
+
+interface SupabaseSection {
+  name: string;
+  details: string[];
+  note?: string;
+}
+
+interface SupabaseAttraction {
+  name: string;
+}
+
+interface SupabaseImportantNote {
+  content: string;
+}
+
+interface SupabaseContactInfo {
+  phone: string;
+  hours: string[];
+}
+
+interface SupabaseEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  date_label: string;
+  image_url: string;
+  tickets: SupabaseTicket[];
+  sections: SupabaseSection[];
+  attractions: SupabaseAttraction[];
+  important_notes: SupabaseImportantNote[];
+  contact_info: SupabaseContactInfo[];
+}
+
+const EventPage = () => {
   const [loading, setLoading] = useState(false);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
   const navigate = useNavigate();
+  const { eventId } = useParams();
+  
+  console.log('EventPage - ID do evento:', eventId); // Log para debug
+
   const [showImageModal, setShowImageModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState('');
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [event, setEvent] = useState<Event | null>(null);
+
+  useEffect(() => {
+    console.log('EventPage - useEffect executado com ID:', eventId); // Log para debug
+    fetchEvent();
+  }, [eventId]);
+
+  const fetchEvent = async () => {
+    try {
+      setIsLoadingEvent(true);
+      if (!eventId) {
+        console.log('EventPage - ID do evento não fornecido'); // Log para debug
+        navigate('/');
+        return;
+      }
+
+      console.log('EventPage - Buscando evento com ID:', eventId); // Log para debug
+
+      const { data: eventData, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          tickets:event_tickets(
+            id,
+            name,
+            price,
+            available_quantity
+          ),
+          sections:event_sections(
+            name,
+            details,
+            note
+          ),
+          attractions:event_attractions(name),
+          important_notes:event_important_notes(content),
+          contact_info:event_contact_info(
+            phone,
+            hours
+          )
+        `)
+        .eq('id', eventId)
+        .single();
+
+      if (error) {
+        console.error('EventPage - Erro ao buscar evento:', error); // Log para debug
+        throw error;
+      }
+
+      if (!eventData) {
+        console.log('EventPage - Nenhum evento encontrado com ID:', eventId); // Log para debug
+        navigate('/');
+        return;
+      }
+
+      console.log('EventPage - Dados do evento encontrados:', eventData); // Log para debug
+
+      const supabaseEvent = eventData as unknown as SupabaseEvent;
+
+      const formattedEvent: Event = {
+        id: supabaseEvent.id,
+        title: supabaseEvent.title,
+        description: supabaseEvent.description,
+        date: supabaseEvent.date,
+        time: supabaseEvent.time,
+        location: supabaseEvent.location,
+        address: supabaseEvent.address,
+        dateLabel: supabaseEvent.date_label,
+        image: supabaseEvent.image_url,
+        tickets: supabaseEvent.tickets.map(ticket => ({
+          id: ticket.id,
+          name: ticket.name,
+          price: ticket.price,
+          available: ticket.available_quantity
+        })),
+        sections: supabaseEvent.sections.map(section => ({
+          name: section.name,
+          details: section.details,
+          note: section.note
+        })),
+        attractions: supabaseEvent.attractions.map(attraction => attraction.name),
+        importantNotes: supabaseEvent.important_notes.map(note => note.content),
+        contactInfo: {
+          phone: supabaseEvent.contact_info[0]?.phone || '',
+          hours: supabaseEvent.contact_info[0]?.hours || []
+        }
+      };
+
+      setEvent(formattedEvent);
+    } catch (error) {
+      console.error('Erro ao buscar evento:', error);
+      navigate('/');
+    } finally {
+      setIsLoadingEvent(false);
+    }
+  };
 
   // Novo useEffect para observar as seções
   useEffect(() => {
@@ -47,38 +220,6 @@ const EventPageSimple = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Mock event data - adaptado para o estilo Baladapp
-  const event = {
-    title: 'Reveillon Mil Sorrisos',
-    description: 'Prepare-se para uma virada de ano inesquecível na Praia dos Milagres. Muita música, gente bonita e energia positiva para começar o ano com o pé direito.',
-    date: '2025-12-27',
-    time: '22:00',
-    location: 'Praia dos Milagres',
-    address: 'São Miguel dos Milagres, AL',
-    dateLabel: '27.12 a 02.01 | SEMANA DO RÉVEILLON',
-    image: 'https://i.postimg.cc/QCJNJNgc/Imagem-Whats-App-2025-07-14-s-20-38-33-6d804a5e.jpg',
-    tickets: [
-      { id: 'passaporte-all', name: 'Passaporte Todos os Dias', price: 2500.00, available: 500 },
-    ],
-    sections: [
-      {
-        name: 'ÁREA VIP',
-        details: ['Acesso a todas as festas', 'Open Bar Premium', 'Área de descanso', 'Banheiros exclusivos'],
-        note: 'Garanta seu passaporte e viva a melhor semana da sua vida.'
-      },
-    ],
-    attractions: ['Atração Surpresa', 'DJs Internacionais', 'Bandas Nacionais'],
-    importantNotes: [
-      'É obrigatória a apresentação do ingresso em forma digital ou impressa, juntamente com o DOCUMENTO OFICIAL COM FOTO para a entrada no evento.',
-      'O passaporte é pessoal e intransferível.',
-      'A programação pode sofrer alterações sem aviso prévio.',
-    ],
-    contactInfo: {
-      phone: '82 99999-9999',
-      hours: ['10h00 às 22h00 - Todos os dias'],
-    },
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {
@@ -101,7 +242,7 @@ const EventPageSimple = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-lg mb-3">INFORMAÇÕES</h3>
               <ul className="space-y-2 text-sm">
-                {event.importantNotes.map((note, idx) => (
+                {event?.importantNotes.map((note, idx) => (
                   <li key={idx} className="flex items-start space-x-2">
                     <span className="text-gray-400 mt-1">•</span>
                     <span>{note}</span>
@@ -139,7 +280,7 @@ const EventPageSimple = () => {
       case 'setores-e-areas':
         return (
           <div className="space-y-4">
-            {event.sections.map((section, index) => (
+            {event?.sections.map((section, index) => (
               <div key={index} className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-lg mb-3">{section.name}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
@@ -162,7 +303,7 @@ const EventPageSimple = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-lg mb-3">ATRAÇÕES</h3>
               <div className="space-y-2">
-                {event.attractions.map((attraction, idx) => (
+                {event?.attractions.map((attraction, idx) => (
                   <div key={idx} className="bg-white p-3 rounded-lg font-medium">
                     {attraction}
                   </div>
@@ -180,7 +321,7 @@ const EventPageSimple = () => {
                 <div>
                   <h3 className="font-semibold text-lg mb-3">IMPORTANTE</h3>
                   <ul className="space-y-2 text-sm">
-                    {event.importantNotes.map((note, idx) => (
+                    {event?.importantNotes.map((note, idx) => (
                       <li key={idx} className="flex items-start space-x-2">
                         <span className="text-yellow-600 mt-1">•</span>
                         <span>{note}</span>
@@ -212,7 +353,7 @@ const EventPageSimple = () => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-gray-400" />
-                  <span>{event.contactInfo.phone}</span>
+                  <span>{event?.contactInfo.phone}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
@@ -220,7 +361,7 @@ const EventPageSimple = () => {
                     <span className="font-medium">Horários de atendimento:</span>
                   </div>
                   <div className="ml-8 space-y-1">
-                    {event.contactInfo.hours.map((hour, idx) => (
+                    {event?.contactInfo.hours.map((hour, idx) => (
                       <p key={idx} className="text-sm text-gray-600">{hour}</p>
                     ))}
                   </div>
@@ -246,6 +387,21 @@ const EventPageSimple = () => {
     { id: 'classificacao', label: 'CLASSIFICAÇÃO' },
     { id: 'contato', label: 'CONTATO' },
   ];
+
+  if (isLoadingEvent) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Carregando evento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
@@ -326,7 +482,7 @@ const EventPageSimple = () => {
               navigate('/checkout', {
                 state: {
                   event: {
-                    id: 'evt-angra-2025',
+                    id: event.id,
                     title: event.title,
                     date: event.date,
                     location: event.address,
@@ -391,7 +547,7 @@ const EventPageSimple = () => {
                     navigate('/checkout', {
                       state: {
                         event: {
-                          id: 'evt-angra-2025',
+                          id: event.id,
                           title: event.title,
                           date: event.date,
                           location: event.address,
@@ -503,4 +659,4 @@ const EventPageSimple = () => {
   );
 };
 
-export default EventPageSimple;
+export default EventPage;

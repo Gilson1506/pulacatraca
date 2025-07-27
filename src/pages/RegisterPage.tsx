@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Chrome, User } from 'lucide-react';
+import { Mail, Chrome, CheckCircle, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const RegisterPage = () => {
@@ -10,6 +10,7 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -17,6 +18,7 @@ const RegisterPage = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccess(false);
 
     if (password !== confirmPassword) {
       setError('As senhas não coincidem.');
@@ -27,8 +29,19 @@ const RegisterPage = () => {
     try {
       const redirectRoute = await register(name, email, password);
       navigate(redirectRoute);
-    } catch (err) {
-      setError('Erro ao criar conta. Tente novamente.');
+    } catch (err: any) {
+      console.error(err);
+      if (err instanceof Error) {
+        if (err.message.includes('User already registered')) {
+          setError('Este email já está cadastrado.');
+        } else if (err.message.includes('Password should be at least 6 characters')) {
+          setError('A senha deve ter pelo menos 6 caracteres.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Erro inesperado. Tente novamente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -36,11 +49,18 @@ const RegisterPage = () => {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
+    setError('');
+
     try {
       const redirectRoute = await loginWithGoogle();
       navigate(redirectRoute);
-    } catch (err) {
-      setError('Erro ao fazer login com Google. Tente novamente.');
+    } catch (err: any) {
+      console.error(err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Erro inesperado. Tente novamente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -63,9 +83,7 @@ const RegisterPage = () => {
 
         {/* Register Card */}
         <div className="bg-white rounded-lg shadow-md p-8">
-          {/* Logo */}
           <div className="text-center mb-8">
-            {/* Logo removida para evitar duplicidade */}
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">Criar Conta</h1>
             <p className="text-gray-600">
               Crie sua conta para acessar os melhores eventos
@@ -73,20 +91,30 @@ const RegisterPage = () => {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              <p className="text-green-600 text-sm">Conta criada com sucesso!</p>
+            </div>
+          )}
+
           <div className="space-y-4">
-            {/* Google Login Button */}
+            {/* Google Register Button */}
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
               className="w-full flex items-center justify-center space-x-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <Chrome className="h-5 w-5 text-gray-600" />
-              <span className="text-gray-700">Registrar com Google</span>
+              <span className="text-gray-700">
+                {isLoading ? 'Registrando...' : 'Registrar com Google'}
+              </span>
             </button>
 
             {/* Divider */}

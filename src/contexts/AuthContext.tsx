@@ -1,20 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  isOrganizer?: boolean;
-}
+import { supabase, getUser, signInWithEmail, signInWithGoogle, signUp, signOut } from '../lib/supabase';
+import type { UserProfile } from '../types/supabase';
+import { AuthError } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   login: (email: string, password: string) => Promise<string>;
   loginWithGoogle: () => Promise<string>;
-  loginWithApple: () => Promise<string>;
-  register: (name: string, email: string, password: string) => Promise<string>;
-  logout: () => void;
+  register: (name: string, email: string, password: string, role?: 'user' | 'organizer') => Promise<string>;
+  logout: () => Promise<void>;
   loading: boolean;
   getDashboardRoute: () => string;
 }
@@ -30,122 +25,132 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Simular verificação de token ao carregar
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Simular usuário logado
-      setUser({
-        id: '1',
-        name: 'João Silva',
-        email: 'joao@example.com',
-        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-      });
-    }
-    setLoading(false);
+    // Check for existing session
+    const checkUser = async () => {
+      try {
+        const profile = await getUser();
+        console.log('Perfil verificado na inicialização:', profile); // DEBUG
+        if (profile && (profile.role === 'user' || profile.role === 'organizer')) {
+          setUser(profile);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar usuário:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
   }, []);
 
   const login = async (email: string, password: string): Promise<string> => {
     setLoading(true);
-    // Login de teste para organizador
-    if (email === 'organizador@teste.com' && password === '123456') {
-      const mockUser: User = {
-        id: 'org-1',
-        name: 'Organizador Teste',
-        email: email,
-        avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
-        isOrganizer: true
-      };
-      setUser(mockUser);
-      localStorage.setItem('token', 'mock-token-org');
+    try {
+      const profile = await signInWithEmail(email, password);
+      console.log('Perfil recebido no login:', profile); // DEBUG
+      
+      if (!profile) {
+        throw new Error('Falha na autenticação');
+      }
+      
+      if (profile.role !== 'user' && profile.role !== 'organizer') {
+        throw new Error('Função de usuário inválida');
+      }
+      
+      setUser(profile);
+      
+      // Return the appropriate dashboard route
+      return profile.role === 'organizer' ? '/organizer-dashboard' : '/profile';
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      if (error instanceof AuthError) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Email ou senha incorretos');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Por favor, confirme seu email antes de fazer login');
+        }
+      }
+      throw new Error(error.message || 'Erro no login');
+    } finally {
       setLoading(false);
-      return '/organizer-dashboard';
     }
-    // Simular login
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: 'João Silva',
-      email: email,
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
-    return '/profile';
   };
 
   const loginWithGoogle = async (): Promise<string> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao@gmail.com',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
-    return '/profile';
+    try {
+      await signInWithGoogle();
+      // Return profile dashboard route after Google login
+      return '/profile';
+    } catch (error: any) {
+      console.error('Erro no login com Google:', error);
+      throw new Error('Erro ao fazer login com Google');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loginWithApple = async (): Promise<string> => {
+  const register = async (
+    name: string, 
+    email: string, 
+    password: string, 
+    role: 'user' | 'organizer' = 'user'
+  ): Promise<string> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao@icloud.com',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
-    return '/profile';
+    try {
+      const profile = await signUp(email, password, name, role);
+      console.log('Perfil criado no registro:', profile); // DEBUG
+      
+      if (!profile) {
+        throw new Error('Falha ao criar conta');
+      }
+      
+      setUser(profile);
+      
+      // Return the appropriate dashboard route
+      return profile.role === 'organizer' ? '/organizer-dashboard' : '/profile';
+    } catch (error: any) {
+      console.error('Erro no registro:', error);
+      if (error instanceof AuthError) {
+        if (error.message.includes('User already registered')) {
+          throw new Error('Este email já está cadastrado');
+        } else if (error.message.includes('Password should be at least 6 characters')) {
+          throw new Error('A senha deve ter pelo menos 6 caracteres');
+        }
+      }
+      throw new Error(error.message || 'Erro ao criar conta');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<string> => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      name: name,
-      email: email,
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('token', 'mock-token');
-    setLoading(false);
-    return '/profile';
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async (): Promise<void> => {
+    try {
+      await signOut();
+      setUser(null);
+      navigate('/');
+    } catch (error: any) {
+      console.error('Erro no logout:', error);
+      // Force logout even if API call fails
+      setUser(null);
+      navigate('/');
+    }
   };
 
   const getDashboardRoute = () => {
     if (!user) return '/';
-    return user.isOrganizer ? '/organizer-dashboard' : '/profile';
+    return user.role === 'organizer' ? '/organizer-dashboard' : '/profile';
   };
 
   const value = {
     user,
     login,
     loginWithGoogle,
-    loginWithApple,
     register,
     logout,
     loading,

@@ -20,6 +20,7 @@ interface EventCardProps {
 }
 
 const EventCard: React.FC<EventCardProps> = ({ event }) => {
+  console.log('EventCard - Renderizando evento:', { id: event.id, title: event.title }); // Log para debug
 
   // Função para formatar a data de forma inteligente
   const formatDate = (dateString: string) => {

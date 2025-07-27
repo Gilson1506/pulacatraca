@@ -305,7 +305,7 @@ const ProfilePage = () => {
   const [supportBadge, setSupportBadge] = useState(1); // Começa com 1 mensagem automática
 
   useEffect(() => {
-    if (user && user.isOrganizer) {
+    if (user && user.role === 'organizer') {
       navigate('/organizer-dashboard', { replace: true });
     }
   }, [user, navigate]);

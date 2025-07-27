@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
+  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera, Loader2
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
 import QrScanner from '../components/QrScanner';
+import { supabase } from '../lib/supabase';
 
 // Interfaces
 interface Event {
@@ -62,85 +63,87 @@ interface CheckIn {
   status: 'ok' | 'duplicado' | 'invalido';
 }
 
-// Mock Data
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    name: 'Festival de Inverno 2025',
-    date: '2025-08-15',
-    time: '18:00',
-    location: 'Centro de Convenções',
-    description: 'Um festival incrível com os melhores artistas do inverno.',
-    status: 'ativo',
-    ticketsSold: 750,
-    totalTickets: 1000,
-    revenue: 37500,
-    category: 'Música',
-    image: 'https://via.placeholder.com/300x200'
-  },
-  {
-    id: '2',
-    name: 'Samba Prime Experience',
-    date: '2025-09-05',
-    time: '20:00',
-    location: 'Sambódromo',
-    description: 'Uma noite especial de samba com grandes nomes.',
-    status: 'adiado',
-    ticketsSold: 450,
-    totalTickets: 800,
-    revenue: 22500,
-    category: 'Música'
-  },
-  {
-    id: '3',
-    name: 'Arraiá do Pula Catraca',
-    date: '2025-07-20',
-    time: '19:00',
-    location: 'Parque Central',
-    description: 'Festa junina tradicional com muita diversão.',
-    status: 'cancelado',
-    ticketsSold: 0,
-    totalTickets: 500,
-    revenue: 0,
-    category: 'Festa Junina'
-  }
-];
-
-const mockSales: Sale[] = [
-  {
-    id: '101',
-    eventId: '1',
-    eventName: 'Festival de Inverno 2025',
-    buyerName: 'João Silva',
-    buyerEmail: 'joao@email.com',
-    ticketType: 'Pista',
-    quantity: 2,
-    amount: 120.00,
-    date: '2025-07-10',
-    status: 'confirmado',
-    paymentMethod: 'Cartão de Crédito'
-  },
-  {
-    id: '102',
-    eventId: '1',
-    eventName: 'Festival de Inverno 2025',
-    buyerName: 'Maria Santos',
-    buyerEmail: 'maria@email.com',
-    ticketType: 'VIP',
-    quantity: 1,
-    amount: 200.00,
-    date: '2025-07-12',
-    status: 'pendente',
-    paymentMethod: 'PIX'
-  }
-];
+interface SupabaseEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  description: string;
+  status: string;
+  category: string;
+  image_url?: string;
+  total_tickets: number;
+  tickets?: { count: number };
+  sales?: { sum: number };
+}
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
-  const totalRevenue = mockEvents.reduce((sum, event) => sum + event.revenue, 0);
-  const totalTicketsSold = mockEvents.reduce((sum, event) => sum + event.ticketsSold, 0);
-  const activeEvents = mockEvents.filter(event => event.status === 'ativo').length;
-  const pendingSales = mockSales.filter(sale => sale.status === 'pendente').length;
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalTicketsSold: 0,
+    activeEvents: 0,
+    pendingSales: 0
+  });
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+
+      // Buscar eventos
+      const { data: events, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (eventsError) throw eventsError;
+
+      // Buscar vendas
+      const { data: sales, error: salesError } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (salesError) throw salesError;
+
+      // Calcular estatísticas
+      const activeEventsCount = events?.filter(event => event.status === 'active').length || 0;
+      const totalRevenue = sales?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
+      const totalTicketsSold = sales?.filter(sale => sale.status === 'confirmed').length || 0;
+      const pendingSales = sales?.filter(sale => sale.status === 'pending').length || 0;
+
+      setStats({
+        totalRevenue,
+        totalTicketsSold,
+        activeEvents: activeEventsCount,
+        pendingSales
+      });
+
+      setRecentEvents(events?.slice(0, 3) || []);
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Carregando dados do dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -154,7 +157,7 @@ const DashboardOverview = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm">Receita Total</p>
-              <p className="text-2xl font-bold">R$ {totalRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-bold">R$ {stats.totalRevenue.toLocaleString()}</p>
             </div>
             <DollarSign className="h-8 w-8 text-blue-200" />
           </div>
@@ -164,7 +167,7 @@ const DashboardOverview = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm">Ingressos Vendidos</p>
-              <p className="text-2xl font-bold">{totalTicketsSold.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{stats.totalTicketsSold.toLocaleString()}</p>
             </div>
             <Users className="h-8 w-8 text-green-200" />
           </div>
@@ -174,7 +177,7 @@ const DashboardOverview = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm">Eventos Ativos</p>
-              <p className="text-2xl font-bold">{activeEvents}</p>
+              <p className="text-2xl font-bold">{stats.activeEvents}</p>
             </div>
             <Calendar className="h-8 w-8 text-purple-200" />
           </div>
@@ -184,7 +187,7 @@ const DashboardOverview = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-orange-100 text-sm">Vendas Pendentes</p>
-              <p className="text-2xl font-bold">{pendingSales}</p>
+              <p className="text-2xl font-bold">{stats.pendingSales}</p>
             </div>
             <AlertCircle className="h-8 w-8 text-orange-200" />
           </div>
@@ -198,31 +201,38 @@ const DashboardOverview = () => {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            {mockEvents.slice(0, 3).map(event => (
-              <div key={event.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="h-6 w-6 text-pink-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{event.name}</h4>
-                    <p className="text-sm text-gray-600">{event.date} • {event.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    event.status === 'ativo' ? 'bg-green-100 text-green-800' :
-                    event.status === 'adiado' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                  </span>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <Share2 className="h-5 w-5" />
-                  </button>
-                </div>
+            {recentEvents.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p>Nenhum evento encontrado</p>
               </div>
-            ))}
+            ) : (
+              recentEvents.map(event => (
+                <div key={event.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
+                      <Calendar className="h-6 w-6 text-pink-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{event.name}</h4>
+                      <p className="text-sm text-gray-600">{event.date} • {event.location}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      event.status === 'ativo' ? 'bg-green-100 text-green-800' :
+                      event.status === 'adiado' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                    </span>
+                    <button className="text-gray-400 hover:text-gray-600">
+                      <Share2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -232,13 +242,99 @@ const DashboardOverview = () => {
 
 // Events Component
 const OrganizerEvents = () => {
-  const [events, setEvents] = useState<Event[]>(mockEvents);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'todos' | 'ativo' | 'adiado' | 'cancelado'>('todos');
   const [search, setSearch] = useState('');
-
-
   const [showEventFormModal, setShowEventFormModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      setIsLoading(true);
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          tickets:tickets(count),
+          sales:sales(sum:amount)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedEvents: Event[] = (eventsData as SupabaseEvent[])?.map(event => ({
+        id: event.id,
+        name: event.title,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        description: event.description,
+        status: event.status as 'ativo' | 'adiado' | 'cancelado',
+        ticketsSold: event.tickets?.count || 0,
+        totalTickets: event.total_tickets || 0,
+        revenue: event.sales?.sum || 0,
+        category: event.category,
+        image: event.image_url
+      }));
+
+      setEvents(formattedEvents);
+    } catch (error) {
+      console.error('Erro ao buscar eventos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitEvent = async (eventData: Event) => {
+    try {
+      if (selectedEvent) {
+        // Edição
+        const { error } = await supabase
+          .from('events')
+          .update({
+            title: eventData.name,
+            date: eventData.date,
+            time: eventData.time,
+            location: eventData.location,
+            description: eventData.description,
+            status: eventData.status,
+            category: eventData.category,
+            image_url: eventData.image
+          })
+          .eq('id', eventData.id);
+
+        if (error) throw error;
+      } else {
+        // Criação
+        const { error } = await supabase
+          .from('events')
+          .insert({
+            title: eventData.name,
+            date: eventData.date,
+            time: eventData.time,
+            location: eventData.location,
+            description: eventData.description,
+            status: eventData.status,
+            category: eventData.category,
+            image_url: eventData.image,
+            total_tickets: eventData.totalTickets
+          });
+
+        if (error) throw error;
+      }
+
+      await fetchEvents();
+      setSelectedEvent(undefined);
+      setShowEventFormModal(false);
+    } catch (error) {
+      console.error('Erro ao salvar evento:', error);
+    }
+  };
 
   const filteredEvents = events.filter(event =>
     (filter === 'todos' || event.status === filter) &&
@@ -254,27 +350,16 @@ const OrganizerEvents = () => {
     }
   };
 
-
-
-  const handleSubmitEvent = (eventData: Event) => {
-    if (selectedEvent) {
-      // Edição
-      setEvents(prev => prev.map(event => 
-        event.id === eventData.id ? eventData : event
-      ));
-    } else {
-      // Criação
-      const newEvent = {
-        ...eventData,
-        id: String(Math.max(...events.map(e => Number(e.id))) + 1),
-        ticketsSold: 0,
-        revenue: 0
-      };
-      setEvents(prev => [...prev, newEvent]);
-    }
-    setSelectedEvent(null);
-    setShowEventFormModal(false);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Carregando eventos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -402,8 +487,119 @@ const OrganizerEvents = () => {
 
 // Sales Component
 const OrganizerSales = () => {
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [organizerName] = useState('Organizador Exemplo'); // TODO: Integrar com backend para pegar nome real
+  const [isExporting, setIsExporting] = useState(false);
+  const [filter, setFilter] = useState<'todos' | 'pendente' | 'confirmado' | 'cancelado'>('todos');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    fetchSales();
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedEvents: Event[] = (eventsData as SupabaseEvent[])?.map(event => ({
+        id: event.id,
+        name: event.title,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        description: event.description,
+        status: event.status as 'ativo' | 'adiado' | 'cancelado',
+        ticketsSold: 0,
+        totalTickets: event.total_tickets || 0,
+        revenue: 0,
+        category: event.category,
+        image: event.image_url
+      }));
+
+      setEvents(formattedEvents);
+    } catch (error) {
+      console.error('Erro ao buscar eventos:', error);
+    }
+  };
+
+  const fetchSales = async () => {
+    try {
+      const { data: salesData, error } = await supabase
+        .from('sales')
+        .select(`
+          *,
+          event:events(title)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedSales: Sale[] = salesData.map(sale => ({
+        id: sale.id,
+        eventId: sale.event_id,
+        eventName: sale.event.title,
+        buyerName: sale.buyer_name,
+        buyerEmail: sale.buyer_email,
+        ticketType: sale.ticket_type,
+        quantity: sale.quantity,
+        amount: sale.amount,
+        date: sale.created_at,
+        status: sale.status,
+        paymentMethod: sale.payment_method
+      }));
+
+      setSales(formattedSales);
+    } catch (error) {
+      console.error('Erro ao buscar vendas:', error);
+    }
+  };
+
+  // Filtrar vendas
+  const filteredSales = useMemo(() => {
+    return sales.filter((sale: Sale) => {
+      const matchesFilter = filter === 'todos' || sale.status === filter;
+      const matchesDate = !dateRange.start || !dateRange.end || 
+        (sale.date >= dateRange.start && sale.date <= dateRange.end);
+      return matchesFilter && matchesDate;
+    });
+  }, [sales, filter, dateRange]);
+
+  // Calcular totais
+  const totalRevenue = useMemo(() => 
+    filteredSales.reduce((sum: number, sale: Sale) => sum + sale.amount, 0),
+    [filteredSales]
+  );
+  const totalSales = useMemo(() => filteredSales.length, [filteredSales]);
+  const pendingSales = useMemo(() => 
+    filteredSales.filter((sale: Sale) => sale.status === 'pendente').length,
+    [filteredSales]
+  );
+
+  const updateSaleStatus = async (saleId: string, newStatus: 'confirmado' | 'cancelado') => {
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ status: newStatus })
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      setSales(prev => prev.map(sale => 
+        sale.id === saleId ? { ...sale, status: newStatus } : sale
+      ));
+    } catch (error) {
+      console.error('Erro ao atualizar status da venda:', error);
+    }
+  };
+
   // Função para exportar relatório de vendas em PDF
   const handleExportSalesReport = async () => {
     try {
@@ -436,7 +632,7 @@ const OrganizerSales = () => {
       // Posição inicial do conteúdo
       const contentStartY = 50;
 
-            // Título e informações básicas
+      // Título e informações básicas
       doc.setFontSize(16);
       doc.setTextColor(40);
       doc.text('Relatório de Vendas', margin, contentStartY);
@@ -562,33 +758,6 @@ const OrganizerSales = () => {
       }
     }
   };
-  const [sales, setSales] = useState<Sale[]>(mockSales);
-  const [filter, setFilter] = useState<'todos' | 'pendente' | 'confirmado' | 'cancelado'>('todos');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [isExporting, setIsExporting] = useState(false);
-
-  // Filtrar vendas
-  const filteredSales = useMemo(() => {
-    return sales.filter(sale => {
-      const matchesFilter = filter === 'todos' || sale.status === filter;
-      const matchesDate = !dateRange.start || !dateRange.end || 
-        (sale.date >= dateRange.start && sale.date <= dateRange.end);
-      return matchesFilter && matchesDate;
-    });
-  }, [sales, filter, dateRange]);
-
-  // Calcular totais
-  const totalRevenue = useMemo(() => filteredSales.reduce((sum, sale) => sum + sale.amount, 0), [filteredSales]);
-  const totalSales = useMemo(() => filteredSales.length, [filteredSales]);
-  const pendingSales = useMemo(() => filteredSales.filter(sale => sale.status === 'pendente').length, [filteredSales]);
-
-  const updateSaleStatus = (saleId: string, newStatus: 'confirmado' | 'cancelado') => {
-    const updatedSales = sales.map(sale => 
-      sale.id === saleId ? { ...sale, status: newStatus } : sale
-    );
-    // Aqui você adicionaria a lógica para atualizar no backend
-    console.log('Atualizando status da venda:', { saleId, newStatus, updatedSales });
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -669,11 +838,14 @@ const OrganizerSales = () => {
         <div className="flex flex-col lg:flex-row gap-4">
           <select
             value={selectedEvent?.id || ''}
-            onChange={(e) => setSelectedEvent(mockEvents.find(event => event.id === e.target.value) || null)}
+            onChange={(e) => {
+              const event = events.find(event => event.id === e.target.value);
+              setSelectedEvent(event);
+            }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
           >
             <option value="">Todos os Eventos</option>
-            {mockEvents.map(event => (
+            {events.map(event => (
               <option key={event.id} value={event.id}>{event.name}</option>
             ))}
           </select>
