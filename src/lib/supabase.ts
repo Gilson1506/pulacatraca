@@ -90,7 +90,10 @@ export const signInWithEmail = async (email: string, password: string) => {
   });
 
   if (error) throw error;
-  return data;
+  
+  // Depois de fazer login, buscar o perfil do usuário
+  const profile = await getUser();
+  return profile;
 };
 
 export const signInWithGoogle = async () => {
@@ -111,14 +114,14 @@ export const signInWithApple = async () => {
   return data;
 };
 
-export const signUp = async (email: string, password: string, userData: { name: string; role: string }) => {
+export const signUp = async (email: string, password: string, name: string, role: string = 'user') => {
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        name: userData.name,
-        role: userData.role,
+        name: name,
+        role: role,
       },
       emailRedirectTo: `${window.location.origin}/confirmacao`,
     },
@@ -127,25 +130,27 @@ export const signUp = async (email: string, password: string, userData: { name: 
   if (authError) throw authError;
 
   if (authData.user) {
-    const { error: profileError } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .insert([
         {
           id: authData.user.id,
           email: authData.user.email!,
-          name: userData.name,
-          role: userData.role as any,
+          name: name,
+          role: role as any,
           is_verified: false,
           is_active: true,
         },
-      ]);
+      ])
+      .select()
+      .single();
 
     if (profileError) throw profileError;
 
-    // Mantemos o usuário logado para que ele seja redirecionado automaticamente pelo AuthContext
+    return profileData;
   }
 
-  return authData;
+  throw new Error('Falha ao criar usuário');
 };
 
 export const signOut = async () => {

@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const profile = await getUser();
         console.log('Perfil verificado na inicialização:', profile); // DEBUG
-        if (profile && (profile.role === 'user' || profile.role === 'organizer')) {
+        if (profile && (profile.role === 'user' || profile.role === 'organizer' || profile.role === 'admin')) {
           setUser(profile);
         }
       } catch (error) {
@@ -58,14 +58,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Falha na autenticação');
       }
       
-      if (profile.role !== 'user' && profile.role !== 'organizer') {
+      if (profile.role !== 'user' && profile.role !== 'organizer' && profile.role !== 'admin') {
         throw new Error('Função de usuário inválida');
       }
       
       setUser(profile);
       
       // Return the appropriate dashboard route
-      return profile.role === 'organizer' ? '/organizer-dashboard' : '/profile';
+      if (profile.role === 'organizer' || profile.role === 'admin') {
+        return '/organizer-dashboard';
+      }
+      return '/profile';
     } catch (error: any) {
       console.error('Erro no login:', error);
       if (error instanceof AuthError) {
@@ -113,7 +116,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(profile);
       
       // Return the appropriate dashboard route
-      return profile.role === 'organizer' ? '/organizer-dashboard' : '/profile';
+      if (profile.role === 'organizer' || profile.role === 'admin') {
+        return '/organizer-dashboard';
+      }
+      return '/profile';
     } catch (error: any) {
       console.error('Erro no registro:', error);
       if (error instanceof AuthError) {
@@ -144,7 +150,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getDashboardRoute = () => {
     if (!user) return '/';
-    return user.role === 'organizer' ? '/organizer-dashboard' : '/profile';
+    if (user.role === 'organizer' || user.role === 'admin') {
+      return '/organizer-dashboard';
+    }
+    return '/profile';
   };
 
   const value = {
