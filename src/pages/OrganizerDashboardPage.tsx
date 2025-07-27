@@ -63,20 +63,7 @@ interface CheckIn {
   status: 'ok' | 'duplicado' | 'invalido';
 }
 
-interface SupabaseEvent {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  description: string;
-  status: string;
-  category: string;
-  image_url?: string;
-  total_tickets: number;
-  tickets?: { count: number };
-  sales?: { sum: number };
-}
+
 
 // Dashboard Overview Component
 const DashboardOverview = () => {
@@ -267,19 +254,19 @@ const OrganizerEvents = () => {
 
       if (error) throw error;
 
-      const formattedEvents: Event[] = (eventsData as SupabaseEvent[])?.map(event => ({
+      const formattedEvents: Event[] = (eventsData as any[])?.map(event => ({
         id: event.id,
         name: event.title,
-        date: event.date,
-        time: event.time,
+        date: new Date(event.start_date).toISOString().split('T')[0],
+        time: new Date(event.start_date).toTimeString().split(':').slice(0,2).join(':'),
         location: event.location,
         description: event.description,
-        status: event.status as 'ativo' | 'adiado' | 'cancelado',
+        status: event.status === 'approved' ? 'ativo' : event.status === 'cancelled' ? 'cancelado' : 'adiado',
         ticketsSold: event.tickets?.count || 0,
         totalTickets: event.total_tickets || 0,
         revenue: event.sales?.sum || 0,
         category: event.category,
-        image: event.image_url
+        image: event.banner_url
       }));
 
       setEvents(formattedEvents);
@@ -298,31 +285,39 @@ const OrganizerEvents = () => {
           .from('events')
           .update({
             title: eventData.name,
-            date: eventData.date,
-            time: eventData.time,
+            start_date: `${eventData.date}T${eventData.time}:00`,
+            end_date: `${eventData.date}T${eventData.time}:00`,
             location: eventData.location,
             description: eventData.description,
             status: eventData.status,
             category: eventData.category,
-            image_url: eventData.image
+            banner_url: eventData.image,
+            price: 0,
+            available_tickets: eventData.totalTickets,
+            total_tickets: eventData.totalTickets
           })
           .eq('id', eventData.id);
 
         if (error) throw error;
       } else {
         // Criação
+        const { data: userData } = await supabase.auth.getUser();
         const { error } = await supabase
           .from('events')
           .insert({
             title: eventData.name,
-            date: eventData.date,
-            time: eventData.time,
+            start_date: `${eventData.date}T${eventData.time}:00`,
+            end_date: `${eventData.date}T${eventData.time}:00`,
             location: eventData.location,
             description: eventData.description,
             status: eventData.status,
             category: eventData.category,
-            image_url: eventData.image,
-            total_tickets: eventData.totalTickets
+            banner_url: eventData.image,
+            organizer_id: userData.user?.id || '',
+            price: 0,
+            available_tickets: eventData.totalTickets,
+            total_tickets: eventData.totalTickets,
+            tags: []
           });
 
         if (error) throw error;
@@ -509,19 +504,19 @@ const OrganizerSales = () => {
 
       if (error) throw error;
 
-      const formattedEvents: Event[] = (eventsData as SupabaseEvent[])?.map(event => ({
+      const formattedEvents: Event[] = (eventsData as any[])?.map(event => ({
         id: event.id,
         name: event.title,
-        date: event.date,
-        time: event.time,
+        date: new Date(event.start_date).toISOString().split('T')[0],
+        time: new Date(event.start_date).toTimeString().split(':').slice(0,2).join(':'),
         location: event.location,
         description: event.description,
-        status: event.status as 'ativo' | 'adiado' | 'cancelado',
+        status: event.status === 'approved' ? 'ativo' : event.status === 'cancelled' ? 'cancelado' : 'adiado',
         ticketsSold: 0,
         totalTickets: event.total_tickets || 0,
         revenue: 0,
         category: event.category,
-        image: event.image_url
+        image: event.banner_url
       }));
 
       setEvents(formattedEvents);
