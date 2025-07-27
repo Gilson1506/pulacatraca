@@ -179,4 +179,51 @@ export const updatePassword = async (newPassword: string) => {
   });
 
   if (error) throw error;
+};
+
+// Upload functions
+export const uploadEventBanner = async (file: File, eventId?: string): Promise<string> => {
+  try {
+    // Generate unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${eventId || Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `event-banners/${fileName}`;
+
+    // Upload file to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('events')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) throw error;
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('events')
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Erro ao fazer upload da imagem:', error);
+    throw error;
+  }
+};
+
+export const deleteEventBanner = async (imageUrl: string): Promise<void> => {
+  try {
+    // Extract file path from URL
+    const url = new URL(imageUrl);
+    const filePath = url.pathname.split('/').slice(-2).join('/'); // Gets 'event-banners/filename'
+    
+    const { error } = await supabase.storage
+      .from('events')
+      .remove([filePath]);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Erro ao deletar imagem:', error);
+    // Don't throw error for deletion failures, just log them
+  }
 }; 

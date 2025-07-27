@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, Loader2 } from 'lucide-react';
+import { uploadEventBanner, deleteEventBanner } from '../lib/supabase';
 
 interface EventFormModalProps {
   isOpen: boolean;
@@ -60,16 +61,66 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
 
   const [imagePreview, setImagePreview] = useState<string | undefined>(event?.image);
   const [currentSection, setCurrentSection] = useState<'basic' | 'tickets' | 'details' | 'contact'>('basic');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setFormData(prev => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem deve ter no máximo 5MB.');
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecione apenas arquivos de imagem.');
+        return;
+      }
+
+      try {
+        setUploadingImage(true);
+        setSelectedFile(file);
+        
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to Supabase
+        const imageUrl = await uploadEventBanner(file, formData.id);
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        
+      } catch (error) {
+        console.error('Erro ao fazer upload:', error);
+        alert('Erro ao fazer upload da imagem. Tente novamente.');
+        // Reset on error
+        setImagePreview(undefined);
+        setSelectedFile(null);
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    try {
+      if (formData.image && formData.image.startsWith('http')) {
+        // Only delete if it's a URL (uploaded to Supabase)
+        await deleteEventBanner(formData.image);
+      }
+      setImagePreview(undefined);
+      setFormData(prev => ({ ...prev, image: undefined }));
+      setSelectedFile(null);
+    } catch (error) {
+      console.error('Erro ao remover imagem:', error);
+      // Continue with removal even if deletion fails
+      setImagePreview(undefined);
+      setFormData(prev => ({ ...prev, image: undefined }));
+      setSelectedFile(null);
     }
   };
 
@@ -161,9 +212,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Imagem do Evento
+                  Banner do Evento
                 </label>
-                <div className="flex items-center space-x-4">
+                <p className="text-sm text-gray-500 mb-4">
+                  Escolha uma imagem atrativa para seu evento. Recomendamos dimensões 16:9 (ex: 1200x675px).
+                </p>
+                <div className="flex items-start space-x-4">
                   {imagePreview ? (
                     <div className="relative w-32 h-32">
                       <img
@@ -173,26 +227,38 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          setImagePreview(undefined);
-                          setFormData(prev => ({ ...prev, image: undefined }));
-                        }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                        onClick={handleRemoveImage}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        title="Remover imagem"
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </div>
                   ) : (
-                    <label className="w-32 h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-500">
-                      <Upload className="h-8 w-8 text-gray-400" />
-                      <span className="mt-2 text-sm text-gray-500">Upload</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageChange}
-                      />
-                    </label>
+                    <div className="w-full">
+                      <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-500 hover:bg-pink-50 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {uploadingImage ? (
+                          <>
+                            <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                            <span className="mt-2 text-sm text-gray-500">Enviando imagem...</span>
+                            <span className="text-xs text-gray-400">Por favor, aguarde</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <span className="mt-2 text-sm text-gray-600 font-medium">Clique para fazer upload</span>
+                            <span className="text-xs text-gray-400">PNG, JPG, JPEG até 5MB</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageChange}
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
                   )}
                 </div>
               </div>
