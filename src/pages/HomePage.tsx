@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import EventCarousel from '../components/EventCarousel';
 import EventCard from '../components/EventCard';
 import MobileEventSearchBar from '../components/MobileEventSearchBar';
+import { supabase } from '../lib/supabase';
+import { Loader2 } from 'lucide-react';
 
 const HomePage = () => {
-  const events = [
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Eventos estáticos como fallback
+  const fallbackEvents = [
     {
       id: '1',
       title: 'Reveillon Mil Sorrisos',
@@ -41,6 +48,71 @@ const HomePage = () => {
     },
   ];
 
+  useEffect(() => {
+    fetchApprovedEvents();
+  }, []);
+
+  const fetchApprovedEvents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Buscar apenas eventos aprovados do Supabase
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          start_date,
+          end_date,
+          location,
+          banner_url,
+          category,
+          price,
+          description
+        `)
+        .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
+        .order('start_date', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao buscar eventos:', error);
+        setError('Erro ao carregar eventos');
+        setEvents(fallbackEvents); // Usar eventos estáticos como fallback
+        return;
+      }
+
+      // Formatar eventos para o formato esperado pelo EventCard
+      const formattedEvents = eventsData?.map(event => ({
+        id: event.id,
+        title: event.title,
+        date: event.start_date?.split('T')[0] || '',
+        endDate: event.end_date?.split('T')[0],
+        location: event.location || '',
+        image: event.banner_url || 'https://via.placeholder.com/400x300?text=Evento',
+        category: event.category || 'Evento',
+        city: event.location?.split(',')[0] || '',
+        state: event.location?.split(',')[1]?.trim() || '',
+        price: event.price || 0,
+      })) || [];
+
+      // Se não há eventos aprovados, usar fallback
+      if (formattedEvents.length === 0) {
+        console.log('Nenhum evento aprovado encontrado, usando eventos estáticos');
+        setEvents(fallbackEvents);
+      } else {
+        console.log(`${formattedEvents.length} eventos aprovados carregados`);
+        setEvents(formattedEvents);
+      }
+
+    } catch (error) {
+      console.error('Erro inesperado ao buscar eventos:', error);
+      setError('Erro inesperado');
+      setEvents(fallbackEvents);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       {/* Mobile SearchBar sticky abaixo do Header, antes do carrossel */}
@@ -58,6 +130,25 @@ const HomePage = () => {
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-2" style={{ fontWeight: 600, letterSpacing: '-0.5px' }}>Eventos</h2>
           <div className="w-16 h-1 bg-pink-600"></div>
         </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 text-pink-600 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600">Carregando eventos aprovados...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-gray-600">Mostrando eventos em destaque</p>
+          </div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 mb-4">Nenhum evento aprovado encontrado</p>
+            <p className="text-sm text-gray-500">Aguarde novos eventos serem aprovados</p>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {events.map((event) => (
