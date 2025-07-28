@@ -1008,15 +1008,96 @@ const OrganizerSales = () => {
   );
 };
 
-// Bank Accounts Component
-const OrganizerBankAccounts = () => {
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([
-    { id: '1', bank: 'Banco do Brasil', agency: '0001', account: '12345-6', type: 'corrente', isDefault: true },
-    { id: '2', bank: 'Bradesco', agency: '0002', account: '67890-1', type: 'poupanca', isDefault: false },
-    { id: '3', bank: 'Itaú', agency: '0003', account: '11223-4', type: 'corrente', isDefault: false }
-  ]);
+// Página Financeira Unificada (Contas Bancárias + Saques)
+const OrganizerFinancial = () => {
+  const [activeTab, setActiveTab] = useState<'accounts' | 'withdrawals'>('accounts');
+
+  return (
+    <div className="space-y-6">
+      {/* Tabs */}
+      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-md">
+        <button
+          onClick={() => setActiveTab('accounts')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'accounts'
+              ? 'bg-white text-pink-600 shadow-sm'
+              : 'text-gray-600 hover:text-pink-600'
+          }`}
+        >
+          Contas Bancárias
+        </button>
+        <button
+          onClick={() => setActiveTab('withdrawals')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'withdrawals'
+              ? 'bg-white text-pink-600 shadow-sm'
+              : 'text-gray-600 hover:text-pink-600'
+          }`}
+        >
+          Saques
+        </button>
+      </div>
+
+      {/* Content */}
+      {activeTab === 'accounts' && <BankAccountsSection />}
+      {activeTab === 'withdrawals' && <WithdrawalsSection />}
+    </div>
+  );
+};
+
+// Seção de Contas Bancárias
+const BankAccountsSection = () => {
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
+
+  // ✅ BUSCAR DADOS REAIS DO SUPABASE
+  const fetchBankAccounts = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar contas bancárias do organizador
+      const { data: accountsData, error } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .eq('organizer_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar contas bancárias:', error);
+        return;
+      }
+
+      // Formatar dados para a interface
+      const formattedAccounts: BankAccount[] = accountsData?.map(account => ({
+        id: account.id,
+        bank: account.bank_name,
+        agency: account.agency,
+        account: account.account_number,
+        type: account.account_type,
+        isDefault: account.is_default || false
+      })) || [];
+
+      setBankAccounts(formattedAccounts);
+    } catch (error) {
+      console.error('Erro inesperado ao buscar contas bancárias:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar dados ao montar o componente
+  React.useEffect(() => {
+    fetchBankAccounts();
+  }, []);
 
   const handleAddAccount = () => {
     setSelectedAccount({ id: '', bank: '', agency: '', account: '', type: 'corrente', isDefault: false });
@@ -1028,14 +1109,51 @@ const OrganizerBankAccounts = () => {
     setShowAccountModal(true);
   };
 
-  const handleDeleteAccount = (accountId: string) => {
-    setBankAccounts(prev => prev.filter(account => account.id !== accountId));
+  const handleDeleteAccount = async (accountId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .delete()
+        .eq('id', accountId);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setBankAccounts(prev => prev.filter(account => account.id !== accountId));
+    } catch (error) {
+      console.error('Erro ao deletar conta bancária:', error);
+      alert('Erro ao deletar conta bancária');
+    }
   };
 
-  const handleSetDefault = (accountId: string) => {
-    setBankAccounts(prev => prev.map(account => 
-      account.id === accountId ? { ...account, isDefault: true } : { ...account, isDefault: false }
-    ));
+  const handleSetDefault = async (accountId: string) => {
+    try {
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) return;
+
+      // Primeiro, remover padrão de todas as contas
+      await supabase
+        .from('bank_accounts')
+        .update({ is_default: false })
+        .eq('organizer_id', user.id);
+
+      // Depois, definir a conta selecionada como padrão
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update({ is_default: true })
+        .eq('id', accountId);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setBankAccounts(prev => prev.map(account => 
+        account.id === accountId ? { ...account, isDefault: true } : { ...account, isDefault: false }
+      ));
+    } catch (error) {
+      console.error('Erro ao definir conta padrão:', error);
+      alert('Erro ao definir conta padrão');
+    }
   };
 
   return (
@@ -1053,20 +1171,39 @@ const OrganizerBankAccounts = () => {
 
       {/* Bank Accounts Display */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banco</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agência</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Padrão</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {bankAccounts.map(account => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+            <span className="ml-2 text-gray-600">Carregando contas bancárias...</span>
+          </div>
+        ) : bankAccounts.length === 0 ? (
+          <div className="text-center py-12">
+            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma conta bancária</h3>
+            <p className="text-gray-500 mb-4">Adicione uma conta bancária para receber seus pagamentos</p>
+            <button 
+              onClick={handleAddAccount}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Adicionar primeira conta
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banco</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agência</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Padrão</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {bankAccounts.map(account => (
                 <tr key={account.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
@@ -1109,10 +1246,11 @@ const OrganizerBankAccounts = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Bank Account Modal */}
@@ -1203,14 +1341,62 @@ const OrganizerBankAccounts = () => {
 };
 
 // Withdrawals Component
-const OrganizerWithdrawals = () => {
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([
-    { id: '1', amount: 1500.00, requestDate: '2025-07-25', processedDate: '2025-07-26', status: 'concluido', bankAccount: '1' },
-    { id: '2', amount: 200.00, requestDate: '2025-07-27', processedDate: '2025-07-28', status: 'processando', bankAccount: '2' },
-    { id: '3', amount: 500.00, requestDate: '2025-07-29', status: 'pendente', bankAccount: '3' }
-  ]);
+// Seção de Saques
+const WithdrawalsSection = () => {
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
+
+  // ✅ BUSCAR DADOS REAIS DO SUPABASE
+  const fetchWithdrawals = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar saques do organizador
+      const { data: withdrawalsData, error } = await supabase
+        .from('withdrawals')
+        .select(`
+          *,
+          bank_account:bank_accounts(bank_name, account_number)
+        `)
+        .eq('organizer_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar saques:', error);
+        return;
+      }
+
+      // Formatar dados para a interface
+      const formattedWithdrawals: Withdrawal[] = withdrawalsData?.map(withdrawal => ({
+        id: withdrawal.id,
+        amount: withdrawal.amount,
+        requestDate: new Date(withdrawal.created_at).toLocaleDateString('pt-BR'),
+        processedDate: withdrawal.processed_at ? new Date(withdrawal.processed_at).toLocaleDateString('pt-BR') : undefined,
+        status: withdrawal.status,
+        bankAccount: withdrawal.bank_account?.bank_name + ' - ' + withdrawal.bank_account?.account_number || 'N/A'
+      })) || [];
+
+      setWithdrawals(formattedWithdrawals);
+    } catch (error) {
+      console.error('Erro inesperado ao buscar saques:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar dados ao montar o componente
+  React.useEffect(() => {
+    fetchWithdrawals();
+  }, []);
 
   const handleAddWithdrawal = () => {
     setSelectedWithdrawal({ id: '', amount: 0, requestDate: '', status: 'pendente', bankAccount: '' });
@@ -1640,15 +1826,62 @@ const OrganizerCheckIns = () => {
 // Configurações do Organizador
 const OrganizerSettings = () => {
   const [form, setForm] = useState({
-    name: 'Organizador Exemplo',
-    email: 'organizador@email.com',
-    phone: '(62) 99999-9999',
+    name: '',
+    email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     notifications: true
   });
+  const [isLoading, setIsLoading] = useState(true);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+
+  // ✅ BUSCAR DADOS REAIS DO ORGANIZADOR
+  const fetchOrganizerData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar dados do perfil do organizador
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar dados do organizador:', error);
+        return;
+      }
+
+      // Preencher formulário com dados reais
+      setForm(prev => ({
+        ...prev,
+        name: profileData.name || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        // Não preencher senhas por segurança
+        password: '',
+        confirmPassword: ''
+      }));
+    } catch (error) {
+      console.error('Erro inesperado ao buscar dados do organizador:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar dados ao montar o componente
+  React.useEffect(() => {
+    fetchOrganizerData();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -1658,16 +1891,57 @@ const OrganizerSettings = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccess('');
     setError('');
+    
     if (form.password && form.password !== form.confirmPassword) {
       setError('As senhas não coincidem.');
       return;
     }
-    setSuccess('Configurações salvas com sucesso!');
-    setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
+
+    try {
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        setError('Erro ao obter dados do usuário');
+        return;
+      }
+
+      // Atualizar dados do perfil
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: form.name,
+          phone: form.phone
+          // Email não é atualizado aqui por questões de segurança
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        setError('Erro ao salvar configurações: ' + profileError.message);
+        return;
+      }
+
+      // Se há nova senha, atualizar no Auth
+      if (form.password) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: form.password
+        });
+
+        if (passwordError) {
+          setError('Erro ao atualizar senha: ' + passwordError.message);
+          return;
+        }
+      }
+
+      setSuccess('Configurações salvas com sucesso!');
+      setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      setError('Erro inesperado ao salvar configurações');
+    }
   };
 
   return (
@@ -1675,7 +1949,14 @@ const OrganizerSettings = () => {
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Configurações da Conta</h2>
       {success && <div className="mb-4 p-3 bg-green-50 text-green-700 rounded">{success}</div>}
       {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">{error}</div>}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+          <span className="ml-2 text-gray-600">Carregando dados...</span>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
           <input type="text" name="name" value={form.name} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
@@ -1704,6 +1985,7 @@ const OrganizerSettings = () => {
         </div>
         <button type="submit" className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors">Salvar Alterações</button>
       </form>
+      )}
     </div>
   );
 };
@@ -1740,7 +2022,6 @@ const OrganizerDashboardPage = () => {
             <button onClick={() => handleSetActive('events')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
             <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
             <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
-            <button onClick={() => handleSetActive('withdrawals')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='withdrawals'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Saques</button>
             <button onClick={() => handleSetActive('checkin')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='checkin'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Check-in</button>
             <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
     </nav>
@@ -1750,8 +2031,7 @@ const OrganizerDashboardPage = () => {
         {active === 'dashboard' && <DashboardOverview />}
         {active === 'events' && <OrganizerEvents />}
         {active === 'sales' && <OrganizerSales />}
-        {active === 'finance' && <OrganizerBankAccounts />}
-        {active === 'withdrawals' && <OrganizerWithdrawals />}
+        {active === 'finance' && <OrganizerFinancial />}
         {active === 'checkin' && <OrganizerCheckIns />}
         {active === 'settings' && <OrganizerSettings />}
       </main>
