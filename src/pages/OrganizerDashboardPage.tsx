@@ -534,10 +534,7 @@ const OrganizerSales = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   
-  // 🎫 Estados para atribuição de usuário ao ingresso
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<Sale | null>(null);
-  const [userEmail, setUserEmail] = useState('');
+  // Estados removidos - agora o comprador define o usuário
 
   useEffect(() => {
     fetchSales();
@@ -725,108 +722,34 @@ const OrganizerSales = () => {
     [filteredSales]
   );
 
-  const updateSaleStatus = async (saleId: string, newStatus: 'confirmado' | 'cancelado') => {
+  const updateTicketStatus = async (ticketId: string, newStatus: 'confirmado' | 'cancelado') => {
     try {
-      const dbStatus = newStatus === 'confirmado' ? 'completed' : newStatus === 'cancelado' ? 'failed' : 'pending';
+      const dbStatus = newStatus === 'confirmado' ? 'active' : 'cancelled';
+      
+      // Atualizar status do ingresso
       const { error } = await supabase
-        .from('transactions')
+        .from('tickets')
         .update({ status: dbStatus })
-        .eq('id', saleId);
+        .eq('id', ticketId);
 
       if (error) throw error;
 
+      // Atualizar estado local
       setSales(prev => prev.map(sale => 
-        sale.id === saleId ? { ...sale, status: newStatus } : sale
-      ));
-    } catch (error) {
-      console.error('Erro ao atualizar status da venda:', error);
-    }
-  };
-
-  // 🎫 Função para abrir modal de atribuição de usuário
-  const handleAssignUser = (ticket: Sale) => {
-    setSelectedTicket(ticket);
-    setUserEmail('');
-    setShowUserModal(true);
-  };
-
-  // 🎫 Função para confirmar ingresso e atribuir usuário
-  const handleConfirmTicket = async () => {
-    if (!selectedTicket || !userEmail.trim()) {
-      alert('Por favor, insira um email válido para o usuário.');
-      return;
-    }
-
-    try {
-      console.log('🎫 Confirmando ingresso e atribuindo usuário...');
-
-      // 1. Buscar o usuário pelo email
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', userEmail.trim())
-        .single();
-
-      if (userError) {
-        console.error('❌ Usuário não encontrado:', userError);
-        alert('Usuário não encontrado. Verifique se o email está correto e se o usuário possui cadastro na plataforma.');
-        return;
-      }
-
-      // 2. Atualizar o ingresso com o usuário e status ativo
-      const { error: ticketError } = await supabase
-        .from('tickets')
-        .update({ 
-          user_id: userData.id,
-          status: 'active'
-        })
-        .eq('id', selectedTicket.id);
-
-      if (ticketError) {
-        console.error('❌ Erro ao atualizar ingresso:', ticketError);
-        alert('Erro ao confirmar ingresso. Tente novamente.');
-        return;
-      }
-
-      // 3. Atualizar a transação relacionada
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .update({ status: 'completed' })
-        .eq('id', selectedTicket.id);
-
-      if (transactionError) {
-        console.warn('⚠️ Aviso: Ingresso confirmado mas transação não atualizada:', transactionError);
-      }
-
-      console.log('✅ Ingresso confirmado com sucesso!');
-
-      // 4. Atualizar estado local
-      setSales(prev => prev.map(sale => 
-        sale.id === selectedTicket.id 
-          ? { 
-              ...sale, 
-              status: 'confirmado',
-              userName: userEmail, // Temporário até recarregar dados
-              userEmail: userEmail
-            } 
-          : sale
+        sale.id === ticketId ? { ...sale, status: newStatus } : sale
       ));
 
-      // 5. Fechar modal e recarregar dados
-      setShowUserModal(false);
-      setSelectedTicket(null);
-      setUserEmail('');
-      
-      // Recarregar vendas para obter dados atualizados
+      // Recarregar dados
       await fetchSales();
-
-      alert(`✅ Ingresso confirmado com sucesso!\nUsuário: ${userEmail}\nCódigo: ${selectedTicket.ticketCode}`);
-
+      
+      console.log(`✅ Ingresso ${newStatus} com sucesso!`);
     } catch (error) {
-      console.error('❌ Erro inesperado ao confirmar ingresso:', error);
-      alert('Erro inesperado ao confirmar ingresso. Tente novamente.');
+      console.error('Erro ao atualizar status do ingresso:', error);
+      alert('Erro ao atualizar status do ingresso');
     }
   };
+
+  // Funções de atribuição removidas - agora o comprador define o usuário
 
   // Função para exportar relatório de vendas em PDF
   const handleExportSalesReport = async () => {
@@ -1167,15 +1090,15 @@ const OrganizerSales = () => {
                       {sale.status === 'pendente' && (
                         <>
                           <button 
-                            onClick={() => handleAssignUser(sale)}
+                            onClick={() => updateTicketStatus(sale.id, 'confirmado')}
                             className="text-green-600 hover:text-green-700 flex items-center gap-1 px-2 py-1 text-xs bg-green-50 rounded"
-                            title="Atribuir usuário e confirmar"
+                            title="Confirmar ingresso (comprador poderá definir usuário)"
                           >
                             <CheckCircle className="h-4 w-4" />
                             Confirmar
                           </button>
                           <button 
-                            onClick={() => updateSaleStatus(sale.id, 'cancelado')}
+                            onClick={() => updateTicketStatus(sale.id, 'cancelado')}
                             className="text-red-600 hover:text-red-700"
                             title="Cancelar ingresso"
                           >
@@ -1202,73 +1125,7 @@ const OrganizerSales = () => {
         </div>
       </div>
 
-      {/* 🎫 Modal para Atribuir Usuário ao Ingresso */}
-      {showUserModal && selectedTicket && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                🎫 Confirmar Ingresso
-              </h3>
-              <button
-                onClick={() => setShowUserModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XCircle className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Informações do Ingresso */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">Detalhes do Ingresso:</h4>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p><strong>Evento:</strong> {selectedTicket.eventName}</p>
-                  <p><strong>Comprador:</strong> {selectedTicket.buyerName}</p>
-                  <p><strong>Código:</strong> <span className="font-mono bg-gray-200 px-1 rounded">{selectedTicket.ticketCode}</span></p>
-                  <p><strong>Valor:</strong> R$ {selectedTicket.amount.toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* Campo de Email do Usuário */}
-              <div>
-                <label htmlFor="userEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email do usuário que vai usar o ingresso:
-                </label>
-                <input
-                  id="userEmail"
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="exemplo@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  O usuário deve estar cadastrado na plataforma
-                </p>
-              </div>
-
-              {/* Botões */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowUserModal(false)}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleConfirmTicket}
-                  disabled={!userEmail.trim()}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  ✅ Confirmar Ingresso
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal removido - agora o comprador define o usuário */}
     </div>
   );
 };

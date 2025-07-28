@@ -70,14 +70,14 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Buscar transações do usuário
+      // Buscar TODOS os ingressos do usuário (incluindo pendentes)
       const { data: ordersData, error } = await supabase
-        .from('transactions')
+        .from('tickets')
         .select(`
           *,
-          event:events!inner(title, description, date, location, banner_url)
+          event:events!inner(title, description, date, location, banner_url, price)
         `)
-        .eq('buyer_id', user.id)
+        .eq('buyer_id', user.id) // ✅ TODOS OS INGRESSOS QUE O USUÁRIO COMPROU
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -98,21 +98,19 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-700';
-      case 'confirmed': return 'bg-green-100 text-green-700';
-      case 'completed': return 'bg-green-100 text-green-700';
+      case 'active': return 'bg-green-100 text-green-700';
+      case 'used': return 'bg-blue-100 text-blue-700';
       case 'cancelled': return 'bg-red-100 text-red-700';
-      case 'failed': return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending': return 'Pendente';
-      case 'confirmed': return 'Confirmado';
-      case 'completed': return 'Concluído';
+      case 'pending': return 'Aguardando Confirmação';
+      case 'active': return 'Confirmado';
+      case 'used': return 'Utilizado';
       case 'cancelled': return 'Cancelado';
-      case 'failed': return 'Falhou';
       default: return 'Desconhecido';
     }
   };
@@ -155,7 +153,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
                 <div className="font-bold text-lg text-gray-800 leading-tight">{order.event.title}</div>
                 <div className="text-sm text-pink-700 font-semibold leading-tight">{order.event.location}</div>
                 <div className="text-xs text-gray-500 leading-tight">
-                  {order.payment_method ? `Método: ${order.payment_method}` : 'Método não informado'} • R$ {(order.amount / 100).toFixed(2)}
+                  Código: {order.code} • R$ {(order.event.price || 0).toFixed(2)}
                 </div>
               </div>
               {/* Status */}
@@ -199,14 +197,15 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Buscar ingressos do usuário (comprador ou usuário definido)
+      // Buscar ingressos onde o usuário é o COMPRADOR e estão confirmados
       const { data: ticketsData, error } = await supabase
         .from('tickets')
         .select(`
           *,
           event:events!inner(title, description, date, location, banner_url, price)
         `)
-        .or(`buyer_id.eq.${user.id},user_id.eq.${user.id}`)
+        .eq('buyer_id', user.id) // ✅ APENAS INGRESSOS QUE O USUÁRIO COMPROU
+        .in('status', ['active', 'used']) // ✅ APENAS CONFIRMADOS (não pendentes)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -288,8 +287,14 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                   <div className="text-sm text-pink-700 font-semibold leading-tight">{ticket.event.location}</div>
                   <div className="text-xs text-gray-500 leading-tight">Código: {ticket.code}</div>
                 </div>
-                {/* Status (substitui o botão VER INGRESSOS) */}
-                <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
+                {/* Botão VER INGRESSO + Status */}
+                <div className="flex flex-col items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3 gap-2">
+                  <Link 
+                    to={`/ingresso/${ticket.id}`} 
+                    className="border border-pink-500 text-pink-600 font-bold rounded-lg px-6 py-2 hover:bg-pink-50 transition-colors text-xs shadow-sm w-full sm:w-auto text-center"
+                  >
+                    VER INGRESSO
+                  </Link>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
                     {getStatusText(ticket.status)}
                   </span>
@@ -334,8 +339,14 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                   <div className="text-sm text-pink-700 font-semibold leading-tight">{ticket.event.location}</div>
                   <div className="text-xs text-gray-500 leading-tight">Código: {ticket.code}</div>
                 </div>
-                {/* Status */}
-                <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
+                {/* Botão VER INGRESSO + Status */}
+                <div className="flex flex-col items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3 gap-2">
+                  <Link 
+                    to={`/ingresso/${ticket.id}`} 
+                    className="border border-gray-400 text-gray-600 font-bold rounded-lg px-6 py-2 hover:bg-gray-50 transition-colors text-xs shadow-sm w-full sm:w-auto text-center"
+                  >
+                    VER INGRESSO
+                  </Link>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
                     {getStatusText(ticket.status)}
                   </span>
