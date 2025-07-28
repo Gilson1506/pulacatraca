@@ -1068,8 +1068,7 @@ const BankAccountsSection = () => {
       const { data: accountsData, error } = await supabase
         .from('bank_accounts')
         .select('*')
-        .eq('organizer_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('organizer_id', user.id);
 
       if (error) {
         console.error('Erro ao buscar contas bancárias:', error);
@@ -1107,6 +1106,57 @@ const BankAccountsSection = () => {
   const handleEditAccount = (account: BankAccount) => {
     setSelectedAccount(account);
     setShowAccountModal(true);
+  };
+
+  const handleSaveAccount = async () => {
+    if (!selectedAccount) return;
+
+    try {
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        alert('Erro ao obter dados do usuário');
+        return;
+      }
+
+      if (selectedAccount.id) {
+        // Editar conta existente
+        const { error } = await supabase
+          .from('bank_accounts')
+          .update({
+            bank_name: selectedAccount.bank,
+            agency: selectedAccount.agency,
+            account_number: selectedAccount.account,
+            account_type: selectedAccount.type,
+            is_default: selectedAccount.isDefault
+          })
+          .eq('id', selectedAccount.id);
+
+        if (error) throw error;
+      } else {
+        // Criar nova conta
+        const { error } = await supabase
+          .from('bank_accounts')
+          .insert({
+            organizer_id: user.id,
+            bank_name: selectedAccount.bank,
+            agency: selectedAccount.agency,
+            account_number: selectedAccount.account,
+            account_type: selectedAccount.type,
+            is_default: selectedAccount.isDefault
+          });
+
+        if (error) throw error;
+      }
+
+      // Recarregar dados e fechar modal
+      await fetchBankAccounts();
+      setShowAccountModal(false);
+      setSelectedAccount(null);
+    } catch (error) {
+      console.error('Erro ao salvar conta bancária:', error);
+      alert('Erro ao salvar conta bancária');
+    }
   };
 
   const handleDeleteAccount = async (accountId: string) => {
@@ -1309,17 +1359,7 @@ const BankAccountsSection = () => {
                 </div>
                 <div className="flex justify-end gap-2">
                   <button 
-                    onClick={() => {
-                      if (selectedAccount) {
-                        setBankAccounts(prev => prev.map(account => 
-                          account.id === selectedAccount.id ? selectedAccount : account
-                        ));
-                      } else {
-                        const newId = Math.max(...bankAccounts.map(acc => parseInt(acc.id))) + 1;
-                        setBankAccounts(prev => [...prev, { ...selectedAccount!, id: newId.toString() }]);
-                      }
-                      setShowAccountModal(false);
-                    }}
+                    onClick={handleSaveAccount}
                     className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
                   >
                     Salvar Conta
@@ -1367,8 +1407,7 @@ const WithdrawalsSection = () => {
           *,
           bank_account:bank_accounts(bank_name, account_number)
         `)
-        .eq('organizer_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('organizer_id', user.id);
 
       if (error) {
         console.error('Erro ao buscar saques:', error);
@@ -1379,7 +1418,7 @@ const WithdrawalsSection = () => {
       const formattedWithdrawals: Withdrawal[] = withdrawalsData?.map(withdrawal => ({
         id: withdrawal.id,
         amount: withdrawal.amount,
-        requestDate: new Date(withdrawal.created_at).toLocaleDateString('pt-BR'),
+        requestDate: 'Não informado', // Temporário até termos a coluna created_at
         processedDate: withdrawal.processed_at ? new Date(withdrawal.processed_at).toLocaleDateString('pt-BR') : undefined,
         status: withdrawal.status,
         bankAccount: withdrawal.bank_account?.bank_name + ' - ' + withdrawal.bank_account?.account_number || 'N/A'
