@@ -19,6 +19,7 @@ interface Event {
   totalTickets: number;
   revenue: number;
   category: string;
+  price: number; // ✅ ADICIONADO CAMPO DE PREÇO
   image?: string;
 }
 
@@ -289,6 +290,7 @@ const OrganizerEvents = () => {
         totalTickets: event.total_tickets || 0,
         revenue: event.transactions?.sum || 0,
         category: event.category,
+        price: event.price || 0, // ✅ INCLUIR PREÇO DO EVENTO
         image: event.banner_url
       }));
 
@@ -315,7 +317,7 @@ const OrganizerEvents = () => {
             status: eventData.status,
             category: eventData.category,
             banner_url: eventData.image,
-            price: 0,
+            price: eventData.price || 0, // ✅ SALVAR PREÇO DO EVENTO
             available_tickets: eventData.totalTickets,
             total_tickets: eventData.totalTickets
           })
@@ -337,7 +339,7 @@ const OrganizerEvents = () => {
             category: eventData.category,
             banner_url: eventData.image,
             organizer_id: userData.user?.id || '',
-            price: 0,
+            price: eventData.price || 0, // ✅ SALVAR PREÇO DO EVENTO
             available_tickets: eventData.totalTickets,
             total_tickets: eventData.totalTickets,
             tags: []
@@ -464,14 +466,24 @@ const OrganizerEvents = () => {
                 <span className="line-clamp-1">{event.location}</span>
               </div>
               
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm">
-                  <span className="text-gray-600">Vendidos: </span>
-                  <span className="font-semibold">{event.ticketsSold}/{event.totalTickets}</span>
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="text-gray-600">Vendidos: </span>
+                    <span className="font-semibold">{event.ticketsSold}/{event.totalTickets}</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-gray-600">Preço: </span>
+                    <span className="font-semibold text-blue-600">
+                      {event.price === 0 ? 'Gratuito' : `R$ ${event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">Receita: </span>
-                  <span className="font-semibold text-green-600">R$ {event.revenue.toLocaleString()}</span>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="text-gray-600">Receita: </span>
+                    <span className="font-semibold text-green-600">R$ {event.revenue.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
               
@@ -552,6 +564,7 @@ const OrganizerSales = () => {
         totalTickets: event.total_tickets || 0,
         revenue: 0,
         category: event.category,
+        price: event.price || 0, // ✅ INCLUIR PREÇO DO EVENTO
         image: event.banner_url
       }));
 

@@ -21,6 +21,7 @@ interface Event {
   totalTickets: number;
   revenue?: number;
   category: string;
+  price: number; // ✅ ADICIONADO CAMPO DE PREÇO
   image?: string;
   dateLabel?: string;
   importantNotes: string[];
@@ -46,6 +47,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
     status: 'ativo',
     totalTickets: 0,
     category: '',
+    price: 0, // ✅ VALOR INICIAL DO PREÇO
     importantNotes: [''],
     sections: [{
       name: '',
@@ -374,6 +376,24 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                   required
                   min="1"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preço do Ingresso (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.price}
+                  onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  placeholder="0,00"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Digite 0 para eventos gratuitos
+                </p>
               </div>
 
               <div>
