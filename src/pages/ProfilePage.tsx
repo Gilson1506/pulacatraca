@@ -70,15 +70,52 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Buscar TODOS os ingressos do usuário (incluindo pendentes)
-      const { data: ordersData, error } = await supabase
+      // Primeiro tentar com buyer_id
+      let ordersData = null;
+      let error = null;
+
+      console.log('🔄 Tentando buscar com buyer_id...');
+      const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select(`
           *,
           event:events!inner(title, description, start_date, location, banner_url, price)
         `)
-        .eq('buyer_id', user.id) // ✅ TODOS OS INGRESSOS QUE O USUÁRIO COMPROU
+        .eq('buyer_id', user.id)
         .order('created_at', { ascending: false });
+
+      if (ticketsError) {
+        console.log('⚠️ buyer_id não existe, tentando com user_id...');
+        // Fallback: buscar por user_id se buyer_id não existir
+        const { data: userTicketsData, error: userTicketsError } = await supabase
+          .from('tickets')
+          .select(`
+            *,
+            event:events!inner(title, description, start_date, location, banner_url, price)
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (userTicketsError) {
+          console.log('⚠️ Tentando buscar de transactions...');
+          // Fallback final: buscar de transactions
+          const { data: transactionsData, error: transactionsError } = await supabase
+            .from('transactions')
+            .select(`
+              *,
+              event:events!inner(title, description, start_date, location, banner_url, price)
+            `)
+            .eq('buyer_id', user.id)
+            .order('created_at', { ascending: false });
+
+          ordersData = transactionsData;
+          error = transactionsError;
+        } else {
+          ordersData = userTicketsData;
+        }
+      } else {
+        ordersData = ticketsData;
+      }
 
       if (error) {
         console.error('❌ Erro ao buscar pedidos:', error);
@@ -197,16 +234,39 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Buscar ingressos onde o usuário é o COMPRADOR e estão confirmados
-      const { data: ticketsData, error } = await supabase
+      // Primeiro tentar com buyer_id
+      let ticketsData = null;
+      let error = null;
+
+      console.log('🔄 Tentando buscar ingressos com buyer_id...');
+      const { data: buyerTicketsData, error: buyerTicketsError } = await supabase
         .from('tickets')
         .select(`
           *,
           event:events!inner(title, description, start_date, location, banner_url, price)
         `)
-        .eq('buyer_id', user.id) // ✅ APENAS INGRESSOS QUE O USUÁRIO COMPROU
-        .in('status', ['active', 'used']) // ✅ APENAS CONFIRMADOS (não pendentes)
+        .eq('buyer_id', user.id)
+        .in('status', ['active', 'used'])
         .order('created_at', { ascending: false });
+
+      if (buyerTicketsError) {
+        console.log('⚠️ buyer_id não existe, tentando com user_id...');
+        // Fallback: buscar por user_id se buyer_id não existir
+        const { data: userTicketsData, error: userTicketsError } = await supabase
+          .from('tickets')
+          .select(`
+            *,
+            event:events!inner(title, description, start_date, location, banner_url, price)
+          `)
+          .eq('user_id', user.id)
+          .in('status', ['active', 'used'])
+          .order('created_at', { ascending: false });
+
+        ticketsData = userTicketsData;
+        error = userTicketsError;
+      } else {
+        ticketsData = buyerTicketsData;
+      }
 
       if (error) {
         console.error('❌ Erro ao buscar ingressos:', error);

@@ -31,15 +31,38 @@ const TicketPage = () => {
       console.log('🎫 Buscando dados do ingresso:', ticketId);
 
       // Buscar ingresso com dados do evento
-      const { data: ticketData, error } = await supabase
+      let ticketData = null;
+      let error = null;
+
+      console.log('🔄 Tentando buscar ingresso com buyer_id...');
+      const { data: buyerTicketData, error: buyerTicketError } = await supabase
         .from('tickets')
         .select(`
           *,
           event:events!inner(title, description, start_date, location, banner_url, price)
         `)
         .eq('id', ticketId)
-        .eq('buyer_id', currentUser.id) // ✅ APENAS SE O USUÁRIO É O COMPRADOR
+        .eq('buyer_id', currentUser.id)
         .single();
+
+      if (buyerTicketError) {
+        console.log('⚠️ buyer_id não existe, tentando com user_id...');
+        // Fallback: buscar por user_id se buyer_id não existir
+        const { data: userTicketData, error: userTicketError } = await supabase
+          .from('tickets')
+          .select(`
+            *,
+            event:events!inner(title, description, start_date, location, banner_url, price)
+          `)
+          .eq('id', ticketId)
+          .eq('user_id', currentUser.id)
+          .single();
+
+        ticketData = userTicketData;
+        error = userTicketError;
+      } else {
+        ticketData = buyerTicketData;
+      }
 
       if (error) {
         console.error('❌ Erro ao buscar ingresso:', error);
