@@ -132,7 +132,7 @@ export const signUp = async (email: string, password: string, name: string, role
   if (authData.user) {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .insert([
+      .upsert([
         {
           id: authData.user.id,
           email: authData.user.email!,
@@ -141,11 +141,15 @@ export const signUp = async (email: string, password: string, name: string, role
           is_verified: false,
           is_active: true,
         },
-      ])
+      ], { onConflict: 'id' })
       .select()
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      const existingProfile = await getUser();
+      if (existingProfile) return existingProfile;
+      throw profileError;
+    }
 
     return profileData;
   }
@@ -191,7 +195,7 @@ export const uploadEventBanner = async (file: File, eventId?: string): Promise<s
 
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('events')
+      .from('event_banners')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -201,7 +205,7 @@ export const uploadEventBanner = async (file: File, eventId?: string): Promise<s
 
     // Get public URL
     const { data: urlData } = supabase.storage
-      .from('events')
+      .from('event_banners')
       .getPublicUrl(filePath);
 
     return urlData.publicUrl;
@@ -218,7 +222,7 @@ export const deleteEventBanner = async (imageUrl: string): Promise<void> => {
     const filePath = url.pathname.split('/').slice(-2).join('/'); // Gets 'event-banners/filename'
     
     const { error } = await supabase.storage
-      .from('events')
+      .from('event_banners')
       .remove([filePath]);
 
     if (error) throw error;
