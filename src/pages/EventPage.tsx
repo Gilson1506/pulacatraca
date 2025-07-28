@@ -109,26 +109,23 @@ const EventPage = () => {
       const { data: eventData, error } = await supabase
         .from('events')
         .select(`
-          *,
-          tickets:event_tickets(
-            id,
-            name,
-            price,
-            available_quantity
-          ),
-          sections:event_sections(
-            name,
-            details,
-            note
-          ),
-          attractions:event_attractions(name),
-          important_notes:event_important_notes(content),
-          contact_info:event_contact_info(
-            phone,
-            hours
-          )
+          id,
+          title,
+          description,
+          start_date,
+          end_date,
+          location,
+          banner_url,
+          category,
+          price,
+          status,
+          organizer_id,
+          available_tickets,
+          total_tickets,
+          tags
         `)
         .eq('id', eventId)
+        .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
 
       if (error) {
@@ -144,34 +141,50 @@ const EventPage = () => {
 
       console.log('EventPage - Dados do evento encontrados:', eventData); // Log para debug
 
-      const supabaseEvent = eventData as unknown as SupabaseEvent;
+      console.log('EventPage - Dados brutos do evento:', eventData); // Log para debug
 
       const formattedEvent: Event = {
-        id: supabaseEvent.id,
-        title: supabaseEvent.title,
-        description: supabaseEvent.description,
-        date: supabaseEvent.date,
-        time: supabaseEvent.time,
-        location: supabaseEvent.location,
-        address: supabaseEvent.address,
-        dateLabel: supabaseEvent.date_label,
-        image: supabaseEvent.image_url,
-        tickets: supabaseEvent.tickets.map(ticket => ({
-          id: ticket.id,
-          name: ticket.name,
-          price: ticket.price,
-          available: ticket.available_quantity
-        })),
-        sections: supabaseEvent.sections.map(section => ({
-          name: section.name,
-          details: section.details,
-          note: section.note
-        })),
-        attractions: supabaseEvent.attractions.map(attraction => attraction.name),
-        importantNotes: supabaseEvent.important_notes.map(note => note.content),
+        id: eventData.id,
+        title: eventData.title,
+        description: eventData.description || 'Descrição não disponível',
+        date: eventData.start_date?.split('T')[0] || '',
+        time: eventData.start_date?.split('T')[1]?.substring(0, 5) || '',
+        location: eventData.location || 'Local não informado',
+        address: eventData.location || 'Endereço não informado',
+        dateLabel: new Date(eventData.start_date).toLocaleDateString('pt-BR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        }),
+        image: eventData.banner_url || 'https://via.placeholder.com/800x400?text=Evento',
+        tickets: [
+          {
+            id: '1',
+            name: 'Ingresso Geral',
+            price: eventData.price || 0,
+            available: eventData.available_tickets || 0
+          }
+        ],
+        sections: [
+          {
+            name: 'Informações Gerais',
+            details: [
+              `Categoria: ${eventData.category || 'Não informado'}`,
+              `Ingressos disponíveis: ${eventData.available_tickets || 0}`,
+              `Total de ingressos: ${eventData.total_tickets || 0}`
+            ]
+          }
+        ],
+        attractions: eventData.tags || [],
+        importantNotes: [
+          'Chegue com antecedência',
+          'Documento obrigatório',
+          'Proibido entrada de bebidas',
+          'Evento sujeito a alterações'
+        ],
         contactInfo: {
-          phone: supabaseEvent.contact_info[0]?.phone || '',
-          hours: supabaseEvent.contact_info[0]?.hours || []
+          phone: '(11) 99999-9999',
+          hours: ['Segunda a Sexta: 9h às 18h', 'Sábados: 9h às 14h']
         }
       };
 
