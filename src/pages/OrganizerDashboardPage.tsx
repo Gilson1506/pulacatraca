@@ -1052,17 +1052,87 @@ const BankAccountsSection = () => {
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
 
+  // ✅ TESTE DE CONECTIVIDADE COM SUPABASE
+  const testSupabaseConnection = async () => {
+    try {
+      console.log('🔄 Testando conectividade com Supabase...');
+      alert('🔄 Testando conectividade...');
+      
+      // Teste de autenticação
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('❌ Erro de autenticação:', authError);
+        alert('❌ Erro de autenticação: ' + authError.message);
+        return false;
+      }
+
+      if (!user) {
+        alert('❌ Usuário não autenticado');
+        return false;
+      }
+
+      // Teste simples de conectividade com profiles
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('count')
+        .limit(1);
+
+      if (error) {
+        console.error('❌ Erro de conectividade:', error);
+        alert('❌ Erro de conectividade: ' + error.message);
+        return false;
+      }
+
+      // Teste específico da tabela bank_accounts
+      const { data: bankTest, error: bankError } = await supabase
+        .from('bank_accounts')
+        .select('count')
+        .limit(1);
+
+      if (bankError) {
+        console.error('❌ Erro na tabela bank_accounts:', bankError);
+        if (bankError.code === '42P01') {
+          alert('❌ Tabela bank_accounts não existe! Execute o script SQL primeiro.');
+        } else {
+          alert('❌ Erro na tabela bank_accounts: ' + bankError.message);
+        }
+        return false;
+      }
+
+      console.log('✅ Conectividade OK');
+      alert('✅ Conectividade OK! Usuário: ' + user.id.substring(0, 8) + '...');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro de rede:', error);
+      alert('❌ Erro de rede: ' + (error.message || 'Erro desconhecido'));
+      return false;
+    }
+  };
+
   // ✅ BUSCAR DADOS REAIS DO SUPABASE
   const fetchBankAccounts = async () => {
     try {
       setIsLoading(true);
       
+      // Testar conectividade primeiro
+      const isConnected = await testSupabaseConnection();
+      if (!isConnected) {
+        console.error('❌ Sem conectividade com Supabase');
+        alert('Erro de conectividade. Verifique sua conexão e tente novamente.');
+        return;
+      }
+      
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        console.error('Erro ao obter usuário:', userError);
+        console.error('❌ Erro ao obter usuário:', userError);
         return;
       }
+
+      console.log('✅ Usuário obtido para busca:', user.id);
+
+      // Verificar se a tabela bank_accounts existe
+      console.log('🔄 Buscando contas bancárias...');
 
       // Buscar contas bancárias do organizador
       const { data: accountsData, error } = await supabase
@@ -1071,9 +1141,17 @@ const BankAccountsSection = () => {
         .eq('organizer_id', user.id);
 
       if (error) {
-        console.error('Erro ao buscar contas bancárias:', error);
+        console.error('❌ Erro ao buscar contas bancárias:', error);
+        
+        if (error.code === '42P01') {
+          alert('Tabela bank_accounts não existe. Execute o script SQL no Supabase primeiro.');
+        } else {
+          alert('Erro ao buscar contas: ' + error.message);
+        }
         return;
       }
+
+      console.log('✅ Contas bancárias encontradas:', accountsData?.length || 0);
 
       // Formatar dados para a interface
       const formattedAccounts: BankAccount[] = accountsData?.map(account => ({
@@ -1087,7 +1165,8 @@ const BankAccountsSection = () => {
 
       setBankAccounts(formattedAccounts);
     } catch (error) {
-      console.error('Erro inesperado ao buscar contas bancárias:', error);
+      console.error('❌ Erro inesperado ao buscar contas bancárias:', error);
+      alert('Erro inesperado: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
     }
@@ -1111,51 +1190,103 @@ const BankAccountsSection = () => {
   const handleSaveAccount = async () => {
     if (!selectedAccount) return;
 
+    // Validar campos obrigatórios
+    if (!selectedAccount.bank || !selectedAccount.agency || !selectedAccount.account) {
+      alert('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
     try {
+      console.log('🔄 Iniciando salvamento da conta bancária...', selectedAccount);
+
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        alert('Erro ao obter dados do usuário');
+        console.error('❌ Erro ao obter usuário:', userError);
+        alert('Erro ao obter dados do usuário: ' + (userError?.message || 'Usuário não encontrado'));
         return;
       }
 
+      console.log('✅ Usuário obtido:', user.id);
+
       if (selectedAccount.id) {
         // Editar conta existente
-        const { error } = await supabase
-          .from('bank_accounts')
-          .update({
-            bank_name: selectedAccount.bank,
-            agency: selectedAccount.agency,
-            account_number: selectedAccount.account,
-            account_type: selectedAccount.type,
-            is_default: selectedAccount.isDefault
-          })
-          .eq('id', selectedAccount.id);
+        console.log('🔄 Editando conta existente:', selectedAccount.id);
+        
+        const updateData = {
+          bank_name: selectedAccount.bank,
+          agency: selectedAccount.agency,
+          account_number: selectedAccount.account,
+          account_type: selectedAccount.type,
+          is_default: selectedAccount.isDefault
+        };
+        
+        console.log('📝 Dados para atualização:', updateData);
 
-        if (error) throw error;
+        const { data, error } = await supabase
+          .from('bank_accounts')
+          .update(updateData)
+          .eq('id', selectedAccount.id)
+          .select();
+
+        if (error) {
+          console.error('❌ Erro na atualização:', error);
+          throw error;
+        }
+
+        console.log('✅ Conta atualizada com sucesso:', data);
       } else {
         // Criar nova conta
-        const { error } = await supabase
-          .from('bank_accounts')
-          .insert({
-            organizer_id: user.id,
-            bank_name: selectedAccount.bank,
-            agency: selectedAccount.agency,
-            account_number: selectedAccount.account,
-            account_type: selectedAccount.type,
-            is_default: selectedAccount.isDefault
-          });
+        console.log('🔄 Criando nova conta...');
+        
+        const insertData = {
+          organizer_id: user.id,
+          bank_name: selectedAccount.bank,
+          agency: selectedAccount.agency,
+          account_number: selectedAccount.account,
+          account_type: selectedAccount.type,
+          is_default: selectedAccount.isDefault
+        };
+        
+        console.log('📝 Dados para inserção:', insertData);
 
-        if (error) throw error;
+        const { data, error } = await supabase
+          .from('bank_accounts')
+          .insert(insertData)
+          .select();
+
+        if (error) {
+          console.error('❌ Erro na inserção:', error);
+          throw error;
+        }
+
+        console.log('✅ Conta criada com sucesso:', data);
       }
 
       // Recarregar dados e fechar modal
+      console.log('🔄 Recarregando lista de contas...');
       await fetchBankAccounts();
       setShowAccountModal(false);
       setSelectedAccount(null);
+      console.log('✅ Operação concluída com sucesso!');
+      
     } catch (error) {
-      console.error('Erro ao salvar conta bancária:', error);
-      alert('Erro ao salvar conta bancária');
+      console.error('❌ Erro ao salvar conta bancária:', error);
+      
+      // Tratamento específico de erros
+      let errorMessage = 'Erro desconhecido ao salvar conta bancária';
+      
+      if (error.message) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Erro de conectividade. Verifique sua conexão com a internet e tente novamente.';
+        } else if (error.message.includes('JWT')) {
+          errorMessage = 'Sessão expirada. Por favor, faça login novamente.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      alert('Erro ao salvar conta bancária: ' + errorMessage);
     }
   };
 
@@ -1210,13 +1341,21 @@ const BankAccountsSection = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contas Bancárias</h2>
-        <button 
-          onClick={handleAddAccount}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusCircle className="h-5 w-5" />
-          Nova Conta
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={testSupabaseConnection}
+            className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+          >
+            🔧 Testar Conexão
+          </button>
+          <button 
+            onClick={handleAddAccount}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <PlusCircle className="h-5 w-5" />
+            Nova Conta
+          </button>
+        </div>
       </div>
 
       {/* Bank Accounts Display */}
