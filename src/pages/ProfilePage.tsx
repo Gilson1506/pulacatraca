@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
-import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight } from 'lucide-react';
+import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -11,100 +12,357 @@ function getInitials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// 🎫 Interface para Ingressos
+interface UserTicket {
+  id: string;
+  event_id: string;
+  code: string;
+  ticket_type: string;
+  status: 'pending' | 'active' | 'used' | 'cancelled';
+  created_at: string;
+  used_at: string | null;
+  user_id: string | null;
+  event: {
+    title: string;
+    description: string;
+    date: string;
+    location: string;
+    banner_url: string | null;
+    price: number;
+  };
+}
+
+// 📋 Interface para Histórico de Pedidos
+interface UserOrder {
+  id: string;
+  event_id: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at: string;
+  amount: number;
+  payment_method: string | null;
+  event: {
+    title: string;
+    description: string;
+    date: string;
+    location: string;
+    banner_url: string | null;
+  };
+}
+
+// 📋 Componente para exibir Histórico de Pedidos
+const OrdersSection = ({ userEmail }: { userEmail: string }) => {
+  const [userOrders, setUserOrders] = useState<UserOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserOrders();
+  }, []);
+
+  const fetchUserOrders = async () => {
+    try {
+      setIsLoading(true);
+      console.log('📋 Buscando histórico de pedidos...');
+
+      // Buscar o usuário atual
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ Erro ao obter usuário:', authError);
+        return;
+      }
+
+      // Buscar transações do usuário
+      const { data: ordersData, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          event:events!inner(title, description, date, location, banner_url)
+        `)
+        .eq('buyer_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar pedidos:', error);
+        return;
+      }
+
+      console.log('✅ Pedidos encontrados:', ordersData?.length || 0);
+      setUserOrders(ordersData || []);
+
+    } catch (error) {
+      console.error('❌ Erro inesperado ao buscar pedidos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-700';
+      case 'confirmed': return 'bg-green-100 text-green-700';
+      case 'completed': return 'bg-green-100 text-green-700';
+      case 'cancelled': return 'bg-red-100 text-red-700';
+      case 'failed': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Pendente';
+      case 'confirmed': return 'Confirmado';
+      case 'completed': return 'Concluído';
+      case 'cancelled': return 'Cancelado';
+      case 'failed': return 'Falhou';
+      default: return 'Desconhecido';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-2xl mx-auto flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+        <span className="ml-2 text-gray-600">Carregando histórico...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      <h2 className="text-xl font-bold text-pink-600 mb-2">Histórico</h2>
+      <div className="border-b border-gray-200 mb-4" />
+      {userOrders.length === 0 ? (
+        <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
+          Nenhum pedido encontrado.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {userOrders.map((order) => (
+            <div key={order.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              {/* Data (desktop only) */}
+              <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
+                <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(order.created_at).getDate()}</span>
+                <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(order.created_at).toLocaleString('pt-BR', { month: 'short' })}</span>
+                <span className="text-xs text-gray-400">{new Date(order.created_at).getFullYear()}</span>
+              </div>
+              {/* Imagem sempre primeiro no mobile */}
+              <img 
+                src={order.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
+                alt={order.event.title} 
+                className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
+              />
+              {/* Detalhes */}
+              <div className="flex-1 flex flex-col justify-center px-2 py-2 text-center sm:text-left order-2">
+                <div className="font-bold text-lg text-gray-800 leading-tight">{order.event.title}</div>
+                <div className="text-sm text-pink-700 font-semibold leading-tight">{order.event.location}</div>
+                <div className="text-xs text-gray-500 leading-tight">
+                  {order.payment_method ? `Método: ${order.payment_method}` : 'Método não informado'} • R$ {(order.amount / 100).toFixed(2)}
+                </div>
+              </div>
+              {/* Status */}
+              <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
+                  {getStatusText(order.status)}
+                </span>
+              </div>
+              {/* Data (mobile only, abaixo do status) */}
+              <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
+                <span className="text-pink-600 font-bold text-xl leading-none">{new Date(order.created_at).getDate()}</span>
+                <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(order.created_at).toLocaleString('pt-BR', { month: 'short' })}</span>
+                <span className="text-xs text-gray-400">{new Date(order.created_at).getFullYear()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 🎫 Componente para exibir Ingressos
+const TicketsSection = ({ userEmail }: { userEmail: string }) => {
+  const [userTickets, setUserTickets] = useState<UserTicket[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserTickets();
+  }, []);
+
+  const fetchUserTickets = async () => {
+    try {
+      setIsLoading(true);
+      console.log('🎫 Buscando ingressos do usuário...');
+
+      // Buscar o usuário atual
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ Erro ao obter usuário:', authError);
+        return;
+      }
+
+      // Buscar ingressos do usuário (comprador ou usuário definido)
+      const { data: ticketsData, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:events!inner(title, description, date, location, banner_url, price)
+        `)
+        .or(`buyer_id.eq.${user.id},user_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar ingressos:', error);
+        return;
+      }
+
+      console.log('✅ Ingressos encontrados:', ticketsData?.length || 0);
+      setUserTickets(ticketsData || []);
+
+    } catch (error) {
+      console.error('❌ Erro inesperado ao buscar ingressos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-700';
+      case 'active': return 'bg-green-100 text-green-700';
+      case 'used': return 'bg-gray-100 text-gray-700';
+      case 'cancelled': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Pendente';
+      case 'active': return 'Confirmado';
+      case 'used': return 'Usado';
+      case 'cancelled': return 'Cancelado';
+      default: return 'Desconhecido';
+    }
+  };
+
+  const now = new Date();
+  const activeTickets = userTickets.filter(ticket => new Date(ticket.event.date) >= now);
+  const pastTickets = userTickets.filter(ticket => new Date(ticket.event.date) < now);
+
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-2xl mx-auto flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+        <span className="ml-2 text-gray-600">Carregando ingressos...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-pink-600 mb-2">Próximos eventos</h2>
+        <div className="border-b border-gray-200 mb-4" />
+        {activeTickets.length === 0 ? (
+          <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
+            Nenhum ingresso disponível
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {activeTickets.map((ticket) => (
+              <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                {/* Data (desktop only) */}
+                <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
+                  <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.date).getDate()}</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                </div>
+                {/* Imagem sempre primeiro no mobile */}
+                <img 
+                  src={ticket.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
+                  alt={ticket.event.title} 
+                  className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
+                />
+                {/* Detalhes */}
+                <div className="flex-1 flex flex-col justify-center px-2 py-2 text-center sm:text-left order-2">
+                  <div className="font-bold text-lg text-gray-800 leading-tight">{ticket.event.title}</div>
+                  <div className="text-sm text-pink-700 font-semibold leading-tight">{ticket.event.location}</div>
+                  <div className="text-xs text-gray-500 leading-tight">Código: {ticket.code}</div>
+                </div>
+                {/* Status (substitui o botão VER INGRESSOS) */}
+                <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                    {getStatusText(ticket.status)}
+                  </span>
+                </div>
+                {/* Data (mobile only, abaixo do status) */}
+                <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
+                  <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.date).getDate()}</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold text-pink-600 mb-2">Eventos passados</h2>
+        <div className="border-b border-gray-200 mb-4" />
+        {pastTickets.length === 0 ? (
+          <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
+            Nenhum ingresso disponível
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {pastTickets.map((ticket) => (
+              <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow opacity-75">
+                {/* Data (desktop only) */}
+                <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
+                  <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.date).getDate()}</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                </div>
+                {/* Imagem sempre primeiro no mobile */}
+                <img 
+                  src={ticket.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
+                  alt={ticket.event.title} 
+                  className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
+                />
+                {/* Detalhes */}
+                <div className="flex-1 flex flex-col justify-center px-2 py-2 text-center sm:text-left order-2">
+                  <div className="font-bold text-lg text-gray-800 leading-tight">{ticket.event.title}</div>
+                  <div className="text-sm text-pink-700 font-semibold leading-tight">{ticket.event.location}</div>
+                  <div className="text-xs text-gray-500 leading-tight">Código: {ticket.code}</div>
+                </div>
+                {/* Status */}
+                <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                    {getStatusText(ticket.status)}
+                  </span>
+                </div>
+                {/* Data (mobile only, abaixo do status) */}
+                <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
+                  <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.date).getDate()}</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const dummyContent = (
   user: { name: string; email: string },
   handleBackToMenu: () => void,
   setActiveMenu: (key: string) => void,
   handleMenuSelect: (key: string) => void
 ) => ({
-  tickets: (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-pink-600 mb-2">Próximos eventos</h2>
-        <div className="border-b border-gray-200 mb-4" />
-        {/* Exemplo de ingresso, pode ser substituído por map dos ingressos do usuário */}
-        {(() => {
-          const tickets = [
-            {
-              id: 1,
-              date: '2025-11-29',
-              image: 'https://i.postimg.cc/3w6kQb8V/aw-festival.jpg',
-              title: 'Awê Festival',
-              city: 'São José do Rio Preto - SP',
-              location: 'Exposições Alberto Bertelli Lucatto',
-              status: 'ativo',
-            },
-            {
-              id: 2,
-              date: '2025-12-15',
-              image: 'https://i.postimg.cc/QCJNJNgc/Imagem-Whats-App-2025-07-14-s-20-38-33-6d804a5e.jpg',
-              title: 'Carnarock Goiânia',
-              city: 'Goiânia - GO',
-              location: 'Arena Goiânia',
-              status: 'ativo',
-            },
-          ];
-          if (tickets.length === 0) {
-            return (
-              <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
-                Nenhum ingresso disponível
-              </div>
-            );
-          }
-          return (
-            <div className="flex flex-col gap-4">
-              {tickets.map((ticket) => (
-                <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                  {/* Data (desktop only) */}
-                  <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
-                    <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.date).getDate()}</span>
-                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                    <span className="text-xs text-gray-400">{new Date(ticket.date).getFullYear()}</span>
-                  </div>
-                  {/* Imagem sempre primeiro no mobile */}
-                  <img src={ticket.image} alt={ticket.title} className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" />
-                  {/* Detalhes */}
-                  <div className="flex-1 flex flex-col justify-center px-2 py-2 text-center sm:text-left order-2">
-                    <div className="font-bold text-lg text-gray-800 leading-tight">{ticket.title}</div>
-                    <div className="text-sm text-pink-700 font-semibold leading-tight">{ticket.city}</div>
-                    <div className="text-xs text-gray-500 leading-tight">{ticket.location}</div>
-                  </div>
-                  {/* Botão */}
-                  <div className="flex items-center justify-center sm:justify-end p-4 w-full sm:w-auto order-3">
-                    <Link to={`/ingresso/${ticket.id}`} className="border border-pink-500 text-pink-600 font-bold rounded-lg px-6 py-2 hover:bg-pink-50 transition-colors text-xs shadow-sm w-full sm:w-auto">
-                      VER INGRESSOS
-                    </Link>
-                  </div>
-                  {/* Data (mobile only, abaixo do botão) */}
-                  <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
-                    <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.date).getDate()}</span>
-                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                    <span className="text-xs text-gray-400">{new Date(ticket.date).getFullYear()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-      </div>
-      <div>
-        <h2 className="text-2xl font-bold text-pink-600 mb-2">Eventos passados</h2>
-        <div className="border-b border-gray-200 mb-4" />
-        <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
-          Nenhum ingresso disponível
-        </div>
-      </div>
-    </div>
-  ),
-  orders: (
-    <div className="w-full max-w-2xl mx-auto">
-      <h2 className="text-xl font-bold text-pink-600 mb-2">Histórico</h2>
-      <div className="border-b border-gray-200 mb-4" />
-      <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
-        Nenhum pedido encontrado.
-      </div>
-    </div>
-  ),
+  tickets: <TicketsSection userEmail={user.email} />,
+  orders: <OrdersSection userEmail={user.email} />,
   info: (
     <div className="w-full max-w-2xl mx-auto">
       {/* Botão de voltar */}
