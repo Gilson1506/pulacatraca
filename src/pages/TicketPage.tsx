@@ -35,7 +35,7 @@ const TicketPage = () => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, description, date, location, banner_url, price)
+          event:events!inner(title, description, start_date, location, banner_url, price)
         `)
         .eq('id', ticketId)
         .eq('buyer_id', currentUser.id) // ✅ APENAS SE O USUÁRIO É O COMPRADOR
@@ -207,9 +207,9 @@ const TicketPage = () => {
     );
   }
 
-  const formattedDate = new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-  const formattedDay = new Date(ticket.event.date).toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
-  const formattedTime = new Date(ticket.event.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const formattedDate = new Date(ticket.event.start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const formattedDay = new Date(ticket.event.start_date).toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
+  const formattedTime = new Date(ticket.event.start_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
@@ -228,7 +228,7 @@ const TicketPage = () => {
             />
             <div>
               <h1 className="text-xl font-bold text-pink-600">{ticket.event.title}</h1>
-              <p className="text-gray-600">{new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {formattedTime}</p>
+              <p className="text-gray-600">{new Date(ticket.event.start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {formattedTime}</p>
               <button 
                 onClick={() => navigate(`/event/${ticket.event_id}`)}
                 className="text-blue-600 text-sm font-semibold hover:underline"

@@ -75,7 +75,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, description, date, location, banner_url, price)
+          event:events!inner(title, description, start_date, location, banner_url, price)
         `)
         .eq('buyer_id', user.id) // ✅ TODOS OS INGRESSOS QUE O USUÁRIO COMPROU
         .order('created_at', { ascending: false });
@@ -202,7 +202,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, description, date, location, banner_url, price)
+          event:events!inner(title, description, start_date, location, banner_url, price)
         `)
         .eq('buyer_id', user.id) // ✅ APENAS INGRESSOS QUE O USUÁRIO COMPROU
         .in('status', ['active', 'used']) // ✅ APENAS CONFIRMADOS (não pendentes)
@@ -244,8 +244,8 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
   };
 
   const now = new Date();
-  const activeTickets = userTickets.filter(ticket => new Date(ticket.event.date) >= now);
-  const pastTickets = userTickets.filter(ticket => new Date(ticket.event.date) < now);
+  const activeTickets = userTickets.filter(ticket => new Date(ticket.event.start_date) >= now);
+  const pastTickets = userTickets.filter(ticket => new Date(ticket.event.start_date) < now);
 
   if (isLoading) {
     return (
@@ -267,14 +267,14 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {activeTickets.map((ticket) => (
-              <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                {/* Data (desktop only) */}
-                <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
-                  <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.date).getDate()}</span>
-                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
-                </div>
+                          {activeTickets.map((ticket) => (
+                <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Data (desktop only) */}
+                  <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
+                    <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.start_date).getDate()}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(ticket.event.start_date).getFullYear()}</span>
+                  </div>
                 {/* Imagem sempre primeiro no mobile */}
                 <img 
                   src={ticket.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
@@ -299,19 +299,19 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                     {getStatusText(ticket.status)}
                   </span>
                 </div>
-                {/* Data (mobile only, abaixo do status) */}
-                <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
-                  <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.date).getDate()}</span>
-                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                                  {/* Data (mobile only, abaixo do status) */}
+                  <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
+                    <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.start_date).getDate()}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(ticket.event.start_date).getFullYear()}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div>
-        <h2 className="text-2xl font-bold text-pink-600 mb-2">Eventos passados</h2>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-pink-600 mb-2">Eventos passados</h2>
         <div className="border-b border-gray-200 mb-4" />
         {pastTickets.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 font-medium">
@@ -323,9 +323,9 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
               <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow opacity-75">
                 {/* Data (desktop only) */}
                 <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
-                  <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.date).getDate()}</span>
-                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                  <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.start_date).getDate()}</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                  <span className="text-xs text-gray-400">{new Date(ticket.event.start_date).getFullYear()}</span>
                 </div>
                 {/* Imagem sempre primeiro no mobile */}
                 <img 
@@ -353,9 +353,9 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                 </div>
                 {/* Data (mobile only, abaixo do status) */}
                 <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
-                  <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.date).getDate()}</span>
-                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                  <span className="text-xs text-gray-400">{new Date(ticket.event.date).getFullYear()}</span>
+                  <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.start_date).getDate()}</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date).toLocaleString('pt-BR', { month: 'short' })}</span>
+                  <span className="text-xs text-gray-400">{new Date(ticket.event.start_date).getFullYear()}</span>
                 </div>
               </div>
             ))}
