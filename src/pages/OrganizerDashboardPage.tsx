@@ -1052,75 +1052,12 @@ const BankAccountsSection = () => {
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
 
-  // ✅ TESTE DE CONECTIVIDADE COM SUPABASE
-  const testSupabaseConnection = async () => {
-    try {
-      console.log('🔄 Testando conectividade com Supabase...');
-      alert('🔄 Testando conectividade...');
-      
-      // Teste de autenticação
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error('❌ Erro de autenticação:', authError);
-        alert('❌ Erro de autenticação: ' + authError.message);
-        return false;
-      }
 
-      if (!user) {
-        alert('❌ Usuário não autenticado');
-        return false;
-      }
-
-      // Teste simples de conectividade com profiles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
-        .limit(1);
-
-      if (error) {
-        console.error('❌ Erro de conectividade:', error);
-        alert('❌ Erro de conectividade: ' + error.message);
-        return false;
-      }
-
-      // Teste específico da tabela bank_accounts
-      const { data: bankTest, error: bankError } = await supabase
-        .from('bank_accounts')
-        .select('count')
-        .limit(1);
-
-      if (bankError) {
-        console.error('❌ Erro na tabela bank_accounts:', bankError);
-        if (bankError.code === '42P01') {
-          alert('❌ Tabela bank_accounts não existe! Execute o script SQL primeiro.');
-        } else {
-          alert('❌ Erro na tabela bank_accounts: ' + bankError.message);
-        }
-        return false;
-      }
-
-      console.log('✅ Conectividade OK');
-      alert('✅ Conectividade OK! Usuário: ' + user.id.substring(0, 8) + '...');
-      return true;
-    } catch (error) {
-      console.error('❌ Erro de rede:', error);
-      alert('❌ Erro de rede: ' + (error.message || 'Erro desconhecido'));
-      return false;
-    }
-  };
 
   // ✅ BUSCAR DADOS REAIS DO SUPABASE
   const fetchBankAccounts = async () => {
     try {
       setIsLoading(true);
-      
-      // Testar conectividade primeiro
-      const isConnected = await testSupabaseConnection();
-      if (!isConnected) {
-        console.error('❌ Sem conectividade com Supabase');
-        alert('Erro de conectividade. Verifique sua conexão e tente novamente.');
-        return;
-      }
       
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -1130,9 +1067,6 @@ const BankAccountsSection = () => {
       }
 
       console.log('✅ Usuário obtido para busca:', user.id);
-
-      // Verificar se a tabela bank_accounts existe
-      console.log('🔄 Buscando contas bancárias...');
 
       // Buscar contas bancárias do organizador
       const { data: accountsData, error } = await supabase
@@ -1341,21 +1275,13 @@ const BankAccountsSection = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contas Bancárias</h2>
-        <div className="flex gap-2">
-          <button 
-            onClick={testSupabaseConnection}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-          >
-            🔧 Testar Conexão
-          </button>
-          <button 
-            onClick={handleAddAccount}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <PlusCircle className="h-5 w-5" />
-            Nova Conta
-          </button>
-        </div>
+        <button 
+          onClick={handleAddAccount}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <PlusCircle className="h-5 w-5" />
+          Nova Conta
+        </button>
       </div>
 
       {/* Bank Accounts Display */}
@@ -1457,7 +1383,7 @@ const BankAccountsSection = () => {
                 </button>
               </div>
               
-              <form className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleSaveAccount(); }} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Banco</label>
                   <input
@@ -1465,6 +1391,7 @@ const BankAccountsSection = () => {
                     value={selectedAccount?.bank || ''}
                     onChange={(e) => setSelectedAccount(prev => prev ? { ...prev, bank: e.target.value } : prev)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
                   />
                 </div>
                 <div>
@@ -1474,6 +1401,7 @@ const BankAccountsSection = () => {
                     value={selectedAccount?.agency || ''}
                     onChange={(e) => setSelectedAccount(prev => prev ? { ...prev, agency: e.target.value } : prev)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
                   />
                 </div>
                 <div>
@@ -1483,6 +1411,7 @@ const BankAccountsSection = () => {
                     value={selectedAccount?.account || ''}
                     onChange={(e) => setSelectedAccount(prev => prev ? { ...prev, account: e.target.value } : prev)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
                   />
                 </div>
                 <div>
@@ -1498,12 +1427,13 @@ const BankAccountsSection = () => {
                 </div>
                 <div className="flex justify-end gap-2">
                   <button 
-                    onClick={handleSaveAccount}
+                    type="submit"
                     className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
                   >
                     Salvar Conta
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setShowAccountModal(false)}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                   >
