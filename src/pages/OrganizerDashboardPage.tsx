@@ -231,7 +231,7 @@ const DashboardOverview = () => {
 const OrganizerEvents = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'todos' | 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('approved');
+  const [filter, setFilter] = useState<'todos' | 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending');
   const [search, setSearch] = useState('');
   const [showEventFormModal, setShowEventFormModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
@@ -310,7 +310,7 @@ const OrganizerEvents = () => {
             end_date: `${eventData.date}T${eventData.time}:00`,
             location: eventData.location,
             description: eventData.description,
-            status: 'approved', // Criar eventos já aprovados
+            status: 'pending', // Criar eventos pendentes de aprovação
             category: eventData.category,
             banner_url: eventData.image,
             organizer_id: userData.user?.id || '',
