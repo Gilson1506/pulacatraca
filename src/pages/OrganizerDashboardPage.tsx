@@ -595,10 +595,7 @@ const OrganizerSales = () => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, organizer_id, price),
-          buyer:profiles!tickets_buyer_id_fkey(name, email),
-          user:profiles!tickets_user_id_fkey(name, email),
-          transaction:transactions(status, payment_method, amount)
+          event:events!inner(title, organizer_id, price)
         `)
         .eq('event.organizer_id', user.id) // ✅ APENAS INGRESSOS DOS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
@@ -611,24 +608,48 @@ const OrganizerSales = () => {
 
       console.log('✅ Ingressos encontrados:', ticketsData?.length || 0);
 
-      const formattedSales: Sale[] = ticketsData?.map(ticket => ({
-        id: ticket.id,
-        eventId: ticket.event_id,
-        eventName: ticket.event.title,
-        buyerName: ticket.buyer?.name || 'Nome não informado',
-        buyerEmail: ticket.buyer?.email || 'Email não informado',
-        userName: ticket.user?.name || ticket.buyer?.name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
-        userEmail: ticket.user?.email || ticket.buyer?.email || 'Email não informado',
-        ticketType: ticket.ticket_type || 'Padrão',
-        ticketCode: ticket.code, // ✅ CÓDIGO DO INGRESSO
-        quantity: 1,
-        amount: ticket.transaction?.amount || ticket.event.price || 0,
-        date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
-        status: ticket.status === 'active' ? 'confirmado' : ticket.status === 'used' ? 'usado' : ticket.status === 'cancelled' ? 'cancelado' : 'pendente',
-        paymentMethod: ticket.transaction?.payment_method || 'Não informado',
-        isUsed: ticket.status === 'used', // ✅ STATUS DE USO DO INGRESSO
-        usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : null
-      })) || [];
+      // Buscar dados dos usuários separadamente para evitar problemas de FK
+      const userIds = [...new Set([
+        ...ticketsData?.map(t => t.buyer_id).filter(Boolean) || [],
+        ...ticketsData?.map(t => t.user_id).filter(Boolean) || []
+      ])];
+
+      let usersData = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .in('id', userIds);
+        
+        usersData = profiles?.reduce((acc, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {}) || {};
+      }
+
+      const formattedSales: Sale[] = ticketsData?.map(ticket => {
+        const buyer = usersData[ticket.buyer_id] || {};
+        const ticketUser = usersData[ticket.user_id] || buyer;
+        
+        return {
+          id: ticket.id,
+          eventId: ticket.event_id,
+          eventName: ticket.event.title,
+          buyerName: buyer.name || 'Nome não informado',
+          buyerEmail: buyer.email || 'Email não informado',
+          userName: ticketUser.name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
+          userEmail: ticketUser.email || 'Email não informado',
+          ticketType: ticket.ticket_type || 'Padrão',
+          ticketCode: ticket.code || 'N/A', // ✅ CÓDIGO DO INGRESSO
+          quantity: 1,
+          amount: ticket.event.price || 0,
+          date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
+          status: ticket.status === 'active' ? 'confirmado' : ticket.status === 'used' ? 'usado' : ticket.status === 'cancelled' ? 'cancelado' : 'pendente',
+          paymentMethod: 'Não informado',
+          isUsed: ticket.status === 'used', // ✅ STATUS DE USO DO INGRESSO
+          usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : null
+        };
+      }) || [];
 
       setSales(formattedSales);
     } catch (error) {
@@ -1884,8 +1905,7 @@ const OrganizerCheckIns = () => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, organizer_id),
-          user:profiles!tickets_user_id_fkey(name, email)
+          event:events!inner(title, organizer_id)
         `)
         .eq('event.organizer_id', user.id)
         .eq('status', 'used') // ✅ APENAS INGRESSOS USADOS
@@ -1898,14 +1918,33 @@ const OrganizerCheckIns = () => {
 
       console.log('✅ Check-ins encontrados:', checkInsData?.length || 0);
 
-      const formattedCheckIns: CheckIn[] = checkInsData?.map(ticket => ({
-        id: ticket.id,
-        eventId: ticket.event_id,
-        participantName: ticket.user?.name || 'Nome não informado',
-        ticketType: ticket.ticket_type || 'Padrão',
-        checkInTime: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : 'Não informado',
-        status: 'ok' as const // Todos os ingressos usados têm status ok
-      })) || [];
+      // Buscar dados dos usuários separadamente
+      const userIds = checkInsData?.map(t => t.user_id).filter(Boolean) || [];
+      let usersData = {};
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', userIds);
+        
+        usersData = profiles?.reduce((acc, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {}) || {};
+      }
+
+      const formattedCheckIns: CheckIn[] = checkInsData?.map(ticket => {
+        const user = usersData[ticket.user_id] || {};
+        return {
+          id: ticket.id,
+          eventId: ticket.event_id,
+          participantName: user.name || 'Nome não informado',
+          ticketType: ticket.ticket_type || 'Padrão',
+          checkInTime: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : 'Não informado',
+          status: 'ok' as const // Todos os ingressos usados têm status ok
+        };
+      }) || [];
 
       setCheckIns(formattedCheckIns);
     } catch (error) {
@@ -1938,8 +1977,7 @@ const OrganizerCheckIns = () => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, organizer_id),
-          user:profiles!tickets_user_id_fkey(name, email)
+          event:events!inner(title, organizer_id)
         `)
         .eq('code', ticketCode)
         .eq('event.organizer_id', user.id) // ✅ APENAS INGRESSOS DOS EVENTOS DO ORGANIZADOR
@@ -1985,19 +2023,30 @@ const OrganizerCheckIns = () => {
 
       console.log('✅ Check-in realizado com sucesso');
       
+      // Buscar dados do usuário se necessário
+      let userName = 'Nome não informado';
+      if (ticketData.user_id) {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', ticketData.user_id)
+          .single();
+        userName = userProfile?.name || 'Nome não informado';
+      }
+      
       // Adicionar à lista de check-ins
       const newCheckIn: CheckIn = {
         id: ticketData.id,
         eventId: ticketData.event_id,
-        participantName: ticketData.user?.name || 'Nome não informado',
+        participantName: userName,
         ticketType: ticketData.ticket_type || 'Padrão',
         checkInTime: new Date().toLocaleString('pt-BR'),
         status: 'ok'
       };
 
       setCheckIns(prev => [newCheckIn, ...prev]);
-      setQrResult(`✅ CHECK-IN OK: ${ticketData.user?.name || 'Participante'}`);
-      alert(`✅ Check-in realizado com sucesso!\nParticipante: ${ticketData.user?.name || 'Nome não informado'}\nEvento: ${ticketData.event.title}`);
+      setQrResult(`✅ CHECK-IN OK: ${userName}`);
+      alert(`✅ Check-in realizado com sucesso!\nParticipante: ${userName}\nEvento: ${ticketData.event.title}`);
       
     } catch (error) {
       console.error('❌ Erro inesperado na validação:', error);
