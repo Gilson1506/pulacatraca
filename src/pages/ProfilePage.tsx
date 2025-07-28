@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
@@ -626,7 +626,9 @@ const dummyContent = (
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [supportMessages, setSupportMessages] = useState([
     // Mensagem automática inicial
     { id: 1, text: 'Olá! Como podemos ajudar?', from: 'system', read: false }
@@ -638,6 +640,20 @@ const ProfilePage = () => {
       navigate('/organizer-dashboard', { replace: true });
     }
   }, [user, navigate]);
+
+  // Verificar se há mensagem de sucesso da compra
+  useEffect(() => {
+    if (location.state?.message && location.state?.showSuccess) {
+      setSuccessMessage(location.state.message);
+      // Limpar o estado para não mostrar novamente
+      window.history.replaceState({}, document.title);
+      
+      // Auto-ocultar após 10 segundos
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 10000);
+    }
+  }, [location.state]);
 
   // Sempre que abrir o suporte, cria nova mensagem automática e zera badge
   useEffect(() => {
@@ -721,6 +737,31 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {/* Modal de Sucesso da Compra */}
+      {successMessage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Compra Realizada!</h3>
+              <div className="text-sm text-gray-500 whitespace-pre-line text-left bg-gray-50 p-4 rounded-lg">
+                {successMessage}
+              </div>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="mt-6 w-full bg-pink-600 text-white py-3 rounded-lg font-bold hover:bg-pink-700 transition-colors"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <main className="flex-1 p-4 md:p-8 flex flex-col items-center justify-center w-full">
         {/* Estado inicial: menu com perfil */}
         {(!activeMenu || (!isMobile && !activeMenu)) && (

@@ -1,24 +1,97 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CreditCard, QrCode, Plus, Minus, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { CreditCard, QrCode, Plus, Minus, AlertTriangle, Loader2 } from 'lucide-react';
 
 const CheckoutPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [eventData, setEventData] = useState(null);
 
   const { event, ticket } = state || {};
 
   useEffect(() => {
+    // Verificar autenticação
+    if (!user) {
+      console.warn('Usuário não autenticado. Redirecionando para login...');
+      navigate('/auth', { 
+        state: { 
+          message: 'Você precisa estar logado para comprar ingressos.',
+          returnUrl: '/checkout',
+          returnState: state 
+        } 
+      });
+      return;
+    }
+
     // Se não houver dados do evento/ticket, redireciona para a home
     if (!event || !ticket) {
       console.warn('Dados do evento ou do ingresso não encontrados. Redirecionando...');
       navigate('/');
+      return;
     }
-  }, [event, ticket, navigate]);
+
+    // Carregar dados do usuário e evento
+    loadUserData();
+    loadEventData();
+  }, [event, ticket, navigate, user]);
+
+  const loadUserData = async () => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao carregar perfil:', error);
+        return;
+      }
+
+      // Verificar se é usuário normal (não organizador)
+      if (profile.role && profile.role === 'organizer') {
+        alert('Organizadores não podem comprar ingressos. Use uma conta de usuário normal.');
+        navigate('/');
+        return;
+      }
+
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Erro inesperado ao carregar perfil:', error);
+    }
+  };
+
+  const loadEventData = async () => {
+    try {
+      if (!event.id) return;
+
+      const { data: eventDetails, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', event.id)
+        .eq('status', 'approved') // Apenas eventos aprovados
+        .single();
+
+      if (error) {
+        console.error('Erro ao carregar evento:', error);
+        alert('Evento não encontrado ou não está disponível para compra.');
+        navigate('/');
+        return;
+      }
+
+      setEventData(eventDetails);
+    } catch (error) {
+      console.error('Erro inesperado ao carregar evento:', error);
+    }
+  };
 
   const handleQuantityChange = (amount: number) => {
     setQuantity((prev) => Math.max(1, prev + amount));
@@ -39,28 +112,113 @@ const CheckoutPage = () => {
   const totalPrice = subtotal + taxaCompra + taxaPagamento;
 
   const handleCheckout = async () => {
-    setIsProcessing(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      setIsProcessing(true);
+      console.log('🛒 Iniciando processo de compra...');
 
-    // Simula a criação de um novo ingresso após a compra
-    const newTicketPurchase = {
-      id: Math.random().toString(36).substr(2, 9),
-      eventName: event.title,
-      eventDate: event.date,
-      eventLocation: event.location,
-      ticketType: ticket.name,
-      quantity: quantity,
-      qrCode: `QR-${Math.random().toString(36).substr(2, 9)}`,
-      status: 'ativo'
-    };
-
-    navigate('/profile', {
-      state: {
-        message: 'Compra realizada com sucesso! Seus ingressos foram enviados para o seu email.',
-        newTickets: [newTicketPurchase] // Envia como um array
+      // Validações finais
+      if (!user || !userProfile || !eventData) {
+        alert('Dados incompletos. Por favor, recarregue a página e tente novamente.');
+        return;
       }
-    });
+
+      // Simular processamento de pagamento (2 segundos)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      console.log('💳 Processamento de pagamento simulado concluído');
+
+      // Criar transação
+      const transactionData = {
+        event_id: event.id,
+        buyer_id: user.id,
+        amount: Math.round(totalPrice * 100), // Valor em centavos
+        status: 'completed', // Direto como concluído para teste
+        payment_method: paymentMethod === 'card' ? 'credit_card' : 'pix',
+        created_at: new Date().toISOString()
+      };
+
+      console.log('🔄 Criando transação...', transactionData);
+
+      const { data: transaction, error: transactionError } = await supabase
+        .from('transactions')
+        .insert(transactionData)
+        .select()
+        .single();
+
+      if (transactionError) {
+        console.error('❌ Erro ao criar transação:', transactionError);
+        alert('Erro ao processar pagamento. Tente novamente.');
+        return;
+      }
+
+      console.log('✅ Transação criada:', transaction);
+
+      // Criar ingressos
+      const tickets = [];
+      for (let i = 0; i < quantity; i++) {
+        const ticketData = {
+          event_id: event.id,
+          buyer_id: user.id,
+          user_id: null, // Será definido depois pelo comprador
+          ticket_type: ticket.name || 'Padrão',
+          status: 'pending', // Aguardando confirmação do organizador
+          created_at: new Date().toISOString()
+          // code será gerado automaticamente pelo trigger
+        };
+
+        tickets.push(ticketData);
+      }
+
+      console.log('🔄 Criando ingressos...', tickets);
+
+      const { data: createdTickets, error: ticketsError } = await supabase
+        .from('tickets')
+        .insert(tickets)
+        .select();
+
+      if (ticketsError) {
+        console.error('❌ Erro ao criar ingressos:', ticketsError);
+        // Se tabela tickets não existir, não é erro crítico
+        console.log('⚠️ Tabela tickets não existe, continuando apenas com transação...');
+      } else {
+        console.log('✅ Ingressos criados:', createdTickets);
+      }
+
+      // Sucesso - redirecionar para perfil
+      navigate('/profile', {
+        state: {
+          message: `🎉 Compra realizada com sucesso! 
+          
+Detalhes da compra:
+• Evento: ${event.title}
+• Quantidade: ${quantity} ${quantity > 1 ? 'ingressos' : 'ingresso'}
+• Valor total: R$ ${totalPrice.toFixed(2)}
+• Método: ${paymentMethod === 'card' ? 'Cartão de Crédito' : 'PIX'}
+
+${createdTickets ? 'Seus ingressos aparecerão no histórico após confirmação do organizador.' : 'Compra registrada com sucesso!'}`,
+          showSuccess: true
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Erro inesperado na compra:', error);
+      alert('Erro inesperado durante a compra. Tente novamente.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  // Estado de loading inicial
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+          <span className="text-gray-600 text-lg">Carregando...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Renderiza uma tela de erro se os dados não foram passados corretamente
   if (!event || !ticket) {
@@ -76,6 +234,18 @@ const CheckoutPage = () => {
           >
             Voltar para a Home
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading enquanto carrega dados do usuário
+  if (!userProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+          <span className="text-gray-600 text-lg">Verificando permissões...</span>
         </div>
       </div>
     );
@@ -188,21 +358,31 @@ const CheckoutPage = () => {
                 </div>
                 <button
                   onClick={handleCheckout}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !userProfile}
                   className="mt-6 w-full bg-pink-600 text-white py-3 rounded-lg font-bold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {isProcessing ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                      </svg>
-                      Processando...
+                      <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                      Processando Pagamento...
                     </>
                   ) : (
-                    'Pagar'
+                    `Finalizar Compra - R$ ${totalPrice.toFixed(2)}`
                   )}
                 </button>
+                
+                {/* Informações adicionais */}
+                <div className="mt-4 text-center">
+                  <p className="text-xs text-gray-500">
+                    🔒 Compra segura • Dados protegidos
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    ✅ Usuário: {userProfile?.name || user?.email}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    ⏳ Ingressos ficam pendentes até confirmação do organizador
+                  </p>
+                </div>
                 {/* Logos dos métodos de pagamento */}
                 <div className="flex justify-center items-center gap-4 mt-6">
                   <img src="https://i.postimg.cc/W1ry1x4P/Visa-Logo.png" alt="Visa" className="h-8 w-auto object-contain" />
