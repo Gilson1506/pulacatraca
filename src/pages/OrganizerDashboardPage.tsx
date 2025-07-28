@@ -84,18 +84,30 @@ const DashboardOverview = () => {
     try {
       setIsLoading(true);
 
-      // Buscar eventos
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar apenas eventos do organizador atual
       const { data: events, error: eventsError } = await supabase
         .from('events')
         .select('*')
+        .eq('organizer_id', user.id) // ✅ APENAS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
 
       if (eventsError) throw eventsError;
 
-      // Buscar transações (vendas)
+      // Buscar transações (vendas) apenas dos eventos do organizador
       const { data: sales, error: salesError } = await supabase
         .from('transactions')
-        .select('*')
+        .select(`
+          *,
+          event:events!inner(organizer_id)
+        `)
+        .eq('event.organizer_id', user.id) // ✅ APENAS VENDAS DOS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
@@ -243,6 +255,16 @@ const OrganizerEvents = () => {
   const fetchEvents = async () => {
     try {
       setIsLoading(true);
+
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Buscar apenas eventos do organizador atual
       const { data: eventsData, error } = await supabase
         .from('events')
         .select(`
@@ -250,6 +272,7 @@ const OrganizerEvents = () => {
           tickets:tickets(count),
           transactions:transactions(sum:amount)
         `)
+        .eq('organizer_id', user.id) // ✅ APENAS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -501,9 +524,18 @@ const OrganizerSales = () => {
 
   const fetchEvents = async () => {
     try {
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar apenas eventos do organizador atual
       const { data: eventsData, error } = await supabase
         .from('events')
         .select('*')
+        .eq('organizer_id', user.id) // ✅ APENAS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -531,12 +563,21 @@ const OrganizerSales = () => {
 
   const fetchSales = async () => {
     try {
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar apenas transações de eventos do organizador atual
       const { data: salesData, error } = await supabase
         .from('transactions')
         .select(`
           *,
-          event:events(title)
+          event:events!inner(title, organizer_id)
         `)
+        .eq('event.organizer_id', user.id) // ✅ APENAS VENDAS DOS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
 
       if (error) throw error;
