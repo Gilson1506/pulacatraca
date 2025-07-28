@@ -1173,13 +1173,14 @@ const BankAccountsSection = () => {
         // Criar nova conta
         console.log('🔄 Criando nova conta...');
         
+        // Não incluir o campo id para deixar o PostgreSQL gerar automaticamente
         const insertData = {
           organizer_id: user.id,
-          bank_name: selectedAccount.bank,
-          agency: selectedAccount.agency,
-          account_number: selectedAccount.account,
+          bank_name: selectedAccount.bank.trim(),
+          agency: selectedAccount.agency.trim(),
+          account_number: selectedAccount.account.trim(),
           account_type: selectedAccount.type,
-          is_default: selectedAccount.isDefault
+          is_default: selectedAccount.isDefault || false
         };
         
         console.log('📝 Dados para inserção:', insertData);
