@@ -14,7 +14,7 @@ interface Event {
   time: string;
   location: string;
   description: string;
-  status: 'ativo' | 'adiado' | 'cancelado';
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled';
   ticketsSold: number;
   totalTickets: number;
   revenue: number;
@@ -92,18 +92,18 @@ const DashboardOverview = () => {
 
       if (eventsError) throw eventsError;
 
-      // Buscar vendas
+      // Buscar transações (vendas)
       const { data: sales, error: salesError } = await supabase
-        .from('sales')
+        .from('transactions')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
 
       // Calcular estatísticas
-      const activeEventsCount = events?.filter(event => event.status === 'active').length || 0;
+      const activeEventsCount = events?.filter(event => event.status === 'approved').length || 0;
       const totalRevenue = sales?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
-      const totalTicketsSold = sales?.filter(sale => sale.status === 'confirmed').length || 0;
+      const totalTicketsSold = sales?.filter(sale => sale.status === 'completed').length || 0;
       const pendingSales = sales?.filter(sale => sale.status === 'pending').length || 0;
 
       setStats({
@@ -231,7 +231,7 @@ const DashboardOverview = () => {
 const OrganizerEvents = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'todos' | 'ativo' | 'adiado' | 'cancelado'>('todos');
+  const [filter, setFilter] = useState<'todos' | 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('todos');
   const [search, setSearch] = useState('');
   const [showEventFormModal, setShowEventFormModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
@@ -248,7 +248,7 @@ const OrganizerEvents = () => {
         .select(`
           *,
           tickets:tickets(count),
-          sales:sales(sum:amount)
+          transactions:transactions(sum:amount)
         `)
         .order('created_at', { ascending: false });
 
@@ -261,10 +261,10 @@ const OrganizerEvents = () => {
         time: new Date(event.start_date).toTimeString().split(':').slice(0,2).join(':'),
         location: event.location,
         description: event.description,
-        status: event.status === 'approved' ? 'ativo' : event.status === 'cancelled' ? 'cancelado' : 'adiado',
+        status: event.status,
         ticketsSold: event.tickets?.count || 0,
         totalTickets: event.total_tickets || 0,
-        revenue: event.sales?.sum || 0,
+        revenue: event.transactions?.sum || 0,
         category: event.category,
         image: event.banner_url
       }));
@@ -310,7 +310,7 @@ const OrganizerEvents = () => {
             end_date: `${eventData.date}T${eventData.time}:00`,
             location: eventData.location,
             description: eventData.description,
-            status: eventData.status,
+            status: 'draft', // Sempre criar como draft inicialmente
             category: eventData.category,
             banner_url: eventData.image,
             organizer_id: userData.user?.id || '',
@@ -338,9 +338,11 @@ const OrganizerEvents = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ativo': return 'bg-green-100 text-green-800 border-green-200';
-      case 'adiado': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelado': return 'bg-red-100 text-red-800 border-red-200';
+      case 'approved': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
+      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -400,9 +402,11 @@ const OrganizerEvents = () => {
             className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
           >
             <option value="todos">Todos os Status</option>
-            <option value="ativo">Ativos</option>
-            <option value="adiado">Adiados</option>
-            <option value="cancelado">Cancelados</option>
+            <option value="draft">Rascunho</option>
+            <option value="pending">Pendente</option>
+            <option value="approved">Aprovado</option>
+            <option value="rejected">Rejeitado</option>
+            <option value="cancelled">Cancelado</option>
           </select>
         </div>
       </div>
@@ -511,7 +515,7 @@ const OrganizerSales = () => {
         time: new Date(event.start_date).toTimeString().split(':').slice(0,2).join(':'),
         location: event.location,
         description: event.description,
-        status: event.status === 'approved' ? 'ativo' : event.status === 'cancelled' ? 'cancelado' : 'adiado',
+        status: event.status,
         ticketsSold: 0,
         totalTickets: event.total_tickets || 0,
         revenue: 0,
@@ -528,7 +532,7 @@ const OrganizerSales = () => {
   const fetchSales = async () => {
     try {
       const { data: salesData, error } = await supabase
-        .from('sales')
+        .from('transactions')
         .select(`
           *,
           event:events(title)
@@ -541,13 +545,13 @@ const OrganizerSales = () => {
         id: sale.id,
         eventId: sale.event_id,
         eventName: sale.event.title,
-        buyerName: sale.buyer_name,
-        buyerEmail: sale.buyer_email,
-        ticketType: sale.ticket_type,
-        quantity: sale.quantity,
+        buyerName: sale.user_id, // Ajustar conforme o schema
+        buyerEmail: '', // Buscar do perfil do usuário se necessário
+        ticketType: 'Padrão', // Ajustar conforme necessário
+        quantity: 1, // Ajustar conforme necessário
         amount: sale.amount,
         date: sale.created_at,
-        status: sale.status,
+        status: sale.status === 'completed' ? 'confirmado' : sale.status === 'pending' ? 'pendente' : 'cancelado',
         paymentMethod: sale.payment_method
       }));
 
@@ -580,9 +584,10 @@ const OrganizerSales = () => {
 
   const updateSaleStatus = async (saleId: string, newStatus: 'confirmado' | 'cancelado') => {
     try {
+      const dbStatus = newStatus === 'confirmado' ? 'completed' : newStatus === 'cancelado' ? 'failed' : 'pending';
       const { error } = await supabase
-        .from('sales')
-        .update({ status: newStatus })
+        .from('transactions')
+        .update({ status: dbStatus })
         .eq('id', saleId);
 
       if (error) throw error;
