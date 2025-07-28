@@ -29,12 +29,17 @@ interface Sale {
   eventName: string;
   buyerName: string;
   buyerEmail: string;
+  userName: string; // ✅ PESSOA QUE USA O INGRESSO
+  userEmail: string;
   ticketType: string;
+  ticketCode: string; // ✅ CÓDIGO DO INGRESSO
   quantity: number;
   amount: number;
   date: string;
-  status: 'pendente' | 'confirmado' | 'cancelado';
+  status: 'pendente' | 'confirmado' | 'cancelado' | 'usado';
   paymentMethod: string;
+  isUsed: boolean; // ✅ STATUS DE USO
+  usedAt: string | null; // ✅ DATA/HORA DE USO
 }
 
 interface BankAccount {
@@ -576,42 +581,100 @@ const OrganizerSales = () => {
 
   const fetchSales = async () => {
     try {
+      console.log('🔄 Buscando vendas/ingressos...');
+      
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        console.error('Erro ao obter usuário:', userError);
+        console.error('❌ Erro ao obter usuário:', userError);
         return;
       }
 
-      // Buscar apenas transações de eventos do organizador atual
+      // Buscar ingressos com dados completos do comprador e usuário
+      const { data: ticketsData, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:events!inner(title, organizer_id, price),
+          buyer:profiles!tickets_buyer_id_fkey(name, email),
+          user:profiles!tickets_user_id_fkey(name, email),
+          transaction:transactions(status, payment_method, amount)
+        `)
+        .eq('event.organizer_id', user.id) // ✅ APENAS INGRESSOS DOS EVENTOS DO ORGANIZADOR
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar ingressos:', error);
+        // Fallback para buscar apenas transações se tickets não existir
+        return await fetchTransactionsOnly(user.id);
+      }
+
+      console.log('✅ Ingressos encontrados:', ticketsData?.length || 0);
+
+      const formattedSales: Sale[] = ticketsData?.map(ticket => ({
+        id: ticket.id,
+        eventId: ticket.event_id,
+        eventName: ticket.event.title,
+        buyerName: ticket.buyer?.name || 'Nome não informado',
+        buyerEmail: ticket.buyer?.email || 'Email não informado',
+        userName: ticket.user?.name || ticket.buyer?.name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
+        userEmail: ticket.user?.email || ticket.buyer?.email || 'Email não informado',
+        ticketType: ticket.ticket_type || 'Padrão',
+        ticketCode: ticket.code, // ✅ CÓDIGO DO INGRESSO
+        quantity: 1,
+        amount: ticket.transaction?.amount || ticket.event.price || 0,
+        date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
+        status: ticket.status === 'active' ? 'confirmado' : ticket.status === 'used' ? 'usado' : ticket.status === 'cancelled' ? 'cancelado' : 'pendente',
+        paymentMethod: ticket.transaction?.payment_method || 'Não informado',
+        isUsed: ticket.status === 'used', // ✅ STATUS DE USO DO INGRESSO
+        usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : null
+      })) || [];
+
+      setSales(formattedSales);
+    } catch (error) {
+      console.error('❌ Erro inesperado ao buscar vendas:', error);
+    }
+  };
+
+  // Fallback para buscar apenas transações se tabela tickets não existir
+  const fetchTransactionsOnly = async (userId: string) => {
+    try {
+      console.log('🔄 Fallback: Buscando apenas transações...');
+      
       const { data: salesData, error } = await supabase
         .from('transactions')
         .select(`
           *,
-          event:events!inner(title, organizer_id)
+          event:events!inner(title, organizer_id, price),
+          buyer:profiles!transactions_user_id_fkey(name, email)
         `)
-        .eq('event.organizer_id', user.id) // ✅ APENAS VENDAS DOS EVENTOS DO ORGANIZADOR
+        .eq('event.organizer_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const formattedSales: Sale[] = salesData.map(sale => ({
+      const formattedSales: Sale[] = salesData?.map(sale => ({
         id: sale.id,
         eventId: sale.event_id,
         eventName: sale.event.title,
-        buyerName: sale.user_id, // Ajustar conforme o schema
-        buyerEmail: '', // Buscar do perfil do usuário se necessário
-        ticketType: 'Padrão', // Ajustar conforme necessário
-        quantity: 1, // Ajustar conforme necessário
+        buyerName: sale.buyer?.name || 'Nome não informado',
+        buyerEmail: sale.buyer?.email || 'Email não informado',
+        userName: sale.buyer?.name || 'Usuário não informado', // Mesmo que comprador
+        userEmail: sale.buyer?.email || 'Email não informado',
+        ticketType: 'Padrão',
+        ticketCode: 'N/A', // Não disponível em transações
+        quantity: 1,
         amount: sale.amount,
-        date: sale.created_at,
+        date: new Date(sale.created_at).toLocaleDateString('pt-BR'),
         status: sale.status === 'completed' ? 'confirmado' : sale.status === 'pending' ? 'pendente' : 'cancelado',
-        paymentMethod: sale.payment_method
-      }));
+        paymentMethod: sale.payment_method || 'Não informado',
+        isUsed: false,
+        usedAt: null
+      })) || [];
 
       setSales(formattedSales);
     } catch (error) {
-      console.error('Erro ao buscar vendas:', error);
+      console.error('❌ Erro no fallback de transações:', error);
     }
   };
 
@@ -938,8 +1001,9 @@ const OrganizerSales = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprador</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
@@ -955,24 +1019,36 @@ const OrganizerSales = () => {
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
-                        <div className="text-sm text-gray-500">Comprador: {sale.buyerName}</div>
+                        <div className="text-sm text-gray-500">{sale.ticketType}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    <p>Comprador: {sale.buyerName}</p>
-                    <p>Email: {sale.buyerEmail}</p>
+                    <div className="text-sm font-medium text-gray-900">{sale.buyerName}</div>
+                    <div className="text-sm text-gray-500">{sale.buyerEmail}</div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div className="text-sm font-medium text-gray-900">{sale.userName}</div>
+                    <div className="text-sm text-gray-500">{sale.userEmail}</div>
+                    {sale.isUsed && sale.usedAt && (
+                      <div className="text-xs text-green-600">Usado em: {sale.usedAt}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                      {sale.ticketCode}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       sale.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
                       sale.status === 'confirmado' ? 'bg-green-100 text-green-800' :
+                      sale.status === 'usado' ? 'bg-blue-100 text-blue-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{sale.quantity}</td>
                   <td className="px-6 py-4 text-sm font-medium text-green-600">R$ {sale.amount.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{sale.date}</td>
                   <td className="px-6 py-4 text-sm font-medium">
@@ -1784,32 +1860,155 @@ const WithdrawalsSection = () => {
 
 // Check-ins Component
 const OrganizerCheckIns = () => {
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([
-    { id: '1', eventId: '1', participantName: 'João Silva', ticketType: 'Pista', checkInTime: '2025-07-25T10:00:00', status: 'ok' },
-    { id: '2', eventId: '1', participantName: 'Maria Santos', ticketType: 'VIP', checkInTime: '2025-07-25T10:05:00', status: 'ok' },
-    { id: '3', eventId: '2', participantName: 'Pedro Oliveira', ticketType: 'Pista', checkInTime: '2025-07-25T11:00:00', status: 'duplicado' },
-    { id: '4', eventId: '3', participantName: 'Ana Costa', ticketType: 'Pista', checkInTime: '2025-07-25T12:00:00', status: 'invalido' }
-  ]);
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [qrResult, setQrResult] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
 
+  // ✅ BUSCAR DADOS REAIS DO SUPABASE
+  const fetchCheckIns = async () => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 Buscando check-ins...');
+      
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('❌ Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Buscar ingressos usados dos eventos do organizador
+      const { data: checkInsData, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:events!inner(title, organizer_id),
+          user:profiles!tickets_user_id_fkey(name, email)
+        `)
+        .eq('event.organizer_id', user.id)
+        .eq('status', 'used') // ✅ APENAS INGRESSOS USADOS
+        .order('used_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar check-ins:', error);
+        return;
+      }
+
+      console.log('✅ Check-ins encontrados:', checkInsData?.length || 0);
+
+      const formattedCheckIns: CheckIn[] = checkInsData?.map(ticket => ({
+        id: ticket.id,
+        eventId: ticket.event_id,
+        participantName: ticket.user?.name || 'Nome não informado',
+        ticketType: ticket.ticket_type || 'Padrão',
+        checkInTime: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : 'Não informado',
+        status: 'ok' as const // Todos os ingressos usados têm status ok
+      })) || [];
+
+      setCheckIns(formattedCheckIns);
+    } catch (error) {
+      console.error('❌ Erro inesperado ao buscar check-ins:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar dados ao montar o componente
+  React.useEffect(() => {
+    fetchCheckIns();
+  }, []);
+
+  // ✅ VALIDAR E MARCAR INGRESSO COMO USADO
+  const handleTicketValidation = async (ticketCode: string) => {
+    try {
+      console.log('🔄 Validando ingresso:', ticketCode);
+      
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('❌ Erro ao obter usuário:', userError);
+        alert('Erro de autenticação');
+        return;
+      }
+
+      // Buscar o ingresso pelo código
+      const { data: ticketData, error: searchError } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:events!inner(title, organizer_id),
+          user:profiles!tickets_user_id_fkey(name, email)
+        `)
+        .eq('code', ticketCode)
+        .eq('event.organizer_id', user.id) // ✅ APENAS INGRESSOS DOS EVENTOS DO ORGANIZADOR
+        .single();
+
+      if (searchError || !ticketData) {
+        console.error('❌ Ingresso não encontrado:', searchError);
+        alert('❌ Ingresso não encontrado ou não pertence aos seus eventos');
+        setQrResult(`❌ INVÁLIDO: ${ticketCode}`);
+        return;
+      }
+
+      // Verificar se já foi usado
+      if (ticketData.status === 'used') {
+        console.log('⚠️ Ingresso já foi usado');
+        alert('⚠️ Este ingresso já foi usado anteriormente');
+        setQrResult(`⚠️ JÁ USADO: ${ticketCode}`);
+        return;
+      }
+
+      // Verificar se está ativo
+      if (ticketData.status !== 'active') {
+        console.log('❌ Ingresso não está ativo');
+        alert('❌ Este ingresso não está ativo');
+        setQrResult(`❌ INATIVO: ${ticketCode}`);
+        return;
+      }
+
+      // Marcar como usado
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({
+          status: 'used',
+          used_at: new Date().toISOString()
+        })
+        .eq('id', ticketData.id);
+
+      if (updateError) {
+        console.error('❌ Erro ao marcar como usado:', updateError);
+        alert('❌ Erro ao processar check-in');
+        return;
+      }
+
+      console.log('✅ Check-in realizado com sucesso');
+      
+      // Adicionar à lista de check-ins
+      const newCheckIn: CheckIn = {
+        id: ticketData.id,
+        eventId: ticketData.event_id,
+        participantName: ticketData.user?.name || 'Nome não informado',
+        ticketType: ticketData.ticket_type || 'Padrão',
+        checkInTime: new Date().toLocaleString('pt-BR'),
+        status: 'ok'
+      };
+
+      setCheckIns(prev => [newCheckIn, ...prev]);
+      setQrResult(`✅ CHECK-IN OK: ${ticketData.user?.name || 'Participante'}`);
+      alert(`✅ Check-in realizado com sucesso!\nParticipante: ${ticketData.user?.name || 'Nome não informado'}\nEvento: ${ticketData.event.title}`);
+      
+    } catch (error) {
+      console.error('❌ Erro inesperado na validação:', error);
+      alert('❌ Erro inesperado ao validar ingresso');
+    }
+  };
+
   const handleQRCodeScan = (data: string | null) => {
     if (data) {
-      // Simular validação do QR code
-      const alreadyChecked = checkIns.some(c => c.id === data);
-      const status: 'ok' | 'duplicado' | 'invalido' = alreadyChecked ? 'duplicado' : 'ok';
-      const newCheckIn: CheckIn = {
-        id: data,
-        eventId: '1', // Simulação: associar ao primeiro evento
-        participantName: 'Participante QR',
-        ticketType: 'Pista',
-        checkInTime: new Date().toISOString(),
-        status
-      };
-      setCheckIns(prev => [newCheckIn, ...prev]);
+      handleTicketValidation(data);
       setManualCode('');
-      setQrResult(data);
       setShowQrScanner(false);
     }
   };
@@ -1817,7 +2016,8 @@ const OrganizerCheckIns = () => {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (manualCode.trim()) {
-      handleQRCodeScan(manualCode.trim());
+      handleTicketValidation(manualCode.trim());
+      setManualCode('');
     }
   };
 
