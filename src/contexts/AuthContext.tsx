@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const profile = await signUp(email, password, name, role);
-      console.log('Perfil criado no registro:', profile); // DEBUG
+      console.log('Perfil criado/recuperado no registro:', profile); // DEBUG
       
       if (!profile) {
         throw new Error('Falha ao criar conta');
@@ -122,6 +122,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return '/profile';
     } catch (error: any) {
       console.error('Erro no registro:', error);
+      
+      // Se o erro é relacionado a duplicação e conseguimos recuperar o perfil
+      if (error.message && error.message.includes('duplicate key value')) {
+        try {
+          const existingProfile = await getUser();
+          if (existingProfile) {
+            console.log('Perfil existente encontrado após erro de duplicação:', existingProfile);
+            setUser(existingProfile);
+            
+            if (existingProfile.role === 'organizer' || existingProfile.role === 'admin') {
+              return '/organizer-dashboard';
+            }
+            return '/profile';
+          }
+        } catch (fallbackError) {
+          console.error('Erro ao recuperar perfil existente:', fallbackError);
+        }
+      }
+      
       if (error instanceof AuthError) {
         if (error.message.includes('User already registered')) {
           throw new Error('Este email já está cadastrado');

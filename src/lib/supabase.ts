@@ -127,9 +127,27 @@ export const signUp = async (email: string, password: string, name: string, role
     },
   });
 
-  if (authError) throw authError;
+  if (authError) {
+    // Se o usuário já existe, tenta fazer login
+    if (authError.message.includes('User already registered')) {
+      try {
+        const existingProfile = await signInWithEmail(email, password);
+        if (existingProfile) return existingProfile;
+      } catch (loginError) {
+        console.log('Erro ao tentar login automático:', loginError);
+      }
+    }
+    throw authError;
+  }
 
   if (authData.user) {
+    // Verifica se já existe um perfil antes de tentar criar
+    const existingProfile = await getUser();
+    if (existingProfile && existingProfile.id === authData.user.id) {
+      console.log('Perfil já existe, retornando perfil existente');
+      return existingProfile;
+    }
+
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .upsert([
@@ -146,8 +164,13 @@ export const signUp = async (email: string, password: string, name: string, role
       .single();
 
     if (profileError) {
-      const existingProfile = await getUser();
-      if (existingProfile) return existingProfile;
+      console.log('Erro no upsert do perfil:', profileError);
+      // Se falhar no upsert, tenta buscar o perfil existente
+      const fallbackProfile = await getUser();
+      if (fallbackProfile) {
+        console.log('Retornando perfil existente após erro de upsert');
+        return fallbackProfile;
+      }
       throw profileError;
     }
 
