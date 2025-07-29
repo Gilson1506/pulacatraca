@@ -282,8 +282,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
 
           {/* Content */}
           <div className="form-content">
-            {isMobile ? (
-              <div className="mobile-steps-container">
+            <div>
               <div className={currentStep === 1 ? 'block' : 'hidden'}>
                 <div className="space-y-6">
                    {/* Banner */}
@@ -597,7 +596,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                  </div>
                </div>
             </div>
-          ) : (
             <div>
               {/* Basic Information Section */}
               {currentSection === 'basic' && (
@@ -1089,7 +1087,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                 ))}
               </div>
             </div>
-          )}
           </div>
 
           <div className="mt-8">
