@@ -286,10 +286,17 @@ const CheckoutPage = () => {
 
       console.log('✅ Transação criada:', transaction);
 
-      // 5-LEVEL FALLBACK ULTRA-ROBUSTO para tickets
+      // SIMPLIFICADO: APENAS TRANSAÇÃO POR ENQUANTO
       let createdTickets = null;
       let ticketsError = null;
 
+      console.log('🎫 MODO SIMPLIFICADO: Criando apenas transação por enquanto...');
+      console.log('📊 Para habilitar tickets, execute disable_all_rls.sql no Supabase');
+
+      // TICKETS DESABILITADOS TEMPORARIAMENTE
+      // Uncomment the code below after running disable_all_rls.sql
+      
+      /*
       // NÍVEL 1: tentar com buyer_id + todas as colunas
       try {
         const ticketsBuyer = [];
@@ -440,15 +447,11 @@ const CheckoutPage = () => {
           }
         }
       }
+      */
 
-      if (ticketsError) {
-        console.error('❌ Erro ao criar ingressos:', ticketsError);
-        console.log('⚠️ Tabela tickets pode não existir ou ter problemas de configuração');
-        console.log('💡 SOLUÇÃO: Execute create_tickets_table_basic.sql no Supabase');
-        console.log('🔄 Continuando apenas com transação...');
-      } else {
-        console.log('✅ Ingressos criados:', createdTickets);
-      }
+      // MODO SIMPLIFICADO: SEM TICKETS POR ENQUANTO
+      console.log('✅ Transação criada com sucesso - tickets desabilitados temporariamente');
+      console.log('📊 Execute disable_all_rls.sql no Supabase para habilitar tickets');
 
       // Sucesso - redirecionar para perfil
       navigate('/profile', {
@@ -461,12 +464,11 @@ Detalhes da compra:
 • Valor total: R$ ${totalPrice.toFixed(2)}
 • Método: ${paymentMethod === 'card' ? 'Cartão de Crédito' : 'PIX'}
 
-${createdTickets && createdTickets.length > 0 
-  ? `✅ ${createdTickets.length} ${createdTickets.length > 1 ? 'ingressos criados' : 'ingresso criado'} com sucesso!
-Seus ingressos aparecerão no histórico após confirmação do organizador.` 
-  : `⚠️ Pagamento processado, mas houve problema na criação dos ingressos.
-💡 Execute o script SQL no Supabase para corrigir a tabela tickets.
-📞 Entre em contato com o suporte se necessário.`}`,
+✅ Pagamento processado com sucesso!
+
+⚠️ Sistema em modo simplificado (apenas transações):
+💡 Para habilitar ingressos completos, execute disable_all_rls.sql no Supabase
+📞 Entre em contato com o suporte para configuração completa`,
           showSuccess: true
         }
       });
