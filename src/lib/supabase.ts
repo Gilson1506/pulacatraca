@@ -253,4 +253,139 @@ export const deleteEventBanner = async (imageUrl: string): Promise<void> => {
     console.error('Erro ao deletar imagem:', error);
     // Don't throw error for deletion failures, just log them
   }
+};
+
+// ✅ CHAT FUNCTIONS - Sistema de mensagens de suporte
+export const sendChatMessage = async (receiverId: string, message: string) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert([
+        {
+          sender_id: user.id,
+          receiver_id: receiverId,
+          message: message.trim(),
+          read: false
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao enviar mensagem:', error);
+    throw error;
+  }
+};
+
+export const getChatMessages = async (userId: string) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select(`
+        id,
+        sender_id,
+        receiver_id,
+        message,
+        created_at,
+        read,
+        sender:profiles!sender_id(id, name, email),
+        receiver:profiles!receiver_id(id, name, email)
+      `)
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Erro ao buscar mensagens:', error);
+    throw error;
+  }
+};
+
+export const markMessagesAsRead = async (senderId: string) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ read: true })
+      .eq('sender_id', senderId)
+      .eq('receiver_id', user.id)
+      .eq('read', false);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Erro ao marcar mensagens como lidas:', error);
+    throw error;
+  }
+};
+
+export const getUnreadMessagesCount = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { count, error } = await supabase
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .eq('read', false);
+
+    if (error) throw error;
+    return count || 0;
+  } catch (error) {
+    console.error('Erro ao contar mensagens não lidas:', error);
+    return 0;
+  }
+};
+
+export const getSupportAgents = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email')
+      .eq('role', 'admin')
+      .eq('is_active', true)
+      .limit(5);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Erro ao buscar agentes de suporte:', error);
+    // Fallback: retorna um agente padrão
+    return [{
+      id: 'support-agent',
+      name: 'Suporte PulaCatraca',
+      email: 'suporte@pulacatraca.com'
+    }];
+  }
+};
+
+export const subscribeToMessages = (userId: string, callback: (payload: any) => void) => {
+  const channel = supabase
+    .channel('chat-messages')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `receiver_id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe();
+
+  return channel;
 }; 
