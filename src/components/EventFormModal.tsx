@@ -280,7 +280,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             </div>
           )}
 
-          {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
+          {/* Content */}
           <div className="form-content">
             {isMobile ? (
               <div className="mobile-steps-container">
@@ -1093,67 +1093,24 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           </div>
 
           <div className="mt-8">
-            {isMobile ? (
-              <div className="flex justify-between gap-4">
-                {currentStep > 1 ? (
-                  <button
-                    type="button"
-                    onClick={prevStep}
-                    className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Voltar
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                )}
-                
-                {currentStep < 3 ? (
-                  <button
-                    type="button"
-                    onClick={nextStep}
-                    className="flex-1 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
-                  >
-                    Próximo
-                  </button>
-                ) : (
-                  <LoadingButton
-                    type="submit"
-                    isLoading={isSaving}
-                    loadingText="Salvando..."
-                    variant="primary"
-                    size="lg"
-                    className="flex-1"
-                  >
-                    {event ? 'Salvar' : 'Criar'}
-                  </LoadingButton>
-                )}
-              </div>
-            ) : (
-              <div className="flex justify-end gap-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <LoadingButton
-                  type="submit"
-                  isLoading={isSaving}
-                  loadingText="Salvando..."
-                  variant="primary"
-                  size="md"
-                >
-                  {event ? 'Salvar Alterações' : 'Criar Evento'}
-                </LoadingButton>
-              </div>
-            )}
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <LoadingButton
+                type="submit"
+                isLoading={isSaving}
+                loadingText="Salvando..."
+                variant="primary"
+                size="md"
+              >
+                {event ? 'Salvar Alterações' : 'Criar Evento'}
+              </LoadingButton>
+            </div>
           </div>
         </form>
       </div>
