@@ -1080,7 +1080,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                         }}
                         className="text-red-500 hover:text-red-600"
                       >
-                        <X className="h-4 w-4" />
+                        ×
                       </button>
                     )}
                   </div>
@@ -1088,7 +1088,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
               </div>
             </div>
           </div>
-          
+
           <div className="mt-8">
             <div className="flex justify-end gap-4">
               <button
