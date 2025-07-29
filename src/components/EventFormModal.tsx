@@ -225,7 +225,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
         <form onSubmit={handleSubmit} className="p-6">
           {/* Navigation - Desktop Tabs / Mobile Steps */}
           {isMobile ? (
-            // ✅ MOBILE: Indicador de Passos
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                                  <h3 className="text-lg font-semibold text-gray-900">
@@ -249,7 +248,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
               </div>
             </div>
           ) : (
-            // ✅ DESKTOP: Tabs Normais
             <div className="flex border-b border-gray-200 mb-6">
               <button
                 type="button"
@@ -285,8 +283,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
           <div className="form-content">
             {isMobile ? (
-            // ✅ MOBILE: Conteúdo por Passos - RENDERIZAÇÃO ESTÁVEL
-            <div className="mobile-steps-container">
+              <div className="mobile-steps-container">
               <div className={currentStep === 1 ? 'block' : 'hidden'}>
                 <div className="space-y-6">
                    {/* Banner */}
@@ -601,7 +598,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                </div>
             </div>
           ) : (
-            // ✅ DESKTOP: Conteúdo por Seções
             <div>
               {/* Basic Information Section */}
               {currentSection === 'basic' && (
@@ -1098,7 +1094,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
 
           <div className="mt-8">
             {isMobile ? (
-              // ✅ MOBILE: Navegação de Passos
               <div className="flex justify-between gap-4">
                 {currentStep > 1 ? (
                   <button
@@ -1140,7 +1135,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                 )}
               </div>
             ) : (
-              // ✅ DESKTOP: Botões Normais
               <div className="flex justify-end gap-4">
                 <button
                   type="button"
