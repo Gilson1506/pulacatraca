@@ -296,15 +296,15 @@ const CheckoutPage = () => {
       try {
         const ticketsBuyer = [];
         for (let i = 0; i < quantity; i++) {
-          const ticketData = {
-            event_id: event.id,
-            buyer_id: user.id,
-            user_id: null, // Será definido depois pelo comprador
-            ticket_type: ticket.name || 'Padrão',
-            status: 'pending', // Aguardando confirmação do organizador
-            created_at: new Date().toISOString()
-            // code será gerado automaticamente pelo trigger
-          };
+                  const ticketData = {
+          event_id: event.id,
+          buyer_id: user.id,
+          user_id: user.id, // Usar user.id como fallback para constraint NOT NULL
+          ticket_type: ticket.name || 'Padrão',
+          status: 'pending', // Aguardando confirmação do organizador
+          created_at: new Date().toISOString()
+          // code será gerado automaticamente pelo trigger
+        };
           ticketsBuyer.push(ticketData);
         }
 
@@ -356,14 +356,15 @@ const CheckoutPage = () => {
           
           // NÍVEL 3: apenas colunas obrigatórias
           try {
-            const ticketsMinimal = [];
-            for (let i = 0; i < quantity; i++) {
-              const ticketData = {
-                event_id: event.id,
-                status: 'pending'
-              };
-              ticketsMinimal.push(ticketData);
-            }
+                      const ticketsMinimal = [];
+          for (let i = 0; i < quantity; i++) {
+            const ticketData = {
+              event_id: event.id,
+              user_id: user.id, // Obrigatório
+              status: 'pending'
+            };
+            ticketsMinimal.push(ticketData);
+          }
 
             console.log('🔄 NÍVEL 3: Tentando estrutura mínima...', ticketsMinimal);
 
@@ -383,13 +384,14 @@ const CheckoutPage = () => {
             
             // NÍVEL 4: somente event_id
             try {
-              const ticketsCore = [];
-              for (let i = 0; i < quantity; i++) {
-                const ticketData = {
-                  event_id: event.id
-                };
-                ticketsCore.push(ticketData);
-              }
+                          const ticketsCore = [];
+            for (let i = 0; i < quantity; i++) {
+              const ticketData = {
+                event_id: event.id,
+                user_id: user.id // Obrigatório
+              };
+              ticketsCore.push(ticketData);
+            }
 
               console.log('🔄 NÍVEL 4: Tentando apenas core...', ticketsCore);
 
@@ -417,7 +419,8 @@ const CheckoutPage = () => {
               const { data: singleTicket, error: singleError } = await supabase
                 .from('tickets')
                 .insert({
-                  event_id: event.id  // SEMPRE incluir event_id
+                  event_id: event.id,  // Obrigatório
+                  user_id: user.id     // Obrigatório
                 })
                 .select()
                 .single();
