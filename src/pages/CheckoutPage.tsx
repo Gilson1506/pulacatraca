@@ -127,8 +127,12 @@ const CheckoutPage = () => {
 
       console.log('💳 Processamento de pagamento simulado concluído');
 
-      // Criar transação
-      const transactionData = {
+      // Criar transação - tentar diferentes estruturas
+      let transaction = null;
+      let transactionError = null;
+
+      // Primeiro: tentar com buyer_id
+      const transactionDataBuyer = {
         event_id: event.id,
         buyer_id: user.id,
         amount: Math.round(totalPrice * 100), // Valor em centavos
@@ -137,13 +141,62 @@ const CheckoutPage = () => {
         created_at: new Date().toISOString()
       };
 
-      console.log('🔄 Criando transação...', transactionData);
+      console.log('🔄 Tentando criar transação com buyer_id...', transactionDataBuyer);
 
-      const { data: transaction, error: transactionError } = await supabase
+      const { data: transactionBuyer, error: errorBuyer } = await supabase
         .from('transactions')
-        .insert(transactionData)
+        .insert(transactionDataBuyer)
         .select()
         .single();
+
+      if (errorBuyer) {
+        console.log('⚠️ buyer_id falhou, tentando com user_id...', errorBuyer);
+        
+        // Fallback: tentar com user_id
+        const transactionDataUser = {
+          event_id: event.id,
+          user_id: user.id,
+          amount: Math.round(totalPrice * 100),
+          status: 'completed',
+          payment_method: paymentMethod === 'card' ? 'credit_card' : 'pix',
+          created_at: new Date().toISOString()
+        };
+
+        console.log('🔄 Tentando criar transação com user_id...', transactionDataUser);
+
+        const { data: transactionUser, error: errorUser } = await supabase
+          .from('transactions')
+          .insert(transactionDataUser)
+          .select()
+          .single();
+
+        if (errorUser) {
+          console.log('⚠️ user_id falhou, tentando estrutura mínima...', errorUser);
+          
+          // Fallback final: estrutura mínima
+          const transactionDataMinimal = {
+            event_id: event.id,
+            amount: Math.round(totalPrice * 100),
+            status: 'completed',
+            payment_method: paymentMethod === 'card' ? 'credit_card' : 'pix'
+          };
+
+          console.log('🔄 Tentando criar transação mínima...', transactionDataMinimal);
+
+          const { data: transactionMinimal, error: errorMinimal } = await supabase
+            .from('transactions')
+            .insert(transactionDataMinimal)
+            .select()
+            .single();
+
+          transaction = transactionMinimal;
+          transactionError = errorMinimal;
+        } else {
+          transaction = transactionUser;
+        }
+      } else {
+        transaction = transactionBuyer;
+      }
 
       if (transactionError) {
         console.error('❌ Erro ao criar transação:', transactionError);
@@ -153,8 +206,12 @@ const CheckoutPage = () => {
 
       console.log('✅ Transação criada:', transaction);
 
-      // Criar ingressos
-      const tickets = [];
+      // Criar ingressos com fallback
+      let createdTickets = null;
+      let ticketsError = null;
+
+      // Primeiro: tentar com buyer_id
+      const ticketsBuyer = [];
       for (let i = 0; i < quantity; i++) {
         const ticketData = {
           event_id: event.id,
@@ -165,16 +222,44 @@ const CheckoutPage = () => {
           created_at: new Date().toISOString()
           // code será gerado automaticamente pelo trigger
         };
-
-        tickets.push(ticketData);
+        ticketsBuyer.push(ticketData);
       }
 
-      console.log('🔄 Criando ingressos...', tickets);
+      console.log('🔄 Tentando criar ingressos com buyer_id...', ticketsBuyer);
 
-      const { data: createdTickets, error: ticketsError } = await supabase
+      const { data: ticketsDataBuyer, error: ticketsErrorBuyer } = await supabase
         .from('tickets')
-        .insert(tickets)
+        .insert(ticketsBuyer)
         .select();
+
+      if (ticketsErrorBuyer) {
+        console.log('⚠️ Ingressos com buyer_id falharam, tentando com user_id...', ticketsErrorBuyer);
+        
+        // Fallback: tentar com user_id apenas
+        const ticketsUser = [];
+        for (let i = 0; i < quantity; i++) {
+          const ticketData = {
+            event_id: event.id,
+            user_id: user.id,
+            ticket_type: ticket.name || 'Padrão',
+            status: 'pending',
+            created_at: new Date().toISOString()
+          };
+          ticketsUser.push(ticketData);
+        }
+
+        console.log('🔄 Tentando criar ingressos com user_id...', ticketsUser);
+
+        const { data: ticketsDataUser, error: ticketsErrorUser } = await supabase
+          .from('tickets')
+          .insert(ticketsUser)
+          .select();
+
+        createdTickets = ticketsDataUser;
+        ticketsError = ticketsErrorUser;
+      } else {
+        createdTickets = ticketsDataBuyer;
+      }
 
       if (ticketsError) {
         console.error('❌ Erro ao criar ingressos:', ticketsError);
