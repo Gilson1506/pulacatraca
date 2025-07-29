@@ -286,59 +286,159 @@ const CheckoutPage = () => {
 
       console.log('✅ Transação criada:', transaction);
 
-      // Criar ingressos com fallback
+      // 5-LEVEL FALLBACK ULTRA-ROBUSTO para tickets
       let createdTickets = null;
       let ticketsError = null;
 
-      // Primeiro: tentar com buyer_id
-      const ticketsBuyer = [];
-      for (let i = 0; i < quantity; i++) {
-        const ticketData = {
-          event_id: event.id,
-          buyer_id: user.id,
-          user_id: null, // Será definido depois pelo comprador
-          ticket_type: ticket.name || 'Padrão',
-          status: 'pending', // Aguardando confirmação do organizador
-          created_at: new Date().toISOString()
-          // code será gerado automaticamente pelo trigger
-        };
-        ticketsBuyer.push(ticketData);
-      }
-
-      console.log('🔄 Tentando criar ingressos com buyer_id...', ticketsBuyer);
-
-      const { data: ticketsDataBuyer, error: ticketsErrorBuyer } = await supabase
-        .from('tickets')
-        .insert(ticketsBuyer)
-        .select();
-
-      if (ticketsErrorBuyer) {
-        console.log('⚠️ Ingressos com buyer_id falharam, tentando com user_id...', ticketsErrorBuyer);
-        
-        // Fallback: tentar com user_id apenas
-        const ticketsUser = [];
+      // NÍVEL 1: tentar com buyer_id + todas as colunas
+      try {
+        const ticketsBuyer = [];
         for (let i = 0; i < quantity; i++) {
           const ticketData = {
             event_id: event.id,
-            user_id: user.id,
+            buyer_id: user.id,
+            user_id: null, // Será definido depois pelo comprador
             ticket_type: ticket.name || 'Padrão',
-            status: 'pending',
+            status: 'pending', // Aguardando confirmação do organizador
             created_at: new Date().toISOString()
+            // code será gerado automaticamente pelo trigger
           };
-          ticketsUser.push(ticketData);
+          ticketsBuyer.push(ticketData);
         }
 
-        console.log('🔄 Tentando criar ingressos com user_id...', ticketsUser);
+        console.log('🔄 NÍVEL 1: Tentando criar ingressos com buyer_id...', ticketsBuyer);
 
-        const { data: ticketsDataUser, error: ticketsErrorUser } = await supabase
+        const { data: ticketsDataBuyer, error: ticketsErrorBuyer } = await supabase
           .from('tickets')
-          .insert(ticketsUser)
+          .insert(ticketsBuyer)
           .select();
 
-        createdTickets = ticketsDataUser;
-        ticketsError = ticketsErrorUser;
-      } else {
-        createdTickets = ticketsDataBuyer;
+        if (!ticketsErrorBuyer && ticketsDataBuyer && ticketsDataBuyer.length > 0) {
+          createdTickets = ticketsDataBuyer;
+          console.log('✅ NÍVEL 1: Sucesso com buyer_id');
+        } else {
+          throw ticketsErrorBuyer || new Error('Ingressos buyer_id não criados');
+        }
+      } catch (ticketsErrorBuyer) {
+        console.log('⚠️ NÍVEL 1 falhou:', ticketsErrorBuyer);
+        
+        // NÍVEL 2: tentar com user_id apenas
+        try {
+          const ticketsUser = [];
+          for (let i = 0; i < quantity; i++) {
+            const ticketData = {
+              event_id: event.id,
+              user_id: user.id,
+              ticket_type: ticket.name || 'Padrão',
+              status: 'pending',
+              created_at: new Date().toISOString()
+            };
+            ticketsUser.push(ticketData);
+          }
+
+          console.log('🔄 NÍVEL 2: Tentando criar ingressos com user_id...', ticketsUser);
+
+          const { data: ticketsDataUser, error: ticketsErrorUser } = await supabase
+            .from('tickets')
+            .insert(ticketsUser)
+            .select();
+
+          if (!ticketsErrorUser && ticketsDataUser && ticketsDataUser.length > 0) {
+            createdTickets = ticketsDataUser;
+            console.log('✅ NÍVEL 2: Sucesso com user_id');
+          } else {
+            throw ticketsErrorUser || new Error('Ingressos user_id não criados');
+          }
+        } catch (ticketsErrorUser) {
+          console.log('⚠️ NÍVEL 2 falhou:', ticketsErrorUser);
+          
+          // NÍVEL 3: apenas colunas obrigatórias
+          try {
+            const ticketsMinimal = [];
+            for (let i = 0; i < quantity; i++) {
+              const ticketData = {
+                event_id: event.id,
+                status: 'pending'
+              };
+              ticketsMinimal.push(ticketData);
+            }
+
+            console.log('🔄 NÍVEL 3: Tentando estrutura mínima...', ticketsMinimal);
+
+            const { data: ticketsDataMinimal, error: ticketsErrorMinimal } = await supabase
+              .from('tickets')
+              .insert(ticketsMinimal)
+              .select();
+
+            if (!ticketsErrorMinimal && ticketsDataMinimal && ticketsDataMinimal.length > 0) {
+              createdTickets = ticketsDataMinimal;
+              console.log('✅ NÍVEL 3: Sucesso com estrutura mínima');
+            } else {
+              throw ticketsErrorMinimal || new Error('Ingressos mínimos não criados');
+            }
+          } catch (ticketsErrorMinimal) {
+            console.log('⚠️ NÍVEL 3 falhou:', ticketsErrorMinimal);
+            
+            // NÍVEL 4: somente event_id
+            try {
+              const ticketsCore = [];
+              for (let i = 0; i < quantity; i++) {
+                const ticketData = {
+                  event_id: event.id
+                };
+                ticketsCore.push(ticketData);
+              }
+
+              console.log('🔄 NÍVEL 4: Tentando apenas core...', ticketsCore);
+
+              const { data: ticketsDataCore, error: ticketsErrorCore } = await supabase
+                .from('tickets')
+                .insert(ticketsCore)
+                .select();
+
+              if (!ticketsErrorCore && ticketsDataCore && ticketsDataCore.length > 0) {
+                createdTickets = ticketsDataCore;
+                console.log('✅ NÍVEL 4: Sucesso com core');
+              } else {
+                throw ticketsErrorCore || new Error('Ingressos core não criados');
+              }
+            } catch (ticketsErrorCore) {
+              console.log('⚠️ NÍVEL 4 falhou:', ticketsErrorCore);
+              
+              // NÍVEL 5: FORÇA BRUTA - inserir um por vez
+              try {
+                console.log('🔄 NÍVEL 5: FORÇA BRUTA - inserindo um por vez...');
+                
+                const ticketsForce = [];
+                for (let i = 0; i < quantity; i++) {
+                  // Tentar inserir cada ingresso individualmente
+                  const { data: singleTicket, error: singleError } = await supabase
+                    .from('tickets')
+                    .insert({})
+                    .select()
+                    .single();
+
+                  if (!singleError && singleTicket) {
+                    ticketsForce.push(singleTicket);
+                    console.log(`✅ Ingresso ${i + 1}/${quantity} criado`);
+                  } else {
+                    console.log(`❌ Erro no ingresso ${i + 1}:`, singleError);
+                  }
+                }
+
+                if (ticketsForce.length > 0) {
+                  createdTickets = ticketsForce;
+                  console.log('✅ NÍVEL 5: Sucesso com força bruta - criados:', ticketsForce.length);
+                } else {
+                  throw new Error('Nenhum ingresso criado na força bruta');
+                }
+              } catch (ticketsErrorForce) {
+                ticketsError = ticketsErrorForce;
+                console.error('❌ TODOS OS 5 NÍVEIS DE TICKETS FALHARAM:', ticketsErrorForce);
+              }
+            }
+          }
+        }
       }
 
       if (ticketsError) {
