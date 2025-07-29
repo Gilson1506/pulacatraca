@@ -286,17 +286,12 @@ const CheckoutPage = () => {
 
       console.log('✅ Transação criada:', transaction);
 
-      // SIMPLIFICADO: APENAS TRANSAÇÃO POR ENQUANTO
+      // MODO COMPLETO: TRANSAÇÃO + INGRESSOS
       let createdTickets = null;
       let ticketsError = null;
 
-      console.log('🎫 MODO SIMPLIFICADO: Criando apenas transação por enquanto...');
-      console.log('📊 Para habilitar tickets, execute disable_all_rls.sql no Supabase');
-
-      // TICKETS DESABILITADOS TEMPORARIAMENTE
-      // Uncomment the code below after running disable_all_rls.sql
-      
-      /*
+      console.log('🎫 MODO COMPLETO: Criando transação + ingressos...');
+      console.log('📊 Se tickets falharem, execute disable_all_rls.sql no Supabase');
       // NÍVEL 1: tentar com buyer_id + todas as colunas
       try {
         const ticketsBuyer = [];
@@ -447,11 +442,15 @@ const CheckoutPage = () => {
           }
         }
       }
-      */
 
-      // MODO SIMPLIFICADO: SEM TICKETS POR ENQUANTO
-      console.log('✅ Transação criada com sucesso - tickets desabilitados temporariamente');
-      console.log('📊 Execute disable_all_rls.sql no Supabase para habilitar tickets');
+      if (ticketsError) {
+        console.error('❌ Erro ao criar ingressos:', ticketsError);
+        console.log('⚠️ Problema na criação de ingressos - mas transação funcionou');
+        console.log('💡 SOLUÇÃO: Execute disable_all_rls.sql no Supabase');
+        console.log('🔄 Continuando com transação apenas...');
+      } else {
+        console.log('✅ Ingressos criados com sucesso:', createdTickets);
+      }
 
       // Sucesso - redirecionar para perfil
       navigate('/profile', {
@@ -464,11 +463,14 @@ Detalhes da compra:
 • Valor total: R$ ${totalPrice.toFixed(2)}
 • Método: ${paymentMethod === 'card' ? 'Cartão de Crédito' : 'PIX'}
 
-✅ Pagamento processado com sucesso!
+${createdTickets && createdTickets.length > 0 
+  ? `✅ ${createdTickets.length} ${createdTickets.length > 1 ? 'ingressos criados' : 'ingresso criado'} com sucesso!
+Seus ingressos aparecerão no histórico após confirmação do organizador.` 
+  : `✅ Pagamento processado com sucesso!
 
-⚠️ Sistema em modo simplificado (apenas transações):
-💡 Para habilitar ingressos completos, execute disable_all_rls.sql no Supabase
-📞 Entre em contato com o suporte para configuração completa`,
+⚠️ Ingressos não foram criados, mas a compra está registrada.
+💡 Execute disable_all_rls.sql no Supabase para habilitar ingressos completos.
+📞 Entre em contato com o suporte se necessário.`}`,
           showSuccess: true
         }
       });
