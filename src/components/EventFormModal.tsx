@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Loader2 } from 'lucide-react';
+// import { X, Upload, Loader2 } from 'lucide-react';
 import { uploadEventBanner, deleteEventBanner } from '../lib/supabase';
 import LoadingButton from './LoadingButton';
 
@@ -218,7 +218,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             }} 
             className="text-gray-400 hover:text-gray-600"
           >
-            <X className="h-6 w-6" />
+            ×
           </button>
         </div>
 
@@ -307,7 +307,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                              title="Remover imagem"
                            >
-                             <X className="h-4 w-4" />
+                             ×
                            </button>
                          </div>
                        ) : (
@@ -315,13 +315,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                            <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-500 hover:bg-pink-50 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
                              {uploadingImage ? (
                                <>
-                                 <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                                 ⏳
                                  <span className="mt-2 text-sm text-gray-500">Enviando imagem...</span>
                                  <span className="text-xs text-gray-400">Por favor, aguarde</span>
                                </>
                              ) : (
                                <>
-                                 <Upload className="h-8 w-8 text-gray-400" />
+                                 📁
                                  <span className="mt-2 text-sm text-gray-600 font-medium">Clique para fazer upload</span>
                                  <span className="text-xs text-gray-400">PNG, JPG, JPEG até 5MB</span>
                                </>
@@ -621,7 +621,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                         title="Remover imagem"
                       >
-                        <X className="h-4 w-4" />
+                        ×
                       </button>
                     </div>
                   ) : (
@@ -629,13 +629,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                       <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-500 hover:bg-pink-50 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         {uploadingImage ? (
                           <>
-                            <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                            ⏳
                             <span className="mt-2 text-sm text-gray-500">Enviando imagem...</span>
                             <span className="text-xs text-gray-400">Por favor, aguarde</span>
                           </>
                         ) : (
                           <>
-                            <Upload className="h-8 w-8 text-gray-400" />
+                            📁
                             <span className="mt-2 text-sm text-gray-600 font-medium">Clique para fazer upload</span>
                             <span className="text-xs text-gray-400">PNG, JPG, JPEG até 5MB</span>
                           </>
@@ -840,7 +840,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                             onClick={() => removeSection(sectionIndex)}
                             className="text-red-500 hover:text-red-600"
                           >
-                            <X className="h-4 w-4" />
+                            ×
                           </button>
                         )}
                       </div>
@@ -901,7 +901,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                                   }}
                                   className="text-red-500 hover:text-red-600"
                                 >
-                                  <X className="h-4 w-4" />
+                                  ×
                                 </button>
                               )}
                             </div>
@@ -965,7 +965,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                         onClick={() => removeArrayItem('attractions', index)}
                         className="text-red-500 hover:text-red-600"
                       >
-                        <X className="h-4 w-4" />
+                        ×
                       </button>
                     )}
                   </div>
@@ -1004,7 +1004,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                         onClick={() => removeArrayItem('importantNotes', index)}
                         className="text-red-500 hover:text-red-600"
                       >
-                        <X className="h-4 w-4" />
+                        ×
                       </button>
                     )}
                   </div>
