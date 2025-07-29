@@ -407,26 +407,28 @@ const CheckoutPage = () => {
             } catch (ticketsErrorCore) {
               console.log('⚠️ NÍVEL 4 falhou:', ticketsErrorCore);
               
-              // NÍVEL 5: FORÇA BRUTA - inserir um por vez
-              try {
-                console.log('🔄 NÍVEL 5: FORÇA BRUTA - inserindo um por vez...');
-                
-                const ticketsForce = [];
-                for (let i = 0; i < quantity; i++) {
-                  // Tentar inserir cada ingresso individualmente
-                  const { data: singleTicket, error: singleError } = await supabase
-                    .from('tickets')
-                    .insert({})
-                    .select()
-                    .single();
+                        // NÍVEL 5: FORÇA BRUTA - inserir um por vez COM EVENT_ID
+          try {
+            console.log('🔄 NÍVEL 5: FORÇA BRUTA - inserindo um por vez com event_id...');
+            
+            const ticketsForce = [];
+            for (let i = 0; i < quantity; i++) {
+              // Tentar inserir cada ingresso individualmente COM event_id obrigatório
+              const { data: singleTicket, error: singleError } = await supabase
+                .from('tickets')
+                .insert({
+                  event_id: event.id  // SEMPRE incluir event_id
+                })
+                .select()
+                .single();
 
-                  if (!singleError && singleTicket) {
-                    ticketsForce.push(singleTicket);
-                    console.log(`✅ Ingresso ${i + 1}/${quantity} criado`);
-                  } else {
-                    console.log(`❌ Erro no ingresso ${i + 1}:`, singleError);
-                  }
-                }
+              if (!singleError && singleTicket) {
+                ticketsForce.push(singleTicket);
+                console.log(`✅ Ingresso ${i + 1}/${quantity} criado`);
+              } else {
+                console.log(`❌ Erro no ingresso ${i + 1}:`, singleError);
+              }
+            }
 
                 if (ticketsForce.length > 0) {
                   createdTickets = ticketsForce;
