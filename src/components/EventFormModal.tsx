@@ -604,7 +604,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             <div>
               {/* Basic Information Section */}
               {currentSection === 'basic' && (
-            <div className="space-y-6">
+                <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Banner do Evento
@@ -1093,6 +1093,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
               </div>
             </div>
           )}
+          </div>
 
           {/* ✅ FORM ACTIONS - RESPONSIVO */}
           <div className="mt-8">
