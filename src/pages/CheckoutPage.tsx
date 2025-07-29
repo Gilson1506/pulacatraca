@@ -396,7 +396,8 @@ const CheckoutPage = () => {
               event_id: event.id,
               user_id: user.id, // Obrigatório
               price: Math.round((event.price || 0) * 100), // Obrigatório
-              qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` // Obrigatório
+              qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Obrigatório
+              status: 'active' // Obrigatório - estava faltando!
             };
               ticketsCore.push(ticketData);
             }
