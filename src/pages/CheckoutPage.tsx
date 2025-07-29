@@ -301,6 +301,7 @@ const CheckoutPage = () => {
           buyer_id: user.id,
           user_id: user.id, // Usar user.id como fallback para constraint NOT NULL
           price: Math.round((event.price || 0) * 100), // Preço em centavos, obrigatório
+          qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // QR code único
           ticket_type: ticket.name || 'Padrão',
           status: 'pending', // Aguardando confirmação do organizador
           created_at: new Date().toISOString()
@@ -333,6 +334,7 @@ const CheckoutPage = () => {
             event_id: event.id,
             user_id: user.id,
             price: Math.round((event.price || 0) * 100), // Preço obrigatório
+            qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // QR code único
             ticket_type: ticket.name || 'Padrão',
             status: 'pending',
             created_at: new Date().toISOString()
@@ -364,6 +366,7 @@ const CheckoutPage = () => {
             event_id: event.id,
             user_id: user.id, // Obrigatório
             price: Math.round((event.price || 0) * 100), // Obrigatório
+            qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Obrigatório
             status: 'pending'
           };
             ticketsMinimal.push(ticketData);
@@ -392,7 +395,8 @@ const CheckoutPage = () => {
                           const ticketData = {
               event_id: event.id,
               user_id: user.id, // Obrigatório
-              price: Math.round((event.price || 0) * 100) // Obrigatório
+              price: Math.round((event.price || 0) * 100), // Obrigatório
+              qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` // Obrigatório
             };
               ticketsCore.push(ticketData);
             }
@@ -425,7 +429,8 @@ const CheckoutPage = () => {
                 .insert({
                   event_id: event.id,  // Obrigatório
                   user_id: user.id,    // Obrigatório
-                  price: Math.round((event.price || 0) * 100) // Obrigatório
+                  price: Math.round((event.price || 0) * 100), // Obrigatório
+                  qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` // Obrigatório
                 })
                 .select()
                 .single();
