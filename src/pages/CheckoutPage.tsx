@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { CreditCard, QrCode, Plus, Minus, AlertTriangle, Loader2 } from 'lucide-react';
+import LoadingButton from '../components/LoadingButton';
 
 const CheckoutPage = () => {
   const { state } = useLocation();
@@ -647,20 +648,17 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
                   <span>Total</span>
                   <span>R$ {totalPrice.toFixed(2)}</span>
                 </div>
-                <button
+                <LoadingButton
                   onClick={handleCheckout}
-                  disabled={isProcessing || !userProfile}
-                  className="mt-6 w-full bg-pink-600 text-white py-3 rounded-lg font-bold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  disabled={!userProfile}
+                  isLoading={isProcessing}
+                  loadingText="Processando Pagamento..."
+                  className="mt-6 w-full font-bold"
+                  variant="primary"
+                  size="lg"
                 >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                      Processando Pagamento...
-                    </>
-                  ) : (
-                    `Finalizar Compra - R$ ${totalPrice.toFixed(2)}`
-                  )}
-                </button>
+                  {`Finalizar Compra - R$ ${totalPrice.toFixed(2)}`}
+                </LoadingButton>
                 
                 {/* Informações adicionais */}
                 <div className="mt-4 text-center">

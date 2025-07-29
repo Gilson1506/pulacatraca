@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
+import LoadingButton from '../components/LoadingButton';
 import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 function getInitials(name: string) {

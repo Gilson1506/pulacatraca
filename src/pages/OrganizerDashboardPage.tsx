@@ -5,6 +5,7 @@ import {
 import EventFormModal from '../components/EventFormModal';
 import QrScanner from '../components/QrScanner';
 import { supabase } from '../lib/supabase';
+import LoadingButton from '../components/LoadingButton';
 
 // Interfaces
 interface Event {
@@ -1171,6 +1172,7 @@ const OrganizerFinancial = () => {
 const BankAccountsSection = () => {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
 
@@ -1253,6 +1255,7 @@ const BankAccountsSection = () => {
     }
 
     try {
+      setIsSavingAccount(true);
       console.log('🔄 Iniciando salvamento da conta bancária...', selectedAccount);
 
       // Obter o usuário atual
@@ -1344,6 +1347,8 @@ const BankAccountsSection = () => {
       }
       
       alert('Erro ao salvar conta bancária: ' + errorMessage);
+    } finally {
+      setIsSavingAccount(false);
     }
   };
 
@@ -1549,19 +1554,25 @@ const BankAccountsSection = () => {
                   </select>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <button 
+                  <LoadingButton
                     type="submit"
-                    className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
+                    isLoading={isSavingAccount}
+                    loadingText="Salvando..."
+                    variant="primary"
+                    size="sm"
+                    className="text-sm font-medium"
                   >
                     Salvar Conta
-                  </button>
-                  <button 
+                  </LoadingButton>
+                  <LoadingButton
                     type="button"
                     onClick={() => setShowAccountModal(false)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    variant="outline"
+                    size="sm"
+                    className="text-sm font-medium"
                   >
                     Cancelar
-                  </button>
+                  </LoadingButton>
                 </div>
               </form>
             </div>
@@ -2217,6 +2228,7 @@ const OrganizerSettings = () => {
     notifications: true
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -2285,6 +2297,7 @@ const OrganizerSettings = () => {
     }
 
     try {
+      setIsSaving(true);
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -2324,6 +2337,8 @@ const OrganizerSettings = () => {
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
       setError('Erro inesperado ao salvar configurações');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -2366,7 +2381,16 @@ const OrganizerSettings = () => {
           <input type="checkbox" name="notifications" checked={form.notifications} onChange={handleChange} id="notifications" className="h-4 w-4 text-pink-600 border-gray-300 rounded" />
           <label htmlFor="notifications" className="text-sm text-gray-700">Receber notificações por e-mail</label>
         </div>
-        <button type="submit" className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors">Salvar Alterações</button>
+        <LoadingButton 
+          type="submit" 
+          isLoading={isSaving}
+          loadingText="Salvando..."
+          variant="primary"
+          size="lg"
+          className="w-full font-semibold"
+        >
+          Salvar Alterações
+        </LoadingButton>
       </form>
       )}
     </div>

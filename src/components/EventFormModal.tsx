@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
 import { uploadEventBanner, deleteEventBanner } from '../lib/supabase';
+import LoadingButton from './LoadingButton';
 
 interface EventFormModalProps {
   isOpen: boolean;
@@ -71,6 +72,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
   const [imagePreview, setImagePreview] = useState<string | undefined>(event?.image);
   const [currentSection, setCurrentSection] = useState<'basic' | 'tickets' | 'details' | 'contact'>('basic');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // ✅ DETECÇÃO MOBILE E CONTROLE DE PASSOS
@@ -158,9 +160,14 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setIsSaving(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addArrayItem = (field: keyof Event, index: number) => {
@@ -1117,12 +1124,16 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                     Próximo
                   </button>
                 ) : (
-                  <button
+                  <LoadingButton
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                    isLoading={isSaving}
+                    loadingText="Salvando..."
+                    variant="primary"
+                    size="lg"
+                    className="flex-1"
                   >
                     {event ? 'Salvar' : 'Criar'}
-                  </button>
+                  </LoadingButton>
                 )}
               </div>
             ) : (
@@ -1135,12 +1146,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                 >
                   Cancelar
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
-                  className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                  isLoading={isSaving}
+                  loadingText="Salvando..."
+                  variant="primary"
+                  size="md"
                 >
                   {event ? 'Salvar Alterações' : 'Criar Evento'}
-                </button>
+                </LoadingButton>
               </div>
             )}
           </div>
