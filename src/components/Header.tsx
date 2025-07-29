@@ -129,13 +129,13 @@ const Header: React.FC = () => {
             </div>
           </div>
           {/* Mobile Header */}
-          <div className="md:hidden flex items-center justify-between h-20">
+          <div className="md:hidden flex items-center justify-between h-24">
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <img
                   src={logoSrc}
                   alt="Logo PULACATRACA"
-                  className="h-20 sm:h-24 w-auto cursor-pointer"
+                  className="h-24 sm:h-28 w-auto cursor-pointer"
                   onClick={() => setIsMenuOpen(false)}
                 />
               </Link>

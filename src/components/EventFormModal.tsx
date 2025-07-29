@@ -15,8 +15,8 @@ interface Event {
   name: string;
   date: string;
   time: string;
-  endDate?: string; // ✅ NOVA: Data de término
-  endTime?: string; // ✅ NOVA: Hora de término
+  endDate: string; // ✅ OBRIGATÓRIA: Data de término
+  endTime: string; // ✅ OBRIGATÓRIA: Hora de término
   location: string;
   description: string;
   status: 'ativo' | 'adiado' | 'cancelado';
@@ -48,8 +48,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
     name: '',
     date: '',
     time: '',
-    endDate: '', // ✅ NOVA
-    endTime: '', // ✅ NOVA
+    endDate: '', // ✅ OBRIGATÓRIA
+    endTime: '', // ✅ OBRIGATÓRIA
     location: '',
     description: '',
     status: 'ativo',
@@ -206,10 +206,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <style jsx>{`
-          .step-content.hidden { display: none !important; }
-          .step-content.block { display: block !important; }
-        `}</style>
+
         <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">
             {event ? 'Editar Evento' : 'Criar Novo Evento'}
@@ -289,7 +286,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           {isMobile ? (
             // ✅ MOBILE: Conteúdo por Passos - RENDERIZAÇÃO ESTÁVEL
             <div className="mobile-steps-container">
-              <div className={`step-content ${currentStep === 1 ? 'block' : 'hidden'}`}>
+              <div className={currentStep === 1 ? 'block' : 'hidden'}>
                 <div className="space-y-6">
                    {/* Banner */}
                    <div>
@@ -390,24 +387,26 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                        </div>
                        <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                           Data de Término (opcional)
+                           Data de Término *
                          </label>
                          <input
                            type="date"
-                           value={formData.endDate || ''}
+                           value={formData.endDate}
                            onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           required
                          />
                        </div>
                        <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                           Horário de Término (opcional)
+                           Horário de Término *
                          </label>
                          <input
                            type="time"
-                           value={formData.endTime || ''}
+                           value={formData.endTime}
                            onChange={e => setFormData({ ...formData, endTime: e.target.value })}
                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           required
                          />
                        </div>
                      </div>
@@ -489,7 +488,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                  </div>
                </div>
               
-               <div className={`step-content ${currentStep === 2 ? 'block' : 'hidden'}`}>
+               <div className={currentStep === 2 ? 'block' : 'hidden'}>
                  <div className="space-y-6">
                    {/* Total de Ingressos */}
                    <div>
@@ -552,7 +551,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                  </div>
                </div>
               
-               <div className={`step-content ${currentStep === 3 ? 'block' : 'hidden'}`}>
+               <div className={currentStep === 3 ? 'block' : 'hidden'}>
                  <div className="space-y-6">
                    {/* Telefone */}
                    <div>
@@ -706,24 +705,26 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Data de Término (opcional)
+                      Data de Término *
                     </label>
                     <input
                       type="date"
-                      value={formData.endDate || ''}
+                      value={formData.endDate}
                       onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Horário de Término (opcional)
+                      Horário de Término *
                     </label>
                     <input
                       type="time"
-                      value={formData.endTime || ''}
+                      value={formData.endTime}
                       onChange={e => setFormData({ ...formData, endTime: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      required
                     />
                   </div>
                 </div>
