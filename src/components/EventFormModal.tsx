@@ -1088,13 +1088,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
               </div>
             </div>
           </div>
-
+          
           <div className="mt-8">
             <div className="flex justify-end gap-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Cancelar
               </button>
