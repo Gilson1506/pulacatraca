@@ -1116,4 +1116,4 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
   );
 };
 
-export default EventFormModal; 
+export default EventFormModal;
