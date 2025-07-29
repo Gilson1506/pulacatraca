@@ -1091,7 +1091,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             </div>
           )}
           </div>
-
+          
           <div className="mt-8">
             {isMobile ? (
               <div className="flex justify-between gap-4">
