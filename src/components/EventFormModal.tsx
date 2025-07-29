@@ -282,8 +282,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             </div>
           )}
 
-                    {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
-          {isMobile ? (
+          {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
+          <div className="form-content">
+            {isMobile ? (
             // ✅ MOBILE: Conteúdo por Passos - RENDERIZAÇÃO ESTÁVEL
             <div className="mobile-steps-container">
               <div className={currentStep === 1 ? 'block' : 'hidden'}>
