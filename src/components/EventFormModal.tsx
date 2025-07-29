@@ -206,6 +206,10 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <style jsx>{`
+          .step-content.hidden { display: none !important; }
+          .step-content.block { display: block !important; }
+        `}</style>
         <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">
             {event ? 'Editar Evento' : 'Criar Novo Evento'}
@@ -281,13 +285,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             </div>
           )}
 
-          {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
+                    {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
           {isMobile ? (
-            // ✅ MOBILE: Conteúdo por Passos
-            <div>
-                             {/* PASSO 1: Informações Básicas */}
-               {currentStep === 1 && (
-                 <div className="space-y-6">
+            // ✅ MOBILE: Conteúdo por Passos - RENDERIZAÇÃO ESTÁVEL
+            <div className="mobile-steps-container">
+              <div className={`step-content ${currentStep === 1 ? 'block' : 'hidden'}`}>
+                <div className="space-y-6">
                    {/* Banner */}
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -484,10 +487,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                      </select>
                    </div>
                  </div>
-               )}
+               </div>
               
-                             {/* PASSO 2: Ingressos e Detalhes */}
-               {currentStep === 2 && (
+               <div className={`step-content ${currentStep === 2 ? 'block' : 'hidden'}`}>
                  <div className="space-y-6">
                    {/* Total de Ingressos */}
                    <div>
@@ -548,10 +550,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                      ))}
                    </div>
                  </div>
-               )}
+               </div>
               
-                             {/* PASSO 3: Contato */}
-               {currentStep === 3 && (
+               <div className={`step-content ${currentStep === 3 ? 'block' : 'hidden'}`}>
                  <div className="space-y-6">
                    {/* Telefone */}
                    <div>
@@ -597,7 +598,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                      ))}
                    </div>
                  </div>
-               )}
+               </div>
             </div>
           ) : (
             // ✅ DESKTOP: Conteúdo por Seções
