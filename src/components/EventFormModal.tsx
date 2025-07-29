@@ -14,6 +14,8 @@ interface Event {
   name: string;
   date: string;
   time: string;
+  endDate?: string; // ✅ NOVA: Data de término
+  endTime?: string; // ✅ NOVA: Hora de término
   location: string;
   description: string;
   status: 'ativo' | 'adiado' | 'cancelado';
@@ -38,10 +40,15 @@ interface Event {
 }
 
 const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event, onSubmit }) => {
+  const [currentStep, setCurrentStep] = useState(1); // ✅ CONTROLE DE PASSOS
+  const [isMobile, setIsMobile] = useState(false); // ✅ DETECÇÃO MOBILE
+  
   const [formData, setFormData] = useState<Event>(event || {
     name: '',
     date: '',
     time: '',
+    endDate: '', // ✅ NOVA
+    endTime: '', // ✅ NOVA
     location: '',
     description: '',
     status: 'ativo',
@@ -65,6 +72,31 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
   const [currentSection, setCurrentSection] = useState<'basic' | 'tickets' | 'details' | 'contact'>('basic');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // ✅ DETECÇÃO MOBILE E CONTROLE DE PASSOS
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // ✅ NAVEGAÇÃO ENTRE PASSOS (MOBILE)
+  const nextStep = () => {
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const resetForm = () => {
+    setCurrentStep(1);
+    setCurrentSection('basic');
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -171,46 +203,80 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           <h2 className="text-2xl font-bold text-gray-900">
             {event ? 'Editar Evento' : 'Criar Novo Evento'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button 
+            onClick={() => {
+              resetForm();
+              onClose();
+            }} 
+            className="text-gray-400 hover:text-gray-600"
+          >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
-          {/* Navigation Tabs */}
-          <div className="flex border-b border-gray-200 mb-6">
-            <button
-              type="button"
-              onClick={() => setCurrentSection('basic')}
-              className={`px-4 py-2 -mb-px ${currentSection === 'basic' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
-            >
-              Informações Básicas
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentSection('tickets')}
-              className={`px-4 py-2 -mb-px ${currentSection === 'tickets' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
-            >
-              Ingressos e Setores
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentSection('details')}
-              className={`px-4 py-2 -mb-px ${currentSection === 'details' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
-            >
-              Detalhes
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentSection('contact')}
-              className={`px-4 py-2 -mb-px ${currentSection === 'contact' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
-            >
-              Contato
-            </button>
-          </div>
+          {/* Navigation - Desktop Tabs / Mobile Steps */}
+          {isMobile ? (
+            // ✅ MOBILE: Indicador de Passos
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {currentStep === 1 && 'Informações Básicas'}
+                  {currentStep === 2 && 'Detalhes do Evento'}
+                  {currentStep === 3 && 'Finalizar'}
+                </h3>
+                <span className="text-sm text-gray-500">
+                  {currentStep}/3
+                </span>
+              </div>
+              <div className="flex space-x-2">
+                {[1, 2, 3].map((step) => (
+                  <div
+                    key={step}
+                    className={`flex-1 h-2 rounded-full ${
+                      step <= currentStep ? 'bg-pink-500' : 'bg-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            // ✅ DESKTOP: Tabs Normais
+            <div className="flex border-b border-gray-200 mb-6">
+              <button
+                type="button"
+                onClick={() => setCurrentSection('basic')}
+                className={`px-4 py-2 -mb-px ${currentSection === 'basic' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
+              >
+                Informações Básicas
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentSection('tickets')}
+                className={`px-4 py-2 -mb-px ${currentSection === 'tickets' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
+              >
+                Ingressos e Setores
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentSection('details')}
+                className={`px-4 py-2 -mb-px ${currentSection === 'details' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
+              >
+                Detalhes
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentSection('contact')}
+                className={`px-4 py-2 -mb-px ${currentSection === 'contact' ? 'border-b-2 border-pink-500 text-pink-600' : 'text-gray-500'}`}
+              >
+                Contato
+              </button>
+            </div>
+          )}
 
-          {/* Basic Information Section */}
-          {currentSection === 'basic' && (
+          {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
+          {/* Desktop: Baseado em currentSection | Mobile: Baseado em currentStep */}
+          {((!isMobile && currentSection === 'basic') || (isMobile && currentStep === 1)) && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -278,30 +344,60 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    required
-                  />
+              {/* ✅ DATAS E HORÁRIOS DE INÍCIO E FIM */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Data e Horário</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data de Início
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={e => setFormData({ ...formData, date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Horário de Início
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.time}
+                      onChange={e => setFormData({ ...formData, time: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Horário
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.time}
-                    onChange={e => setFormData({ ...formData, time: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    required
-                  />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data de Término (opcional)
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate || ''}
+                      onChange={e => setFormData({ ...formData, endDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Horário de Término (opcional)
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.endTime || ''}
+                      onChange={e => setFormData({ ...formData, endTime: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -362,7 +458,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* Tickets and Sections */}
-          {currentSection === 'tickets' && (
+          {((!isMobile && currentSection === 'tickets') || (isMobile && currentStep === 2)) && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -511,7 +607,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* Details Section */}
-          {currentSection === 'details' && (
+          {((!isMobile && currentSection === 'details') || (isMobile && currentStep === 2)) && (
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -594,7 +690,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* Contact Section */}
-          {currentSection === 'contact' && (
+          {((!isMobile && currentSection === 'contact') || (isMobile && currentStep === 3)) && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -669,21 +765,64 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             </div>
           )}
 
-          {/* Form Actions */}
-          <div className="mt-8 flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
-            >
-              {event ? 'Salvar Alterações' : 'Criar Evento'}
-            </button>
+          {/* ✅ FORM ACTIONS - RESPONSIVO */}
+          <div className="mt-8">
+            {isMobile ? (
+              // ✅ MOBILE: Navegação de Passos
+              <div className="flex justify-between gap-4">
+                {currentStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Voltar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                
+                {currentStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="flex-1 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                  >
+                    Próximo
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                  >
+                    {event ? 'Salvar' : 'Criar'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              // ✅ DESKTOP: Botões Normais
+              <div className="flex justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                >
+                  {event ? 'Salvar Alterações' : 'Criar Evento'}
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>
