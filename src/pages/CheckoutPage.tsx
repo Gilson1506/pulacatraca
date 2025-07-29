@@ -300,6 +300,7 @@ const CheckoutPage = () => {
           event_id: event.id,
           buyer_id: user.id,
           user_id: user.id, // Usar user.id como fallback para constraint NOT NULL
+          price: Math.round((event.price || 0) * 100), // Preço em centavos, obrigatório
           ticket_type: ticket.name || 'Padrão',
           status: 'pending', // Aguardando confirmação do organizador
           created_at: new Date().toISOString()
@@ -328,13 +329,14 @@ const CheckoutPage = () => {
         try {
           const ticketsUser = [];
           for (let i = 0; i < quantity; i++) {
-            const ticketData = {
-              event_id: event.id,
-              user_id: user.id,
-              ticket_type: ticket.name || 'Padrão',
-              status: 'pending',
-              created_at: new Date().toISOString()
-            };
+                      const ticketData = {
+            event_id: event.id,
+            user_id: user.id,
+            price: Math.round((event.price || 0) * 100), // Preço obrigatório
+            ticket_type: ticket.name || 'Padrão',
+            status: 'pending',
+            created_at: new Date().toISOString()
+          };
             ticketsUser.push(ticketData);
           }
 
@@ -358,11 +360,12 @@ const CheckoutPage = () => {
           try {
                       const ticketsMinimal = [];
           for (let i = 0; i < quantity; i++) {
-            const ticketData = {
-              event_id: event.id,
-              user_id: user.id, // Obrigatório
-              status: 'pending'
-            };
+                      const ticketData = {
+            event_id: event.id,
+            user_id: user.id, // Obrigatório
+            price: Math.round((event.price || 0) * 100), // Obrigatório
+            status: 'pending'
+          };
             ticketsMinimal.push(ticketData);
           }
 
@@ -386,10 +389,11 @@ const CheckoutPage = () => {
             try {
                           const ticketsCore = [];
             for (let i = 0; i < quantity; i++) {
-              const ticketData = {
-                event_id: event.id,
-                user_id: user.id // Obrigatório
-              };
+                          const ticketData = {
+              event_id: event.id,
+              user_id: user.id, // Obrigatório
+              price: Math.round((event.price || 0) * 100) // Obrigatório
+            };
               ticketsCore.push(ticketData);
             }
 
@@ -420,7 +424,8 @@ const CheckoutPage = () => {
                 .from('tickets')
                 .insert({
                   event_id: event.id,  // Obrigatório
-                  user_id: user.id     // Obrigatório
+                  user_id: user.id,    // Obrigatório
+                  price: Math.round((event.price || 0) * 100) // Obrigatório
                 })
                 .select()
                 .single();
