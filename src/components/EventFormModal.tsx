@@ -1095,8 +1095,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             </div>
           )}
           </div>
-          
-          {/* Form Actions */}
+
           <div className="mt-8">
             {isMobile ? (
               // ✅ MOBILE: Navegação de Passos
