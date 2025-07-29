@@ -220,11 +220,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             // ✅ MOBILE: Indicador de Passos
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {currentStep === 1 && 'Informações Básicas'}
-                  {currentStep === 2 && 'Detalhes do Evento'}
-                  {currentStep === 3 && 'Finalizar'}
-                </h3>
+                                 <h3 className="text-lg font-semibold text-gray-900">
+                   {currentStep === 1 && 'Informações Básicas'}
+                   {currentStep === 2 && 'Ingressos e Detalhes'}
+                   {currentStep === 3 && 'Contato e Finalizar'}
+                 </h3>
                 <span className="text-sm text-gray-500">
                   {currentStep}/3
                 </span>
@@ -275,8 +275,328 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* ✅ CONTEÚDO BASEADO EM MOBILE/DESKTOP */}
-          {/* Desktop: Baseado em currentSection | Mobile: Baseado em currentStep */}
-          {((!isMobile && currentSection === 'basic') || (isMobile && currentStep === 1)) && (
+          {isMobile ? (
+            // ✅ MOBILE: Conteúdo por Passos
+            <div>
+                             {/* PASSO 1: Informações Básicas */}
+               {currentStep === 1 && (
+                 <div className="space-y-6">
+                   {/* Banner */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Banner do Evento
+                     </label>
+                     <p className="text-sm text-gray-500 mb-4">
+                       Escolha uma imagem atrativa para seu evento. Recomendamos dimensões 16:9 (ex: 1200x675px).
+                     </p>
+                     <div className="flex items-start space-x-4">
+                       {imagePreview ? (
+                         <div className="relative w-32 h-32">
+                           <img
+                             src={imagePreview}
+                             alt="Preview"
+                             className="w-full h-full object-cover rounded-lg"
+                           />
+                           <button
+                             type="button"
+                             onClick={handleRemoveImage}
+                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                             title="Remover imagem"
+                           >
+                             <X className="h-4 w-4" />
+                           </button>
+                         </div>
+                       ) : (
+                         <div className="w-full">
+                           <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-500 hover:bg-pink-50 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                             {uploadingImage ? (
+                               <>
+                                 <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                                 <span className="mt-2 text-sm text-gray-500">Enviando imagem...</span>
+                                 <span className="text-xs text-gray-400">Por favor, aguarde</span>
+                               </>
+                             ) : (
+                               <>
+                                 <Upload className="h-8 w-8 text-gray-400" />
+                                 <span className="mt-2 text-sm text-gray-600 font-medium">Clique para fazer upload</span>
+                                 <span className="text-xs text-gray-400">PNG, JPG, JPEG até 5MB</span>
+                               </>
+                             )}
+                             <input
+                               type="file"
+                               accept="image/*"
+                               className="hidden"
+                               onChange={handleImageChange}
+                               disabled={uploadingImage}
+                             />
+                           </label>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+
+                   {/* Nome */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Nome do Evento
+                     </label>
+                     <input
+                       type="text"
+                       value={formData.name}
+                       onChange={e => setFormData({ ...formData, name: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                       required
+                     />
+                   </div>
+
+                   {/* Datas e Horários */}
+                   <div className="space-y-4">
+                     <h3 className="text-lg font-medium text-gray-900">Data e Horário</h3>
+                     
+                     <div className="grid grid-cols-1 gap-4">
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Data de Início
+                         </label>
+                         <input
+                           type="date"
+                           value={formData.date}
+                           onChange={e => setFormData({ ...formData, date: e.target.value })}
+                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           required
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Horário de Início
+                         </label>
+                         <input
+                           type="time"
+                           value={formData.time}
+                           onChange={e => setFormData({ ...formData, time: e.target.value })}
+                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           required
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Data de Término (opcional)
+                         </label>
+                         <input
+                           type="date"
+                           value={formData.endDate || ''}
+                           onChange={e => setFormData({ ...formData, endDate: e.target.value })}
+                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Horário de Término (opcional)
+                         </label>
+                         <input
+                           type="time"
+                           value={formData.endTime || ''}
+                           onChange={e => setFormData({ ...formData, endTime: e.target.value })}
+                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                         />
+                       </div>
+                     </div>
+                   </div>
+
+                   {/* Local */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Local
+                     </label>
+                     <input
+                       type="text"
+                       value={formData.location}
+                       onChange={e => setFormData({ ...formData, location: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                       required
+                     />
+                   </div>
+
+                   {/* Descrição */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Descrição
+                     </label>
+                     <textarea
+                       value={formData.description}
+                       onChange={e => setFormData({ ...formData, description: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                       rows={4}
+                       required
+                     />
+                   </div>
+
+                   {/* Categoria e Preço */}
+                   <div className="grid grid-cols-1 gap-4">
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                         Categoria
+                       </label>
+                       <input
+                         type="text"
+                         value={formData.category}
+                         onChange={e => setFormData({ ...formData, category: e.target.value })}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                         required
+                       />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                         Preço (€)
+                       </label>
+                       <input
+                         type="number"
+                         step="0.01"
+                         min="0"
+                         value={formData.price}
+                         onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                         required
+                       />
+                     </div>
+                   </div>
+
+                   {/* Status */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Status
+                     </label>
+                     <select
+                       value={formData.status}
+                       onChange={e => setFormData({ ...formData, status: e.target.value as 'ativo' | 'adiado' | 'cancelado' })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                     >
+                       <option value="ativo">Ativo</option>
+                       <option value="adiado">Adiado</option>
+                       <option value="cancelado">Cancelado</option>
+                     </select>
+                   </div>
+                 </div>
+               )}
+              
+                             {/* PASSO 2: Ingressos e Detalhes */}
+               {currentStep === 2 && (
+                 <div className="space-y-6">
+                   {/* Total de Ingressos */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Total de Ingressos
+                     </label>
+                     <input
+                       type="number"
+                       value={formData.totalTickets}
+                       onChange={e => setFormData({ ...formData, totalTickets: parseInt(e.target.value) })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                       required
+                       min="1"
+                     />
+                   </div>
+
+                   {/* Notas Importantes */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Notas Importantes
+                     </label>
+                     {formData.importantNotes.map((note, index) => (
+                       <div key={index} className="flex gap-2 mb-2">
+                         <input
+                           type="text"
+                           value={note}
+                           onChange={e => {
+                             const newNotes = [...formData.importantNotes];
+                             newNotes[index] = e.target.value;
+                             setFormData({ ...formData, importantNotes: newNotes });
+                           }}
+                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           placeholder="Digite uma nota importante..."
+                         />
+                       </div>
+                     ))}
+                   </div>
+
+                   {/* Atrações */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Atrações
+                     </label>
+                     {formData.attractions.map((attraction, index) => (
+                       <div key={index} className="flex gap-2 mb-2">
+                         <input
+                           type="text"
+                           value={attraction}
+                           onChange={e => {
+                             const newAttractions = [...formData.attractions];
+                             newAttractions[index] = e.target.value;
+                             setFormData({ ...formData, attractions: newAttractions });
+                           }}
+                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           placeholder="Nome da atração..."
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+              
+                             {/* PASSO 3: Contato */}
+               {currentStep === 3 && (
+                 <div className="space-y-6">
+                   {/* Telefone */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Telefone de Contato
+                     </label>
+                     <input
+                       type="tel"
+                       value={formData.contactInfo.phone}
+                       onChange={e => setFormData({
+                         ...formData,
+                         contactInfo: { ...formData.contactInfo, phone: e.target.value }
+                       })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                       placeholder="(+351) 123 456 789"
+                       required
+                     />
+                   </div>
+
+                   {/* Horários */}
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Horários de Atendimento
+                     </label>
+                     {formData.contactInfo.hours.map((hour, index) => (
+                       <div key={index} className="flex gap-2 mb-2">
+                         <input
+                           type="text"
+                           value={hour}
+                           onChange={e => {
+                             const newHours = [...formData.contactInfo.hours];
+                             newHours[index] = e.target.value;
+                             setFormData({
+                               ...formData,
+                               contactInfo: { ...formData.contactInfo, hours: newHours }
+                             });
+                           }}
+                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                           placeholder="Ex: Segunda a Sexta: 9h às 18h"
+                           required
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+            </div>
+          ) : (
+            // ✅ DESKTOP: Conteúdo por Seções
+            <div>
+              {/* Basic Information Section */}
+              {currentSection === 'basic' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -458,7 +778,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* Tickets and Sections */}
-          {((!isMobile && currentSection === 'tickets') || (isMobile && currentStep === 2)) && (
+          {!isMobile && currentSection === 'tickets' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -607,7 +927,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* Details Section */}
-          {((!isMobile && currentSection === 'details') || (isMobile && currentStep === 2)) && (
+          {!isMobile && currentSection === 'details' && (
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -690,7 +1010,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
           )}
 
           {/* Contact Section */}
-          {((!isMobile && currentSection === 'contact') || (isMobile && currentStep === 3)) && (
+          {!isMobile && currentSection === 'contact' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
