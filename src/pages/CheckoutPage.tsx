@@ -443,8 +443,9 @@ const CheckoutPage = () => {
 
       if (ticketsError) {
         console.error('❌ Erro ao criar ingressos:', ticketsError);
-        // Se tabela tickets não existir, não é erro crítico
-        console.log('⚠️ Tabela tickets não existe, continuando apenas com transação...');
+        console.log('⚠️ Tabela tickets pode não existir ou ter problemas de configuração');
+        console.log('💡 SOLUÇÃO: Execute create_tickets_table_basic.sql no Supabase');
+        console.log('🔄 Continuando apenas com transação...');
       } else {
         console.log('✅ Ingressos criados:', createdTickets);
       }
@@ -460,7 +461,12 @@ Detalhes da compra:
 • Valor total: R$ ${totalPrice.toFixed(2)}
 • Método: ${paymentMethod === 'card' ? 'Cartão de Crédito' : 'PIX'}
 
-${createdTickets ? 'Seus ingressos aparecerão no histórico após confirmação do organizador.' : 'Compra registrada com sucesso!'}`,
+${createdTickets && createdTickets.length > 0 
+  ? `✅ ${createdTickets.length} ${createdTickets.length > 1 ? 'ingressos criados' : 'ingresso criado'} com sucesso!
+Seus ingressos aparecerão no histórico após confirmação do organizador.` 
+  : `⚠️ Pagamento processado, mas houve problema na criação dos ingressos.
+💡 Execute o script SQL no Supabase para corrigir a tabela tickets.
+📞 Entre em contato com o suporte se necessário.`}`,
           showSuccess: true
         }
       });
