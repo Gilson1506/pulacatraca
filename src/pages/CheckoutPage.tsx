@@ -303,7 +303,7 @@ const CheckoutPage = () => {
           price: Math.round((event.price || 0) * 100), // Preço em centavos, obrigatório
           qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // QR code único
           ticket_type: ticket.name || 'Padrão',
-          status: 'pending', // Aguardando confirmação do organizador
+          status: 'active', // Tentar com 'active' em vez de 'pending'
           created_at: new Date().toISOString()
           // code será gerado automaticamente pelo trigger
         };
@@ -336,7 +336,7 @@ const CheckoutPage = () => {
             price: Math.round((event.price || 0) * 100), // Preço obrigatório
             qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // QR code único
             ticket_type: ticket.name || 'Padrão',
-            status: 'pending',
+            status: 'active',
             created_at: new Date().toISOString()
           };
             ticketsUser.push(ticketData);
@@ -367,7 +367,7 @@ const CheckoutPage = () => {
             user_id: user.id, // Obrigatório
             price: Math.round((event.price || 0) * 100), // Obrigatório
             qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Obrigatório
-            status: 'pending'
+                         status: 'active'
           };
             ticketsMinimal.push(ticketData);
           }
