@@ -1109,6 +1109,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
               </LoadingButton>
             </div>
           </div>
+          </div>
         </form>
       </div>
     </div>
