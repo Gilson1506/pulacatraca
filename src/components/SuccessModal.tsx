@@ -8,6 +8,7 @@ interface SuccessModalProps {
   message: string;
   userName?: string;
   userEmail?: string;
+  userDocument?: string;
 }
 
 const SuccessModal: React.FC<SuccessModalProps> = ({ 
@@ -16,7 +17,8 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   title, 
   message, 
   userName, 
-  userEmail 
+  userEmail,
+  userDocument 
 }) => {
   if (!isOpen) return null;
 
@@ -42,29 +44,57 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
           <p className="text-gray-700 mb-4">{message}</p>
           
           {userName && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-              <h3 className="font-semibold text-green-800 mb-2">📋 Dados Definidos:</h3>
-              <div className="space-y-1">
-                <p className="text-green-700"><strong>Nome:</strong> {userName}</p>
-                {userEmail && (
-                  <p className="text-green-700"><strong>Email:</strong> {userEmail}</p>
-                )}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">✓</span>
+                </div>
+                <h3 className="font-bold text-green-800">UTILIZADOR CONFIRMADO</h3>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-green-100">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">Nome:</span>
+                    <span className="font-semibold text-gray-800">{userName}</span>
+                  </div>
+                  {userEmail && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-sm">Email:</span>
+                      <span className="font-medium text-gray-700 text-sm">{userEmail}</span>
+                    </div>
+                  )}
+                  {userDocument && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-sm">Documento:</span>
+                      <span className="font-medium text-gray-700 text-sm">{userDocument}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="text-blue-500 text-lg">ℹ️</div>
-              <div>
-                <p className="text-blue-800 text-sm font-medium mb-1">
-                  Próximos Passos
-                </p>
-                <ul className="text-blue-600 text-xs space-y-1">
-                  <li>• O QR Code agora está disponível</li>
-                  <li>• Você pode baixar o PDF do ingresso</li>
-                  <li>• O ingresso está pronto para uso no evento</li>
-                </ul>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">📋</span>
+              </div>
+              <h3 className="font-bold text-blue-800">PRÓXIMOS PASSOS</h3>
+            </div>
+            <div className="bg-white rounded-lg p-3 border border-blue-100">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-700 text-sm font-medium">QR Code liberado e ativo</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-blue-700 text-sm">Baixar PDF disponível</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span className="text-purple-700 text-sm">Ingresso pronto para o evento</span>
+                </div>
               </div>
             </div>
           </div>
