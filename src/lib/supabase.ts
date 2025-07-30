@@ -388,4 +388,169 @@ export const subscribeToMessages = (userId: string, callback: (payload: any) => 
     .subscribe();
 
   return channel;
+};
+
+// ✅ TICKET USER FUNCTIONS - Sistema de usuários de ingressos
+export const createTicketUser = async (ticketId: string, userData: { name: string; email: string; document?: string }) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    // Primeiro, criar o usuário do ingresso
+    const { data: ticketUser, error: userError } = await supabase
+      .from('ticket_users')
+      .insert([{
+        name: userData.name.trim(),
+        email: userData.email.trim().toLowerCase(),
+        document: userData.document?.trim() || null
+      }])
+      .select()
+      .single();
+
+    if (userError) throw userError;
+
+    // Depois, associar o usuário ao ingresso
+    const { data: ticket, error: ticketError } = await supabase
+      .from('tickets')
+      .update({ 
+        ticket_user_id: ticketUser.id,
+        qr_code: `${ticketId}-${ticketUser.id}` // QR Code único: ticket_id + user_id
+      })
+      .eq('id', ticketId)
+      .eq('user_id', user.id) // Só o comprador pode definir o usuário
+      .select(`
+        *,
+        ticket_user:ticket_users(*)
+      `)
+      .single();
+
+    if (ticketError) throw ticketError;
+
+    return ticket;
+  } catch (error) {
+    console.error('Erro ao criar usuário do ingresso:', error);
+    throw error;
+  }
+};
+
+export const getTicketWithUser = async (ticketId: string) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { data, error } = await supabase
+      .from('tickets')
+      .select(`
+        *,
+        event:events(*),
+        ticket_user:ticket_users(*)
+      `)
+      .eq('id', ticketId)
+      .eq('user_id', user.id) // Só o comprador pode ver
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao buscar ingresso:', error);
+    throw error;
+  }
+};
+
+export const getUserTickets = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { data, error } = await supabase
+      .from('tickets')
+      .select(`
+        *,
+        event:events(*),
+        ticket_user:ticket_users(*)
+      `)
+      .eq('user_id', user.id)
+      .order('purchase_date', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Erro ao buscar ingressos do usuário:', error);
+    throw error;
+  }
+};
+
+export const validateTicketQR = async (qrCode: string) => {
+  try {
+    // QR Code format: ticketId-userId
+    const [ticketId, userId] = qrCode.split('-');
+    
+    if (!ticketId || !userId) {
+      throw new Error('QR Code inválido');
+    }
+
+    const { data, error } = await supabase
+      .from('tickets')
+      .select(`
+        *,
+        event:events(*),
+        ticket_user:ticket_users(*)
+      `)
+      .eq('id', ticketId)
+      .eq('ticket_user_id', userId)
+      .eq('qr_code', qrCode)
+      .single();
+
+    if (error) throw error;
+    
+    if (!data) {
+      throw new Error('Ingresso não encontrado');
+    }
+
+    if (data.status === 'used') {
+      throw new Error('Ingresso já foi utilizado');
+    }
+
+    if (data.status === 'cancelled') {
+      throw new Error('Ingresso foi cancelado');
+    }
+
+    if (data.status === 'expired') {
+      throw new Error('Ingresso expirado');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Erro ao validar QR Code:', error);
+    throw error;
+  }
+};
+
+export const checkInTicket = async (qrCode: string) => {
+  try {
+    // Primeiro valida o ticket
+    const ticket = await validateTicketQR(qrCode);
+    
+    // Marca como usado
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({ 
+        status: 'used',
+        check_in_date: new Date().toISOString()
+      })
+      .eq('id', ticket.id)
+      .eq('qr_code', qrCode)
+      .select(`
+        *,
+        event:events(*),
+        ticket_user:ticket_users(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Erro ao fazer check-in:', error);
+    throw error;
+  }
 }; 
