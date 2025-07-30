@@ -119,12 +119,21 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp">
         {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4 text-white">
-          <h2 className="text-xl font-bold">👤 Definir Usuário do Ingresso</h2>
+        <div className="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4 text-white relative">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="absolute top-4 right-4 text-white hover:text-pink-200 transition-colors disabled:opacity-50"
+          >
+            ✕
+          </button>
+          <h2 className="text-xl font-bold pr-8">👤 Definir Usuário do Ingresso</h2>
           <p className="text-pink-100 text-sm mt-1">
             Informe os dados de quem irá usar este ingresso
           </p>

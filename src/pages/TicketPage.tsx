@@ -58,20 +58,34 @@ const TicketPage = () => {
 
   const handleSetUser = async (userData) => {
     try {
-      console.log('👤 Definindo usuário do ingresso:', userData);
+      console.log('👤 Definindo usuário do ingresso com dados:', userData);
 
       const updatedTicket = await createTicketUser(ticketId, userData);
+      console.log('✅ Resposta do createTicketUser:', updatedTicket);
       
-      if (updatedTicket && updatedTicket.ticket_user) {
-        setTicketUser(updatedTicket.ticket_user);
+      if (updatedTicket) {
+        // Atualizar o estado do ticket
         setTicket(updatedTicket);
+        
+        // Se há ticket_user, definir no estado
+        if (updatedTicket.ticket_user) {
+          setTicketUser(updatedTicket.ticket_user);
+          console.log('✅ Usuário definido:', updatedTicket.ticket_user);
+        }
+        
+        // Fechar o modal
         setUserModalOpen(false);
         
-        const userName = updatedTicket.ticket_user.name || 'Usuário';
-        const userEmail = updatedTicket.ticket_user.email || '';
+        // Mostrar sucesso
+        const userName = updatedTicket.ticket_user?.name || 'Usuário';
+        const userEmail = updatedTicket.ticket_user?.email || '';
         alert(`✅ Usuário definido com sucesso!\nNome: ${userName}\nEmail: ${userEmail}`);
+        
+        // Recarregar dados para garantir sincronização
+        await fetchTicketData();
       } else {
-        alert('Usuário definido, mas houve um problema ao carregar os dados. Recarregue a página.');
+        console.error('❌ Resposta inválida do createTicketUser');
+        alert('Erro ao processar resposta. Recarregue a página.');
       }
 
     } catch (error) {
