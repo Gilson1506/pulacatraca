@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, MapPin, UserPlus, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getTicketWithUser, createTicketUser } from '../lib/supabase';
+import { getTicketWithUser, createTicketUser, supabase } from '../lib/supabase';
 import TicketUserForm from '../components/TicketUserForm';
 import TicketPDF from '../components/TicketPDF';
 import SystemNotConfigured from '../components/SystemNotConfigured';
@@ -40,8 +40,36 @@ const TicketPage = () => {
       setIsLoading(true);
       console.log('🎫 Buscando dados do ingresso:', ticketId);
 
+      // Buscar dados do ingresso com relacionamentos
       const ticketData = await getTicketWithUser(ticketId);
-      setTicket(ticketData);
+      
+      // Buscar dados da transação para obter valor real pago
+      console.log('💰 Buscando dados da transação...');
+      const { data: transactionData, error: transactionError } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          event:events(*)
+        `)
+        .eq('id', ticketData.transaction_id)
+        .single();
+
+      if (!transactionError && transactionData) {
+        console.log('✅ Dados da transação encontrados:', transactionData);
+        
+        // Combinar dados do ticket com dados da transação
+        const enrichedTicket = {
+          ...ticketData,
+          price: transactionData.amount, // Valor real pago
+          event: transactionData.event, // Dados reais do evento
+          transaction: transactionData // Dados completos da transação
+        };
+        
+        setTicket(enrichedTicket);
+      } else {
+        console.log('⚠️ Transação não encontrada, usando dados básicos do ticket');
+        setTicket(ticketData);
+      }
 
       // Se há um ticket_user_id definido, buscar dados do usuário
       if (ticketData.ticket_user_id && ticketData.ticket_user) {
@@ -84,18 +112,28 @@ const TicketPage = () => {
         setUserModalOpen(false);
         
         // Usar os dados que foram enviados para criar o usuário (são os dados corretos)
-        const finalUserName = userData.name || 'Usuário';
-        const finalUserEmail = userData.email || '';
+        const finalUserName = userData?.name?.trim() || 'Usuário';
+        const finalUserEmail = userData?.email?.trim() || '';
+        const finalUserDocument = userData?.document?.trim() || '';
         
-        console.log('🔍 Debug Modal - Usando userData:', userData);
-        console.log('🔍 Debug Modal - finalUserName:', finalUserName, 'finalUserEmail:', finalUserEmail);
+        console.log('🔍 Debug Modal - userData completo:', JSON.stringify(userData, null, 2));
+        console.log('🔍 Debug Modal - finalUserName:', finalUserName);
+        console.log('🔍 Debug Modal - finalUserEmail:', finalUserEmail);
+        console.log('🔍 Debug Modal - finalUserDocument:', finalUserDocument);
         
         // Mostrar modal de sucesso com os dados corretos
         setSuccessModal({
           isOpen: true,
           userName: finalUserName,
           userEmail: finalUserEmail,
-          userDocument: userData.document || ''
+          userDocument: finalUserDocument
+        });
+        
+        console.log('🔍 Debug Modal - successModal definido como:', {
+          isOpen: true,
+          userName: finalUserName,
+          userEmail: finalUserEmail,
+          userDocument: finalUserDocument
         });
         
         // Recarregar dados para garantir sincronização visual
@@ -241,15 +279,15 @@ const TicketPage = () => {
         <main className="bg-white p-4 rounded-b-lg shadow-md">
           <div ref={ticketRef} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             {/* Header com gradiente */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+            <div className="bg-gradient-to-r from-pink-600 to-rose-700 text-white p-4">
               <div className="flex justify-between items-center">
                 <div>
                   <h1 className="text-xl font-bold">{ticket.event?.name || 'EVENTO'}</h1>
-                  <p className="text-blue-100 text-sm">{ticket.event?.location || 'Local do evento'}</p>
+                  <p className="text-pink-100 text-sm">{ticket.event?.location || 'Local do evento'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold">R$ {(ticket.price || 0).toFixed(2)}</p>
-                  <p className="text-blue-100 text-xs">INGRESSO GERAL</p>
+                                      <p className="text-pink-100 text-xs">INGRESSO GERAL</p>
                 </div>
               </div>
             </div>
@@ -314,10 +352,10 @@ const TicketPage = () => {
                   )}
 
                   {ticketUser && (ticket.status === 'valid' || ticket.status === 'pending' || ticket.status === 'active') ? (
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <h3 className="text-sm font-semibold text-blue-700 mb-3 text-center">QR CODE DE ENTRADA</h3>
+                    <div className="bg-pink-50 rounded-lg p-4 border border-pink-200">
+                      <h3 className="text-sm font-semibold text-pink-700 mb-3 text-center">QR CODE DE ENTRADA</h3>
                       
-                      <div className="bg-white rounded-lg p-3 border border-blue-100">
+                      <div className="bg-white rounded-lg p-3 border border-pink-100">
                         <img 
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticket.qr_code || ticket.id}`} 
                           alt="QR Code" 
@@ -326,12 +364,12 @@ const TicketPage = () => {
                       </div>
                       
                       <div className="mt-3 text-center">
-                        <p className="text-blue-700 text-xs font-medium mb-1">
+                        <p className="text-pink-700 text-xs font-medium mb-1">
                           Código: {ticket.qr_code || ticket.id}
                         </p>
                         <div className="flex items-center justify-center gap-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="text-green-600 text-xs font-semibold">VÁLIDO</span>
+                          <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
+                          <span className="text-pink-600 text-xs font-semibold">VÁLIDO</span>
                         </div>
                       </div>
                     </div>
@@ -371,7 +409,7 @@ const TicketPage = () => {
                   <button 
                     onClick={handleDownloadPdf}
                     disabled={isDownloading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isDownloading ? (
                       <>

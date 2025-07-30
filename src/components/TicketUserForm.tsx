@@ -72,7 +72,8 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
       
       const ticket = await createTicketUser(ticketId, userData);
 
-      onSuccess(ticket);
+      // Passar os dados do usuário para o callback, não o ticket
+      onSuccess(userData);
     } catch (error: any) {
       console.error('Erro ao definir usuário:', error);
       
