@@ -1,139 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, User, Mail, FileText, QrCode } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, MapPin, UserPlus, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getTicketWithUser } from '../lib/supabase';
+import { getTicketWithUser, createTicketUser } from '../lib/supabase';
 import TicketUserForm from '../components/TicketUserForm';
 import TicketPDF from '../components/TicketPDF';
 import SystemNotConfigured from '../components/SystemNotConfigured';
-import QRCode from 'qrcode';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
-interface TicketData {
-  id: string;
-  event_id: string;
-  user_id: string;
-  ticket_user_id?: string;
-  status: 'valid' | 'used' | 'cancelled' | 'expired';
-  purchase_date: string;
-  price: number;
-  qr_code: string;
-  check_in_date?: string;
-  event: {
-    id: string;
-    name: string;
-    date: string;
-    time: string;
-    location: string;
-    description: string;
-    image?: string;
-  };
-  ticket_user?: {
-    id: string;
-    name: string;
-    email: string;
-    document?: string;
-  };
-}
-
-const TicketPage: React.FC = () => {
+const TicketPage = () => {
   const navigate = useNavigate();
-  const { ticketId } = useParams<{ ticketId: string }>();
-  const { user } = useAuth();
+  const { ticketId } = useParams();
+  const { user: currentUser } = useAuth();
+  const ticketRef = useRef(null);
   
-  const [loading, setLoading] = useState(true);
-  const [ticket, setTicket] = useState<TicketData | null>(null);
-  const [showUserForm, setShowUserForm] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [ticket, setTicket] = useState(null);
+  const [ticketUser, setTicketUser] = useState(null);
+  const [isUserModalOpen, setUserModalOpen] = useState(false);
   const [systemNotConfigured, setSystemNotConfigured] = useState(false);
 
   useEffect(() => {
-    if (ticketId && user) {
-      loadTicket();
+    if (ticketId && currentUser) {
+      fetchTicketData();
     }
-  }, [ticketId, user]);
+  }, [ticketId, currentUser]);
 
-  const loadTicket = async () => {
-    if (!ticketId) return;
-    
-    setLoading(true);
-    setError(null);
-    
+  const fetchTicketData = async () => {
     try {
+      setIsLoading(true);
+      console.log('🎫 Buscando dados do ingresso:', ticketId);
+
       const ticketData = await getTicketWithUser(ticketId);
       setTicket(ticketData);
-      
-      // Gerar QR Code se o usuário já foi definido
-      if (ticketData.ticket_user_id && ticketData.qr_code) {
-        const qrUrl = await QRCode.toDataURL(ticketData.qr_code, {
-          width: 200,
-          margin: 2,
-          color: {
-            dark: '#1f2937',
-            light: '#ffffff'
-          }
-        });
-        setQrCodeUrl(qrUrl);
+
+      // Se há um ticket_user_id definido, buscar dados do usuário
+      if (ticketData.ticket_user_id && ticketData.ticket_user) {
+        setTicketUser(ticketData.ticket_user);
       }
-    } catch (error: any) {
-      console.error('Erro ao carregar ingresso:', error);
+
+    } catch (error) {
+      console.error('❌ Erro ao buscar ingresso:', error);
       
       if (error.message?.includes('Could not find a relationship') || 
           error.message?.includes('ticket_users')) {
         setSystemNotConfigured(true);
-      } else if (error.message?.includes('not found')) {
-        setError('Ingresso não encontrado ou você não tem permissão para acessá-lo.');
       } else {
-        setError('Erro ao carregar ingresso. Tente novamente.');
+        alert('Ingresso não encontrado ou você não tem permissão para visualizá-lo.');
+        navigate('/dashboard');
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleUserDefined = (updatedTicket: TicketData) => {
-    setTicket(updatedTicket);
-    setShowUserForm(false);
-    loadTicket(); // Recarregar para pegar o QR code atualizado
+  const handleSetUser = async (userData) => {
+    try {
+      console.log('👤 Definindo usuário do ingresso:', userData);
+
+      const updatedTicket = await createTicketUser(ticketId, userData);
+      
+      if (updatedTicket.ticket_user) {
+        setTicketUser(updatedTicket.ticket_user);
+        setTicket(updatedTicket);
+        setUserModalOpen(false);
+        
+        alert(`✅ Usuário definido com sucesso!\nNome: ${updatedTicket.ticket_user.name}\nEmail: ${updatedTicket.ticket_user.email}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao definir usuário:', error);
+      alert('Erro ao definir usuário do ingresso. Tente novamente.');
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  const handleDownloadPdf = () => {
+    if (!ticketRef.current || isDownloading) return;
+
+    setIsDownloading(true);
+
+    html2canvas(ticketRef.current, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png', 0.95);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const canvasAspectRatio = canvas.width / canvas.height;
+      
+      const margin = 10;
+      let imgWidth = pdfWidth - (margin * 2);
+      let imgHeight = imgWidth / canvasAspectRatio;
+
+      if (imgHeight > pdfHeight - (margin * 2)) {
+        imgHeight = pdfHeight - (margin * 2);
+        imgWidth = imgHeight * canvasAspectRatio;
+      }
+
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = (pdfHeight - imgHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+      pdf.save(`ingresso-${ticket.id}.pdf`);
+      setIsDownloading(false);
+    }).catch(err => {
+      console.error("Erro ao gerar PDF:", err);
+      alert('Ocorreu um erro ao gerar o PDF. Tente novamente.');
+      setIsDownloading(false);
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      valid: { label: 'Válido', color: 'bg-green-100 text-green-800', icon: '✅' },
-      used: { label: 'Utilizado', color: 'bg-gray-100 text-gray-800', icon: '✓' },
-      cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800', icon: '❌' },
-      expired: { label: 'Expirado', color: 'bg-yellow-100 text-yellow-800', icon: '⏰' }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.valid;
-    
-    return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
-        <span>{config.icon}</span>
-        {config.label}
-      </span>
-    );
-  };
+  if (systemNotConfigured) {
+    return <SystemNotConfigured />;
+  }
 
-  if (!user) {
+  // Verificação de autenticação
+  if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Acesso Restrito</h2>
-          <p className="text-gray-600 mb-6">Você precisa estar logado para ver este ingresso.</p>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-600 transition-colors"
+          <p className="text-gray-600 mb-4">Você precisa estar logado para ver este ingresso.</p>
+          <button 
+            onClick={() => navigate('/auth')} 
+            className="bg-pink-600 text-white px-6 py-2 rounded-lg"
           >
             Fazer Login
           </button>
@@ -142,33 +141,27 @@ const TicketPage: React.FC = () => {
     );
   }
 
-  if (systemNotConfigured) {
-    return <SystemNotConfigured />;
-  }
-
-  if (loading) {
+  // Estado de loading
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando ingresso...</p>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+          <span className="text-gray-600 text-lg">Carregando ingresso...</span>
         </div>
       </div>
     );
   }
 
-  if (error || !ticket) {
+  // Ingresso não encontrado
+  if (!ticket) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Ingresso não encontrado</h2>
-          <p className="text-gray-600 mb-6">
-            {error || 'Este ingresso não existe ou você não tem permissão para acessá-lo.'}
-          </p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-600 transition-colors"
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Ingresso não encontrado.</p>
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="bg-pink-600 text-white px-6 py-2 rounded-lg"
           >
             Voltar ao Dashboard
           </button>
@@ -176,219 +169,169 @@ const TicketPage: React.FC = () => {
       </div>
     );
   }
+
+  const formattedDate = new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const formattedDay = new Date(ticket.event.date).toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
+  const formattedTime = ticket.event.time;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Voltar ao Dashboard
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
+      <div className="max-w-4xl mx-auto">
+        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-semibold">
+          <ArrowLeft size={20} />
+          VOLTAR AO DASHBOARD
+        </button>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Ticket Card */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Event Banner */}
-          {ticket.event.image && (
-            <div className="h-48 bg-gradient-to-r from-pink-500 to-purple-600 relative overflow-hidden">
-              <img
-                src={ticket.event.image}
-                alt={ticket.event.name}
-                className="w-full h-full object-cover opacity-90"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              <div className="absolute bottom-4 left-6 text-white">
-                <h1 className="text-2xl font-bold mb-1">{ticket.event.name}</h1>
-                <p className="text-pink-100">{formatDate(ticket.event.date)}</p>
-              </div>
+        <header className="flex justify-between items-center bg-white p-4 rounded-t-lg border-b">
+          <div className="flex items-center gap-4">
+            <img 
+              src={ticket.event.image || 'https://via.placeholder.com/64x64?text=Evento'} 
+              alt={ticket.event.name} 
+              className="w-16 h-16 rounded-full object-cover"
+            />
+            <div>
+              <h1 className="text-xl font-bold text-pink-600">{ticket.event.name}</h1>
+              <p className="text-gray-600">{new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {formattedTime}</p>
+              <button 
+                onClick={() => navigate(`/event/${ticket.event_id}`)}
+                className="text-blue-600 text-sm font-semibold hover:underline"
+              >
+                Ver evento
+              </button>
             </div>
-          )}
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="font-semibold text-blue-600 flex items-center gap-2">
+              <MapPin size={16} /> {ticket.event.location}
+            </p>
+            <p className="text-gray-500">Status: {ticket.status === 'valid' ? 'Confirmado' : ticket.status === 'used' ? 'Utilizado' : 'Pendente'}</p>
+          </div>
+        </header>
 
-          {/* Ticket Content */}
-          <div className="p-8">
-            {/* Event Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">📅 Detalhes do Evento</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-pink-500">🕐</span>
-                    <span className="text-gray-700">{ticket.event.time}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-pink-500">📍</span>
-                    <span className="text-gray-700">{ticket.event.location}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-pink-500">💰</span>
-                    <span className="text-gray-700">€{ticket.price.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-pink-500">🎫</span>
-                    {getStatusBadge(ticket.status)}
-                  </div>
+        <main className="bg-white p-6 rounded-b-lg shadow-md">
+          <div ref={ticketRef} className="border border-gray-200 rounded-lg p-4 bg-white">
+            <div className="flex justify-between items-start mb-4">
+              <span className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded-full">
+                {ticketUser ? `UTILIZADOR: ${ticketUser.name.toUpperCase()}` : 'PREENCHER UTILIZADOR'}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                ticket.status === 'valid' ? 'bg-green-100 text-green-600' :
+                ticket.status === 'used' ? 'bg-blue-100 text-blue-600' :
+                ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {ticket.status === 'valid' ? 'CONFIRMADO' : 
+                 ticket.status === 'used' ? 'UTILIZADO' : 
+                 ticket.status === 'pending' ? 'AGUARDANDO CONFIRMAÇÃO' : 
+                 'CANCELADO'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left Column: Ticket Details */}
+              <div className="md:col-span-2">
+                <p className="text-gray-500 text-sm">Ingresso</p>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  <span className="text-pink-600">{formattedDate}</span> | {formattedDay} {formattedTime}
+                </h2>
+                <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{ticket.event.name.toUpperCase()}</h3>
+                <div className="mt-4 space-y-3 text-gray-700">
+                  <p><span className="font-semibold text-blue-600">INGRESSO GERAL</span></p>
+                  <p className="text-sm">{ticket.event.description || 'Evento imperdível!'}</p>
+                  <p className="text-xs text-gray-500">Código: {ticket.qr_code || ticket.id}</p>
+                  <p className="text-xs text-pink-500">Valor: €{(ticket.price || 0).toFixed(2)}</p>
+                  <span className="inline-block bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">16+</span>
                 </div>
               </div>
 
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">📋 Informações da Compra</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-pink-500">🆔</span>
-                    <span className="text-gray-700 font-mono text-sm">{ticket.id}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-pink-500">📅</span>
-                    <span className="text-gray-700">
-                      {new Date(ticket.purchase_date).toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  {ticket.check_in_date && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-pink-500">✅</span>
-                      <span className="text-gray-700">
-                        Check-in: {new Date(ticket.check_in_date).toLocaleString('pt-BR')}
-                      </span>
+              {/* Right Column: User and QR Code */}
+              <div className="text-center flex flex-col items-center justify-between">
+                <div>
+                  <p className="font-semibold">Utilizador</p>
+                  <p className="text-gray-500 text-sm">{ticketUser ? ticketUser.name : 'Utilizador não definido'}</p>
+                  {ticketUser && (
+                    <p className="text-gray-400 text-xs">{ticketUser.email}</p>
+                  )}
+                </div>
+
+                <div className="w-32 h-32 flex items-center justify-center bg-gray-100 rounded-lg mt-4 relative">
+                  {ticketUser && ticket.status === 'valid' ? (
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${ticket.qr_code || ticket.id}`} 
+                      alt="QR Code" 
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-center p-2">
+                      <div className="w-24 h-24 bg-gray-300 animate-pulse rounded-md blur-md"></div>
+                      <p className="text-xs font-semibold text-gray-600 mt-2 absolute">
+                        {ticket.status !== 'valid' ? 'AGUARDANDO CONFIRMAÇÃO' : 'DEFINA O UTILIZADOR PARA VER O QR CODE'}
+                      </p>
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* User Section */}
-            <div className="border-t border-gray-200 pt-8">
-              {!ticket.ticket_user_id ? (
-                /* Usuário não definido - Mostrar botão */
-                <div className="text-center py-8">
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-                    <div className="text-blue-500 text-4xl mb-3">👤</div>
-                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                      Defina o usuário do ingresso
-                    </h3>
-                    <p className="text-blue-700 text-sm mb-4">
-                      Para gerar o QR Code e finalizar seu ingresso, você precisa informar os dados de quem irá utilizá-lo.
-                    </p>
-                    <button
-                      onClick={() => setShowUserForm(true)}
-                      className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                    >
-                      <User className="w-5 h-5 inline mr-2" />
-                      Definir Usuário
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Usuário definido - Mostrar dados e QR Code */
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* User Info */}
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">👤 Dados do Usuário</h3>
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <User className="w-5 h-5 text-pink-500" />
-                          <div>
-                            <p className="text-sm text-gray-500">Nome</p>
-                            <p className="font-semibold text-gray-900">{ticket.ticket_user?.name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Mail className="w-5 h-5 text-pink-500" />
-                          <div>
-                            <p className="text-sm text-gray-500">E-mail</p>
-                            <p className="font-semibold text-gray-900">{ticket.ticket_user?.email}</p>
-                          </div>
-                        </div>
-                        {ticket.ticket_user?.document && (
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-pink-500" />
-                            <div>
-                              <p className="text-sm text-gray-500">Documento</p>
-                              <p className="font-semibold text-gray-900">{ticket.ticket_user.document}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* QR Code */}
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">📱 QR Code</h3>
-                    <div className="bg-white border-2 border-gray-200 rounded-xl p-6 text-center">
-                      {qrCodeUrl ? (
-                        <div>
-                          <img
-                            src={qrCodeUrl}
-                            alt="QR Code do Ingresso"
-                            className="w-48 h-48 mx-auto mb-4 border border-gray-200 rounded-lg"
-                          />
-                          <p className="text-sm text-gray-600 mb-2">Código de Validação</p>
-                          <p className="font-mono text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded">
-                            {ticket.qr_code}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="py-8">
-                          <QrCode className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                          <p className="text-gray-500">Gerando QR Code...</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            {ticket.ticket_user_id && (
-              <div className="border-t border-gray-200 pt-8 mt-8">
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <TicketPDF 
-                    ticket={ticket} 
-                    onDownload={() => console.log('PDF baixado com sucesso!')}
-                  />
-                  <button
-                    onClick={() => window.print()}
-                    className="inline-flex items-center gap-2 bg-white border-2 border-pink-500 text-pink-500 hover:bg-pink-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+                {ticket.status === 'valid' && (
+                  <button 
+                    onClick={() => setUserModalOpen(true)}
+                    disabled={!!ticketUser || ticket.status === 'used'}
+                    className="mt-4 bg-pink-600 text-white font-bold py-2 px-4 rounded-lg w-full hover:bg-pink-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    <span className="text-lg">🖨️</span>
-                    Imprimir
+                    <UserPlus className="inline-block mr-2" size={16} />
+                    {ticketUser ? 'UTILIZADOR DEFINIDO' : 'DEFINIR UTILIZADOR'}
                   </button>
-                </div>
-                
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-                  <div className="flex items-start gap-3">
-                    <div className="text-green-500 text-lg">✅</div>
-                    <div>
-                      <p className="text-green-800 font-medium mb-1">Ingresso Pronto!</p>
-                      <p className="text-green-600 text-sm">
-                        Seu ingresso está completo. Apresente o QR Code na entrada do evento ou baixe o PDF para imprimir.
-                      </p>
-                    </div>
+                )}
+
+                {ticket.status === 'pending' && (
+                  <div className="mt-4 bg-yellow-100 border border-yellow-300 text-yellow-700 px-4 py-2 rounded-lg w-full text-xs">
+                    ⏳ Aguardando confirmação do organizador
                   </div>
-                </div>
+                )}
+
+                {ticket.status === 'used' && (
+                  <div className="mt-4 bg-blue-100 border border-blue-300 text-blue-700 px-4 py-2 rounded-lg w-full text-xs">
+                    ✅ Ingresso já utilizado
+                  </div>
+                )}
+
+                {ticketUser && ticket.status === 'valid' && (
+                  <button
+                    onClick={handleDownloadPdf}
+                    disabled={isDownloading}
+                    className="mt-2 bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full hover:bg-green-600 transition-colors disabled:bg-gray-400"
+                  >
+                    {isDownloading ? 'BAIXANDO...' : 'BAIXAR PDF'}
+                  </button>
+                )}
               </div>
-            )}
+            </div>
+            
+            <div className={`mt-6 border px-4 py-3 rounded-lg text-center ${
+              ticket.status === 'pending' ? 'bg-yellow-100 border-yellow-200 text-yellow-700' :
+              ticket.status === 'used' ? 'bg-blue-100 border-blue-200 text-blue-700' :
+              ticketUser ? 'bg-green-100 border-green-200 text-green-700' :
+              'bg-orange-100 border-orange-200 text-orange-700'
+            }`}>
+              <p>
+                {ticket.status === 'pending' ? 
+                  '⏳ Aguardando confirmação do organizador para poder definir o utilizador.' :
+                 ticket.status === 'used' ? 
+                  '🎉 Ingresso utilizado com sucesso! Esperamos que tenha curtido o evento!' :
+                 ticketUser ? 
+                  '✅ Dados do utilizador definidos. Bom evento!' : 
+                  '👤 Defina o utilizador deste ingresso para poder utilizá-lo no evento.'}
+              </p>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
 
-      {/* User Form Modal */}
-      {showUserForm && ticketId && (
-        <TicketUserForm
-          ticketId={ticketId}
-          onSuccess={handleUserDefined}
-          onCancel={() => setShowUserForm(false)}
-        />
-      )}
+      <TicketUserForm 
+        ticketId={ticketId}
+        onSuccess={handleSetUser}
+        onCancel={() => setUserModalOpen(false)}
+        isOpen={isUserModalOpen}
+      />
     </div>
   );
 };

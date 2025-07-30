@@ -6,9 +6,10 @@ interface TicketUserFormProps {
   ticketId: string;
   onSuccess: (ticket: any) => void;
   onCancel: () => void;
+  isOpen?: boolean;
 }
 
-const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, onCancel }) => {
+const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, onCancel, isOpen = true }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -61,12 +62,16 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
     } catch (error: any) {
       console.error('Erro ao definir usuário:', error);
       
-      if (error.message.includes('duplicate key')) {
+      const errorMessage = error?.message || '';
+      
+      if (errorMessage.includes('duplicate key')) {
         setErrors({ email: 'Este e-mail já está sendo usado em outro ingresso' });
-      } else if (error.message.includes('não está configurado')) {
+      } else if (errorMessage.includes('não está configurado')) {
         setErrors({ general: 'Sistema não configurado. Execute o script SQL no Supabase primeiro.' });
-      } else if (error.message.includes('não encontrado')) {
+      } else if (errorMessage.includes('não encontrado')) {
         setErrors({ general: 'Ingresso não encontrado ou sem permissão.' });
+      } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+        setErrors({ general: 'Tabela ticket_users não existe. Execute o script SQL primeiro.' });
       } else {
         setErrors({ general: 'Erro ao salvar dados. Tente novamente.' });
       }
