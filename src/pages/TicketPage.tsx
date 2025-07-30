@@ -62,12 +62,16 @@ const TicketPage = () => {
 
       const updatedTicket = await createTicketUser(ticketId, userData);
       
-      if (updatedTicket.ticket_user) {
+      if (updatedTicket && updatedTicket.ticket_user) {
         setTicketUser(updatedTicket.ticket_user);
         setTicket(updatedTicket);
         setUserModalOpen(false);
         
-        alert(`✅ Usuário definido com sucesso!\nNome: ${updatedTicket.ticket_user.name}\nEmail: ${updatedTicket.ticket_user.email}`);
+        const userName = updatedTicket.ticket_user.name || 'Usuário';
+        const userEmail = updatedTicket.ticket_user.email || '';
+        alert(`✅ Usuário definido com sucesso!\nNome: ${userName}\nEmail: ${userEmail}`);
+      } else {
+        alert('Usuário definido, mas houve um problema ao carregar os dados. Recarregue a página.');
       }
 
     } catch (error) {
@@ -153,12 +157,14 @@ const TicketPage = () => {
     );
   }
 
-  // Ingresso não encontrado
-  if (!ticket) {
+  // Ingresso não encontrado ou dados incompletos
+  if (!ticket || !ticket.event) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Ingresso não encontrado.</p>
+          <p className="text-gray-600 mb-4">
+            {!ticket ? 'Ingresso não encontrado.' : 'Dados do evento não encontrados.'}
+          </p>
           <button 
             onClick={() => navigate('/dashboard')} 
             className="bg-pink-600 text-white px-6 py-2 rounded-lg"
@@ -170,9 +176,9 @@ const TicketPage = () => {
     );
   }
 
-  const formattedDate = new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-  const formattedDay = new Date(ticket.event.date).toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
-  const formattedTime = ticket.event.time;
+  const formattedDate = ticket.event?.date ? new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+  const formattedDay = ticket.event?.date ? new Date(ticket.event.date).toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() : '';
+  const formattedTime = ticket.event?.time || '';
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
@@ -185,13 +191,13 @@ const TicketPage = () => {
         <header className="flex justify-between items-center bg-white p-4 rounded-t-lg border-b">
           <div className="flex items-center gap-4">
             <img 
-              src={ticket.event.image || 'https://via.placeholder.com/64x64?text=Evento'} 
-              alt={ticket.event.name} 
+              src={ticket.event?.image || 'https://via.placeholder.com/64x64?text=Evento'} 
+              alt={ticket.event?.name || 'Evento'} 
               className="w-16 h-16 rounded-full object-cover"
             />
             <div>
-              <h1 className="text-xl font-bold text-pink-600">{ticket.event.name}</h1>
-              <p className="text-gray-600">{new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {formattedTime}</p>
+              <h1 className="text-xl font-bold text-pink-600">{ticket.event?.name || 'Evento'}</h1>
+              <p className="text-gray-600">{ticket.event?.date ? new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''} {formattedTime}</p>
               <button 
                 onClick={() => navigate(`/event/${ticket.event_id}`)}
                 className="text-blue-600 text-sm font-semibold hover:underline"
@@ -202,7 +208,7 @@ const TicketPage = () => {
           </div>
           <div className="text-right hidden sm:block">
             <p className="font-semibold text-blue-600 flex items-center gap-2">
-              <MapPin size={16} /> {ticket.event.location}
+              <MapPin size={16} /> {ticket.event?.location || 'Local não informado'}
             </p>
             <p className="text-gray-500">Status: {ticket.status === 'valid' ? 'Confirmado' : ticket.status === 'used' ? 'Utilizado' : 'Pendente'}</p>
           </div>
@@ -212,7 +218,7 @@ const TicketPage = () => {
           <div ref={ticketRef} className="border border-gray-200 rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-4">
               <span className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded-full">
-                {ticketUser ? `UTILIZADOR: ${ticketUser.name.toUpperCase()}` : 'PREENCHER UTILIZADOR'}
+                {ticketUser ? `UTILIZADOR: ${ticketUser.name?.toUpperCase() || 'USUÁRIO'}` : 'PREENCHER UTILIZADOR'}
               </span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                 ticket.status === 'valid' ? 'bg-green-100 text-green-600' :
@@ -234,10 +240,10 @@ const TicketPage = () => {
                 <h2 className="text-2xl font-bold text-gray-800">
                   <span className="text-pink-600">{formattedDate}</span> | {formattedDay} {formattedTime}
                 </h2>
-                <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{ticket.event.name.toUpperCase()}</h3>
+                <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{ticket.event?.name?.toUpperCase() || 'EVENTO'}</h3>
                 <div className="mt-4 space-y-3 text-gray-700">
                   <p><span className="font-semibold text-blue-600">INGRESSO GERAL</span></p>
-                  <p className="text-sm">{ticket.event.description || 'Evento imperdível!'}</p>
+                  <p className="text-sm">{ticket.event?.description || 'Evento imperdível!'}</p>
                   <p className="text-xs text-gray-500">Código: {ticket.qr_code || ticket.id}</p>
                   <p className="text-xs text-pink-500">Valor: €{(ticket.price || 0).toFixed(2)}</p>
                   <span className="inline-block bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">16+</span>
@@ -248,9 +254,9 @@ const TicketPage = () => {
               <div className="text-center flex flex-col items-center justify-between">
                 <div>
                   <p className="font-semibold">Utilizador</p>
-                  <p className="text-gray-500 text-sm">{ticketUser ? ticketUser.name : 'Utilizador não definido'}</p>
+                  <p className="text-gray-500 text-sm">{ticketUser ? ticketUser.name || 'Usuário' : 'Utilizador não definido'}</p>
                   {ticketUser && (
-                    <p className="text-gray-400 text-xs">{ticketUser.email}</p>
+                    <p className="text-gray-400 text-xs">{ticketUser.email || ''}</p>
                   )}
                 </div>
 
