@@ -217,48 +217,42 @@ const TicketPage = () => {
           VOLTAR AO DASHBOARD
         </button>
 
-        <header className="flex justify-between items-center bg-white p-4 rounded-t-lg border-b">
-          <div className="flex items-center gap-4">
+        <header className="bg-white p-3 rounded-t-lg border-b">
+          <div className="flex items-center gap-3">
             <img 
               src={ticket.event?.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
               alt={ticket.event?.name || 'Evento'} 
-              className="w-16 h-16 rounded-full object-cover"
+              className="w-12 h-12 rounded-lg object-cover"
             />
-            <div>
-              <h1 className="text-xl font-bold text-pink-600">{ticket.event?.name || 'Evento'}</h1>
-              <p className="text-gray-600">{ticket.event?.date ? new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''} {formattedTime}</p>
-              <button 
-                onClick={() => navigate(`/event/${ticket.event_id}`)}
-                className="text-blue-600 text-sm font-semibold hover:underline"
-              >
-                Ver evento
-              </button>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-gray-800">{ticket.event?.name || 'Evento'}</h1>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>{ticket.event?.date ? new Date(ticket.event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}</span>
+                <span className="flex items-center gap-1">
+                  <MapPin size={12} /> {ticket.event?.location || 'Local não informado'}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="text-right hidden sm:block">
-            <p className="font-semibold text-blue-600 flex items-center gap-2">
-              <MapPin size={16} /> {ticket.event?.location || 'Local não informado'}
-            </p>
-            <p className="text-gray-500">Status: {ticket.status === 'valid' ? 'Confirmado' : ticket.status === 'used' ? 'Utilizado' : 'Pendente'}</p>
           </div>
         </header>
 
-        <main className="bg-white p-6 rounded-b-lg shadow-md">
-          <div ref={ticketRef} className="border border-gray-200 rounded-lg p-4 bg-white">
-            <div className="flex justify-between items-start mb-4">
-              <span className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded-full">
-                {ticketUser ? `UTILIZADOR: ${ticketUser.name?.toUpperCase() || 'USUÁRIO'}` : 'PREENCHER UTILIZADOR'}
-              </span>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                ticket.status === 'valid' ? 'bg-green-100 text-green-600' :
-                ticket.status === 'used' ? 'bg-blue-100 text-blue-600' :
-                ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                'bg-gray-100 text-gray-600'
+        <main className="bg-white p-4 rounded-b-lg shadow-md">
+          <div ref={ticketRef} className="border border-gray-200 rounded-lg p-3 bg-white">
+            <div className="flex justify-between items-center mb-3">
+              <span className={`text-xs font-bold px-2 py-1 rounded-md ${
+                ticketUser 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-orange-100 text-orange-600'
               }`}>
-                {ticket.status === 'valid' ? 'CONFIRMADO' : 
-                 ticket.status === 'used' ? 'UTILIZADO' : 
-                 ticket.status === 'pending' ? 'AGUARDANDO CONFIRMAÇÃO' : 
-                 'CANCELADO'}
+                {ticketUser ? `✓ ${ticketUser.name || 'USUÁRIO'}` : '⚠ DEFINIR UTILIZADOR'}
+              </span>
+              <span className={`text-xs font-bold px-2 py-1 rounded-md ${
+                ticket.status === 'valid' ? 'bg-blue-100 text-blue-700' :
+                ticket.status === 'used' ? 'bg-green-100 text-green-700' :
+                'bg-yellow-100 text-yellow-700'
+              }`}>
+                {ticket.status === 'valid' ? 'VÁLIDO' : 
+                 ticket.status === 'used' ? 'USADO' : 'PENDENTE'}
               </span>
             </div>
 
@@ -292,23 +286,14 @@ const TicketPage = () => {
                         <h3 className="font-bold text-green-800 text-lg">UTILIZADOR DEFINIDO</h3>
                       </div>
                       
-                      <div className="space-y-2">
-                        <div className="bg-white rounded-lg p-3 border border-green-100">
-                          <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">NOME COMPLETO</p>
-                          <p className="font-bold text-gray-800 text-sm">{ticketUser.name}</p>
+                      <div className="space-y-1">
+                        <div className="bg-white rounded-lg p-2 border border-green-100">
+                          <p className="text-xs text-green-600 font-semibold mb-1">{ticketUser.name}</p>
+                          <p className="text-xs text-gray-600">{ticketUser.email}</p>
+                          {ticketUser.document && (
+                            <p className="text-xs text-gray-500 mt-1">{ticketUser.document}</p>
+                          )}
                         </div>
-                        
-                        <div className="bg-white rounded-lg p-3 border border-green-100">
-                          <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">EMAIL</p>
-                          <p className="font-medium text-gray-700 text-xs break-all">{ticketUser.email}</p>
-                        </div>
-                        
-                        {ticketUser.document && (
-                          <div className="bg-white rounded-lg p-3 border border-green-100">
-                            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">DOCUMENTO</p>
-                            <p className="font-medium text-gray-700 text-xs">{ticketUser.document}</p>
-                          </div>
-                        )}
                       </div>
                       
                       <div className="mt-3 flex items-center justify-center gap-1">
@@ -334,29 +319,29 @@ const TicketPage = () => {
                 {/* QR Code Section - Melhorado */}
                 <div className="w-full">
                   {ticketUser && (ticket.status === 'valid' || ticket.status === 'pending' || ticket.status === 'active') ? (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
-                      <div className="flex items-center justify-center gap-2 mb-3">
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-3">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-white font-bold text-xs">🔍</span>
                         </div>
-                        <h3 className="font-bold text-blue-800 text-sm">QR CODE DO INGRESSO</h3>
+                        <h3 className="font-bold text-blue-800 text-sm">QR CODE</h3>
                       </div>
                       
-                      <div className="bg-white rounded-xl p-4 border border-blue-100">
+                      <div className="bg-white rounded-xl p-3 border border-blue-100">
                         <img 
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${ticket.qr_code || ticket.id}`} 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${ticket.qr_code || ticket.id}`} 
                           alt="QR Code" 
-                          className="w-32 h-32 mx-auto object-contain"
+                          className="w-40 h-40 mx-auto object-contain"
                         />
                       </div>
                       
-                      <div className="mt-3 text-center">
-                        <p className="text-blue-700 text-xs font-medium">
-                          Apresente este código na entrada do evento
+                      <div className="mt-2 text-center">
+                        <p className="text-blue-700 text-xs">
+                          Apresente na entrada
                         </p>
                         <div className="flex items-center justify-center gap-1 mt-1">
                           <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                          <span className="text-blue-600 text-xs">Código Ativo</span>
+                          <span className="text-blue-600 text-xs">Ativo</span>
                         </div>
                       </div>
                     </div>

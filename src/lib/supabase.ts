@@ -390,6 +390,27 @@ export const subscribeToMessages = (userId: string, callback: (payload: any) => 
   return channel;
 };
 
+// ✅ UTILITY FUNCTIONS - Funções auxiliares
+export const generateTicketCode = () => {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const numbers = '0123456789';
+  
+  // Formato: AB1234 (2 letras + 4 números)
+  let code = '';
+  
+  // 2 letras aleatórias
+  for (let i = 0; i < 2; i++) {
+    code += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+  
+  // 4 números aleatórios
+  for (let i = 0; i < 4; i++) {
+    code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  }
+  
+  return code;
+};
+
 // ✅ TICKET USER FUNCTIONS - Sistema de usuários de ingressos
 export const createTicketUser = async (ticketId: string, userData: { name: string; email: string; document?: string }) => {
   try {
@@ -446,8 +467,9 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
       throw error;
     }
 
-    // Atualizar o ingresso com o ticket_user_id e QR code
-    const qrCode = `${ticketId}-${ticketUser.id}`;
+    // Atualizar o ingresso com o ticket_user_id e QR code profissional
+    const professionalCode = generateTicketCode();
+    const qrCode = `TKT-${professionalCode}-${ticketUser.id.substring(0, 8).toUpperCase()}`;
     const { data: updatedTicket, error: updateError } = await supabase
       .from('tickets')
       .update({ 
