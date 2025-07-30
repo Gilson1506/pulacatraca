@@ -39,15 +39,26 @@ export interface Event {
   tags: string[];
 }
 
+export interface TicketUser {
+  id: string;
+  name: string;
+  email: string;
+  document?: string; // CPF ou outro documento
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Ticket {
   id: string;
   event_id: string;
-  user_id: string;
+  user_id: string; // Comprador (buyer)
+  ticket_user_id?: string; // Usuário do ingresso (pode ser diferente do comprador)
   status: 'valid' | 'used' | 'cancelled' | 'expired';
   purchase_date: string;
   price: number;
   qr_code: string;
   check_in_date?: string;
+  ticket_user?: TicketUser; // Dados do usuário do ingresso
 }
 
 export interface Notification {
@@ -135,6 +146,11 @@ export interface Database {
         Row: Ticket;
         Insert: Omit<Ticket, 'id' | 'purchase_date'>;
         Update: Partial<Omit<Ticket, 'id'>>;
+      };
+      ticket_users: {
+        Row: TicketUser;
+        Insert: Omit<TicketUser, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<TicketUser, 'id'>>;
       };
       notifications: {
         Row: Notification;
