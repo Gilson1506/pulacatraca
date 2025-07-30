@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createTicketUser } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import LoadingButton from './LoadingButton';
 
 interface TicketUserFormProps {
@@ -10,6 +11,7 @@ interface TicketUserFormProps {
 }
 
 const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, onCancel, isOpen = true }) => {
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,15 +23,15 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
+    if (!formData.name?.trim()) {
       newErrors.name = 'Nome é obrigatório';
-    } else if (formData.name.trim().length < 2) {
+    } else if (formData.name?.trim().length < 2) {
       newErrors.name = 'Nome deve ter pelo menos 2 caracteres';
     }
 
-    if (!formData.email.trim()) {
+    if (!formData.email?.trim()) {
       newErrors.email = 'E-mail é obrigatório';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email || '')) {
       newErrors.email = 'E-mail inválido';
     }
 
@@ -53,9 +55,9 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
     setLoading(true);
     try {
       const ticket = await createTicketUser(ticketId, {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        document: formData.document.trim() || undefined
+        name: formData.name?.trim() || '',
+        email: formData.email?.trim().toLowerCase() || '',
+        document: formData.document?.trim() || undefined
       });
 
       onSuccess(ticket);
@@ -106,6 +108,17 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
     setFormData({ ...formData, document: formatted });
   };
 
+  const handleUseBuyerData = () => {
+    if (currentUser) {
+      setFormData({
+        name: currentUser.name || '',
+        email: currentUser.email || '',
+        document: currentUser.cpf || currentUser.cnpj || ''
+      });
+      setErrors({}); // Limpar erros ao preencher automaticamente
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp">
@@ -122,6 +135,21 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
           {errors.general && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">⚠️ {errors.general}</p>
+            </div>
+          )}
+
+          {/* Botão para usar dados do comprador */}
+          {currentUser && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={handleUseBuyerData}
+                disabled={loading}
+                className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <span className="text-lg">👤</span>
+                Usar meus dados ({currentUser.name})
+              </button>
             </div>
           )}
 
@@ -227,7 +255,7 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
               type="submit"
               isLoading={loading}
               loadingText="Salvando..."
-              disabled={!formData.name.trim() || !formData.email.trim()}
+              disabled={!formData.name?.trim() || !formData.email?.trim()}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-200 shadow-lg disabled:opacity-50"
             >
               Confirmar
