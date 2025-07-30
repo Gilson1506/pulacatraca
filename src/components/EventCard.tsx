@@ -34,7 +34,8 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const renderDate = () => {
     const { day: startDay, month: startMonth, year: startYear } = formatDate(event.date);
 
-    if (event.endDate) {
+    // Verificar se há data de fim E se é diferente da data de início
+    if (event.endDate && event.endDate !== event.date) {
       const { day: endDay, month: endMonth, year: endYear } = formatDate(event.endDate);
 
       // Mostrar ano apenas se for passagem de ano
@@ -68,7 +69,8 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
       );
     }
-    // Evento de dia único: só mostra o ano se não for o ano atual
+    
+    // Evento de dia único (sem endDate ou endDate igual à data de início)
     const currentYear = new Date().getFullYear();
     const showYear = startYear !== currentYear;
     return (

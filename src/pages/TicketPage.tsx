@@ -43,31 +43,56 @@ const TicketPage = () => {
       // Buscar dados do ingresso com relacionamentos
       const ticketData = await getTicketWithUser(ticketId);
       
-      // Buscar dados da transação para obter valor real pago
-      console.log('💰 Buscando dados da transação...');
-      const { data: transactionData, error: transactionError } = await supabase
-        .from('transactions')
+      // Buscar dados reais do evento diretamente da tabela events
+      console.log('🎫 Buscando dados reais do evento...');
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
         .select(`
-          *,
-          event:events(*)
+          id,
+          title,
+          description,
+          start_date,
+          end_date,
+          location,
+          banner_url,
+          category,
+          price,
+          status,
+          organizer_id,
+          available_tickets,
+          total_tickets,
+          tags
         `)
-        .eq('id', ticketData.transaction_id)
+        .eq('id', ticketData.event_id)
         .single();
 
-      if (!transactionError && transactionData) {
-        console.log('✅ Dados da transação encontrados:', transactionData);
+      if (!eventError && eventData) {
+        console.log('✅ Dados reais do evento encontrados:', eventData);
         
-        // Combinar dados do ticket com dados da transação
+        // Combinar dados do ticket com dados reais do evento
         const enrichedTicket = {
           ...ticketData,
-          price: transactionData.amount, // Valor real pago
-          event: transactionData.event, // Dados reais do evento
-          transaction: transactionData // Dados completos da transação
+          price: ticketData.price || eventData.price, // Usar preço do ticket ou do evento
+          event: {
+            id: eventData.id,
+            name: eventData.title, // ✅ NOME REAL DO EVENTO
+            title: eventData.title,
+            description: eventData.description,
+            date: eventData.start_date?.split('T')[0] || '',
+            time: eventData.start_date?.split('T')[1]?.slice(0, 5) || '',
+            location: eventData.location,
+            banner_url: eventData.banner_url,
+            category: eventData.category,
+            price: eventData.price,
+            status: eventData.status,
+            start_date: eventData.start_date,
+            end_date: eventData.end_date
+          }
         };
         
         setTicket(enrichedTicket);
       } else {
-        console.log('⚠️ Transação não encontrada, usando dados básicos do ticket');
+        console.log('⚠️ Evento não encontrado, usando dados básicos do ticket');
         setTicket(ticketData);
       }
 
