@@ -205,7 +205,7 @@ const TicketPage = () => {
         <header className="flex justify-between items-center bg-white p-4 rounded-t-lg border-b">
           <div className="flex items-center gap-4">
             <img 
-              src={ticket.event?.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
+              src={ticket.event?.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
               alt={ticket.event?.name || 'Evento'} 
               className="w-16 h-16 rounded-full object-cover"
             />

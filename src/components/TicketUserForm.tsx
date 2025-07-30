@@ -20,6 +20,8 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  console.log('🔍 TicketUserForm - currentUser:', currentUser);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
