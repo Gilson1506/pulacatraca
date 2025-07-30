@@ -396,37 +396,65 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Primeiro, criar o usuário do ingresso
-    const { data: ticketUser, error: userError } = await supabase
-      .from('ticket_users')
-      .insert([{
-        name: userData.name.trim(),
-        email: userData.email.trim().toLowerCase(),
-        document: userData.document?.trim() || null
-      }])
-      .select()
+    // Verificar se o ingresso existe e pertence ao usuário
+    const { data: existingTicket, error: checkError } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('id', ticketId)
+      .eq('user_id', user.id)
       .single();
 
-    if (userError) throw userError;
+    if (checkError) throw new Error('Ingresso não encontrado ou você não tem permissão');
 
-    // Depois, associar o usuário ao ingresso
-    const { data: ticket, error: ticketError } = await supabase
+    // Tentar criar o usuário do ingresso
+    let ticketUser;
+    try {
+      const { data: newTicketUser, error: userError } = await supabase
+        .from('ticket_users')
+        .insert([{
+          name: userData.name.trim(),
+          email: userData.email.trim().toLowerCase(),
+          document: userData.document?.trim() || null
+        }])
+        .select()
+        .single();
+
+      if (userError) throw userError;
+      ticketUser = newTicketUser;
+    } catch (error: any) {
+      if (error.message?.includes('relation "ticket_users" does not exist')) {
+        throw new Error('Sistema de usuários de ingressos não está configurado. Execute o script SQL primeiro.');
+      }
+      throw error;
+    }
+
+    // Atualizar o ingresso com o ticket_user_id e QR code
+    const qrCode = `${ticketId}-${ticketUser.id}`;
+    const { data: updatedTicket, error: updateError } = await supabase
       .from('tickets')
       .update({ 
         ticket_user_id: ticketUser.id,
-        qr_code: `${ticketId}-${ticketUser.id}` // QR Code único: ticket_id + user_id
+        qr_code: qrCode
       })
       .eq('id', ticketId)
-      .eq('user_id', user.id) // Só o comprador pode definir o usuário
-      .select(`
-        *,
-        ticket_user:ticket_users(*)
-      `)
+      .eq('user_id', user.id)
+      .select()
       .single();
 
-    if (ticketError) throw ticketError;
+    if (updateError) {
+      // Se falhou ao atualizar, tentar remover o ticket_user criado
+      try {
+        await supabase.from('ticket_users').delete().eq('id', ticketUser.id);
+      } catch (cleanupError) {
+        console.error('Erro ao limpar ticket_user:', cleanupError);
+      }
+      throw updateError;
+    }
 
-    return ticket;
+    // Buscar dados completos para retornar
+    const completeTicket = await getTicketWithUser(ticketId);
+    return completeTicket;
+
   } catch (error) {
     console.error('Erro ao criar usuário do ingresso:', error);
     throw error;
@@ -438,19 +466,49 @@ export const getTicketWithUser = async (ticketId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data, error } = await supabase
+    // Primeiro, buscar o ingresso básico
+    const { data: ticket, error: ticketError } = await supabase
       .from('tickets')
-      .select(`
-        *,
-        event:events(*),
-        ticket_user:ticket_users(*)
-      `)
+      .select('*')
       .eq('id', ticketId)
       .eq('user_id', user.id) // Só o comprador pode ver
       .single();
 
-    if (error) throw error;
-    return data;
+    if (ticketError) throw ticketError;
+
+    // Buscar dados do evento
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', ticket.event_id)
+      .single();
+
+    if (eventError) throw eventError;
+
+    // Tentar buscar dados do ticket_user se existir
+    let ticketUser = null;
+    if (ticket.ticket_user_id) {
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('ticket_users')
+          .select('*')
+          .eq('id', ticket.ticket_user_id)
+          .single();
+        
+        if (!userError && userData) {
+          ticketUser = userData;
+        }
+      } catch (error) {
+        console.log('Tabela ticket_users ainda não existe ou ticket_user_id não definido');
+      }
+    }
+
+    // Retornar dados combinados
+    return {
+      ...ticket,
+      event: event,
+      ticket_user: ticketUser
+    };
   } catch (error) {
     console.error('Erro ao buscar ingresso:', error);
     throw error;

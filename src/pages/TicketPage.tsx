@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getTicketWithUser } from '../lib/supabase';
 import TicketUserForm from '../components/TicketUserForm';
 import TicketPDF from '../components/TicketPDF';
+import SystemNotConfigured from '../components/SystemNotConfigured';
 import QRCode from 'qrcode';
 
 interface TicketData {
@@ -44,6 +45,7 @@ const TicketPage: React.FC = () => {
   const [showUserForm, setShowUserForm] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [systemNotConfigured, setSystemNotConfigured] = useState(false);
 
   useEffect(() => {
     if (ticketId && user) {
@@ -75,7 +77,15 @@ const TicketPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erro ao carregar ingresso:', error);
-      setError('Erro ao carregar ingresso. Verifique se você tem permissão para acessá-lo.');
+      
+      if (error.message?.includes('Could not find a relationship') || 
+          error.message?.includes('ticket_users')) {
+        setSystemNotConfigured(true);
+      } else if (error.message?.includes('not found')) {
+        setError('Ingresso não encontrado ou você não tem permissão para acessá-lo.');
+      } else {
+        setError('Erro ao carregar ingresso. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -130,6 +140,10 @@ const TicketPage: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  if (systemNotConfigured) {
+    return <SystemNotConfigured />;
   }
 
   if (loading) {

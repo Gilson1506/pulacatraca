@@ -63,6 +63,10 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
       
       if (error.message.includes('duplicate key')) {
         setErrors({ email: 'Este e-mail já está sendo usado em outro ingresso' });
+      } else if (error.message.includes('não está configurado')) {
+        setErrors({ general: 'Sistema não configurado. Execute o script SQL no Supabase primeiro.' });
+      } else if (error.message.includes('não encontrado')) {
+        setErrors({ general: 'Ingresso não encontrado ou sem permissão.' });
       } else {
         setErrors({ general: 'Erro ao salvar dados. Tente novamente.' });
       }
