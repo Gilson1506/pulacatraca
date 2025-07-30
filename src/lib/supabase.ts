@@ -406,6 +406,11 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
 
     if (checkError) throw new Error('Ingresso não encontrado ou você não tem permissão');
 
+    // Verificar se já existe um usuário definido para este ingresso
+    if (existingTicket.ticket_user_id) {
+      throw new Error('Este ingresso já tem um usuário definido. Não é possível alterar.');
+    }
+
     // Tentar criar o usuário do ingresso
     let ticketUser;
     try {
@@ -496,7 +501,35 @@ export const getTicketWithUser = async (ticketId: string) => {
           .single();
         
         if (!userError && userData) {
-          ticketUser = userData;
+          // Verificar se os dados são válidos (não null/empty)
+          if (userData.name && userData.name.trim() !== '' && userData.email && userData.email.trim() !== '') {
+            ticketUser = userData;
+            console.log('✅ Dados válidos do ticket_user encontrados:', userData);
+          } else {
+            console.log('⚠️ Dados do ticket_user estão null/empty:', userData);
+            // Se os dados estão vazios, tentar buscar o mais recente válido
+            const { data: validUserData, error: validUserError } = await supabase
+              .from('ticket_users')
+              .select('*')
+              .not('name', 'is', null)
+              .not('email', 'is', null)
+              .neq('name', '')
+              .neq('email', '')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            
+            if (!validUserError && validUserData) {
+              ticketUser = validUserData;
+              console.log('✅ Dados válidos mais recentes encontrados:', validUserData);
+              
+              // Atualizar o ticket para apontar para os dados corretos
+              await supabase
+                .from('tickets')
+                .update({ ticket_user_id: validUserData.id })
+                .eq('id', ticketId);
+            }
+          }
         }
       } catch (error) {
         console.log('Tabela ticket_users ainda não existe ou ticket_user_id não definido');
