@@ -6,6 +6,7 @@ import { getTicketWithUser, createTicketUser } from '../lib/supabase';
 import TicketUserForm from '../components/TicketUserForm';
 import TicketPDF from '../components/TicketPDF';
 import SystemNotConfigured from '../components/SystemNotConfigured';
+import SuccessModal from '../components/SuccessModal';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -21,6 +22,11 @@ const TicketPage = () => {
   const [ticketUser, setTicketUser] = useState(null);
   const [isUserModalOpen, setUserModalOpen] = useState(false);
   const [systemNotConfigured, setSystemNotConfigured] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    userName: '',
+    userEmail: ''
+  });
 
   useEffect(() => {
     if (ticketId && currentUser) {
@@ -76,10 +82,14 @@ const TicketPage = () => {
         // Fechar o modal
         setUserModalOpen(false);
         
-        // Mostrar sucesso
+        // Mostrar modal de sucesso personalizado
         const userName = updatedTicket.ticket_user?.name || 'Usuário';
         const userEmail = updatedTicket.ticket_user?.email || '';
-        alert(`✅ Usuário definido com sucesso!\nNome: ${userName}\nEmail: ${userEmail}`);
+        setSuccessModal({
+          isOpen: true,
+          userName,
+          userEmail
+        });
         
         // Recarregar dados para garantir sincronização
         await fetchTicketData();
@@ -275,7 +285,7 @@ const TicketPage = () => {
                 </div>
 
                 <div className="w-32 h-32 flex items-center justify-center bg-gray-100 rounded-lg mt-4 relative">
-                  {ticketUser && ticket.status === 'valid' ? (
+                  {ticketUser && (ticket.status === 'valid' || ticket.status === 'pending' || ticket.status === 'active') ? (
                     <img 
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${ticket.qr_code || ticket.id}`} 
                       alt="QR Code" 
@@ -299,6 +309,26 @@ const TicketPage = () => {
                   >
                     <UserPlus className="inline-block mr-2" size={16} />
                     {ticketUser ? 'UTILIZADOR DEFINIDO' : 'DEFINIR UTILIZADOR'}
+                  </button>
+                )}
+
+                {/* Botão Baixar PDF - aparece quando usuário está definido */}
+                {ticketUser && (
+                  <button 
+                    onClick={handleDownloadPdf}
+                    disabled={isDownloading}
+                    className="mt-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg w-full hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        Gerando PDF...
+                      </>
+                    ) : (
+                      <>
+                        📄 BAIXAR PDF
+                      </>
+                    )}
                   </button>
                 )}
 
@@ -353,6 +383,15 @@ const TicketPage = () => {
         onSuccess={handleSetUser}
         onCancel={() => setUserModalOpen(false)}
         isOpen={isUserModalOpen}
+      />
+
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, userName: '', userEmail: '' })}
+        title="✅ Usuário Definido com Sucesso!"
+        message="Os dados do utilizador foram salvos com sucesso. Seu ingresso está pronto para uso!"
+        userName={successModal.userName}
+        userEmail={successModal.userEmail}
       />
     </div>
   );
