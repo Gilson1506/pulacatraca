@@ -276,27 +276,105 @@ const TicketPage = () => {
 
               {/* Right Column: User and QR Code */}
               <div className="text-center flex flex-col items-center justify-between">
-                <div>
-                  <p className="font-semibold">Utilizador</p>
-                  <p className="text-gray-500 text-sm">{ticketUser ? ticketUser.name || 'Usuário' : 'Utilizador não definido'}</p>
-                  {ticketUser && (
-                    <p className="text-gray-400 text-xs">{ticketUser.email || ''}</p>
+                {/* Dados do Utilizador - Melhorados */}
+                <div className="w-full">
+                  {ticketUser ? (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">👤</span>
+                        </div>
+                        <h3 className="font-bold text-green-800 text-lg">UTILIZADOR DEFINIDO</h3>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="bg-white rounded-lg p-3 border border-green-100">
+                          <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">NOME COMPLETO</p>
+                          <p className="font-bold text-gray-800 text-sm">{ticketUser.name}</p>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-3 border border-green-100">
+                          <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">EMAIL</p>
+                          <p className="font-medium text-gray-700 text-xs break-all">{ticketUser.email}</p>
+                        </div>
+                        
+                        {ticketUser.document && (
+                          <div className="bg-white rounded-lg p-3 border border-green-100">
+                            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">DOCUMENTO</p>
+                            <p className="font-medium text-gray-700 text-xs">{ticketUser.document}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-3 flex items-center justify-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-700 text-xs font-medium">Dados Confirmados</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">⚠️</span>
+                        </div>
+                        <h3 className="font-bold text-orange-800 text-sm">UTILIZADOR NÃO DEFINIDO</h3>
+                      </div>
+                      <p className="text-orange-700 text-xs text-center">
+                        Clique no botão abaixo para definir quem irá usar este ingresso
+                      </p>
+                    </div>
                   )}
                 </div>
 
-                <div className="w-32 h-32 flex items-center justify-center bg-gray-100 rounded-lg mt-4 relative">
+                {/* QR Code Section - Melhorado */}
+                <div className="w-full">
                   {ticketUser && (ticket.status === 'valid' || ticket.status === 'pending' || ticket.status === 'active') ? (
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${ticket.qr_code || ticket.id}`} 
-                      alt="QR Code" 
-                      className="w-full h-full object-contain"
-                    />
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">🔍</span>
+                        </div>
+                        <h3 className="font-bold text-blue-800 text-sm">QR CODE DO INGRESSO</h3>
+                      </div>
+                      
+                      <div className="bg-white rounded-xl p-4 border border-blue-100">
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${ticket.qr_code || ticket.id}`} 
+                          alt="QR Code" 
+                          className="w-32 h-32 mx-auto object-contain"
+                        />
+                      </div>
+                      
+                      <div className="mt-3 text-center">
+                        <p className="text-blue-700 text-xs font-medium">
+                          Apresente este código na entrada do evento
+                        </p>
+                        <div className="flex items-center justify-center gap-1 mt-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span className="text-blue-600 text-xs">Código Ativo</span>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-center p-2">
-                      <div className="w-24 h-24 bg-gray-300 animate-pulse rounded-md blur-md"></div>
-                      <p className="text-xs font-semibold text-gray-600 mt-2 absolute">
-                        {ticket.status !== 'valid' ? 'AGUARDANDO CONFIRMAÇÃO' : 'DEFINA O UTILIZADOR PARA VER O QR CODE'}
-                      </p>
+                    <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-200 rounded-xl p-4">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">🔒</span>
+                        </div>
+                        <h3 className="font-bold text-gray-600 text-sm">QR CODE BLOQUEADO</h3>
+                      </div>
+                      
+                      <div className="bg-white rounded-xl p-4 border border-gray-100">
+                        <div className="w-32 h-32 mx-auto flex items-center justify-center">
+                          <div className="w-24 h-24 bg-gray-300 animate-pulse rounded-md blur-md"></div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 text-center">
+                        <p className="text-gray-600 text-xs font-medium">
+                          {ticket.status !== 'valid' ? 'Aguardando confirmação do organizador' : 'Defina o utilizador para liberar o QR Code'}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
