@@ -56,11 +56,21 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
 
     setLoading(true);
     try {
-      const ticket = await createTicketUser(ticketId, {
+      const userData = {
         name: formData.name?.trim() || '',
         email: formData.email?.trim().toLowerCase() || '',
         document: formData.document?.trim() || undefined
-      });
+      };
+      
+      console.log('🔍 TicketUserForm - Enviando dados:', userData);
+      console.log('🔍 TicketUserForm - formData original:', formData);
+      
+      // Validar se dados não estão vazios antes de enviar
+      if (!userData.name || userData.name === '' || !userData.email || userData.email === '') {
+        throw new Error('Dados inválidos: nome ou email vazios');
+      }
+      
+      const ticket = await createTicketUser(ticketId, userData);
 
       onSuccess(ticket);
     } catch (error: any) {

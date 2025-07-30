@@ -393,6 +393,9 @@ export const subscribeToMessages = (userId: string, callback: (payload: any) => 
 // ✅ TICKET USER FUNCTIONS - Sistema de usuários de ingressos
 export const createTicketUser = async (ticketId: string, userData: { name: string; email: string; document?: string }) => {
   try {
+    console.log('🔍 createTicketUser - Iniciando com dados:', userData);
+    console.log('🔍 createTicketUser - ticketId:', ticketId);
+    
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
@@ -408,24 +411,34 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
 
     // Verificar se já existe um usuário definido para este ingresso
     if (existingTicket.ticket_user_id) {
-      throw new Error('Este ingresso já tem um usuário definido. Não é possível alterar.');
+      console.log('⚠️ Ingresso já tem ticket_user_id:', existingTicket.ticket_user_id);
+      // Temporariamente permitir redefinição para corrigir dados inválidos
+      // throw new Error('Este ingresso já tem um usuário definido. Não é possível alterar.');
     }
 
     // Tentar criar o usuário do ingresso
     let ticketUser;
     try {
+      const insertData = {
+        name: userData.name?.trim() || '',
+        email: userData.email?.trim().toLowerCase() || '',
+        document: userData.document?.trim() || null
+      };
+      
+      console.log('🔍 createTicketUser - Dados a inserir:', insertData);
+      
       const { data: newTicketUser, error: userError } = await supabase
         .from('ticket_users')
-        .insert([{
-          name: userData.name?.trim() || '',
-          email: userData.email?.trim().toLowerCase() || '',
-          document: userData.document?.trim() || null
-        }])
+        .insert([insertData])
         .select()
         .single();
 
+      console.log('🔍 createTicketUser - Resposta insert:', { newTicketUser, userError });
+
       if (userError) throw userError;
       ticketUser = newTicketUser;
+      
+      console.log('✅ createTicketUser - ticket_user criado:', ticketUser);
     } catch (error: any) {
       if (error.message?.includes('relation "ticket_users" does not exist')) {
         throw new Error('Sistema de usuários de ingressos não está configurado. Execute o script SQL primeiro.');
