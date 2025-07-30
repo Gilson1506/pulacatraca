@@ -182,7 +182,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
               </div>
               {/* Imagem sempre primeiro no mobile */}
               <img 
-                src={order.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
+                src={order.event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iI0YzNjhBNyIvPgo8dGV4dCB4PSI0MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+'} 
                 alt={order.event.title} 
                 className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
               />
@@ -338,7 +338,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                   </div>
                 {/* Imagem sempre primeiro no mobile */}
                 <img 
-                  src={ticket.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
+                  src={ticket.event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iI0YzNjhBNyIvPgo8dGV4dCB4PSI0MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+'} 
                   alt={ticket.event.title} 
                   className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
                 />
@@ -390,7 +390,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                 </div>
                 {/* Imagem sempre primeiro no mobile */}
                 <img 
-                  src={ticket.event.banner_url || 'https://via.placeholder.com/80x80?text=Evento'} 
+                  src={ticket.event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iI0YzNjhBNyIvPgo8dGV4dCB4PSI0MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+'} 
                   alt={ticket.event.title} 
                   className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
                 />

@@ -412,8 +412,8 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
       const { data: newTicketUser, error: userError } = await supabase
         .from('ticket_users')
         .insert([{
-          name: userData.name.trim(),
-          email: userData.email.trim().toLowerCase(),
+          name: userData.name?.trim() || '',
+          email: userData.email?.trim().toLowerCase() || '',
           document: userData.document?.trim() || null
         }])
         .select()
