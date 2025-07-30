@@ -82,16 +82,21 @@ const TicketPage = () => {
         // Fechar o modal
         setUserModalOpen(false);
         
-        // Mostrar modal de sucesso personalizado
-        const userName = updatedTicket.ticket_user?.name || 'Usuário';
-        const userEmail = updatedTicket.ticket_user?.email || '';
+        // Usar os dados que foram enviados para criar o usuário (são os dados corretos)
+        const finalUserName = userData.name || 'Usuário';
+        const finalUserEmail = userData.email || '';
+        
+        console.log('🔍 Debug Modal - Usando userData:', userData);
+        console.log('🔍 Debug Modal - finalUserName:', finalUserName, 'finalUserEmail:', finalUserEmail);
+        
+        // Mostrar modal de sucesso com os dados corretos
         setSuccessModal({
           isOpen: true,
-          userName,
-          userEmail
+          userName: finalUserName,
+          userEmail: finalUserEmail
         });
         
-        // Recarregar dados para garantir sincronização
+        // Recarregar dados para garantir sincronização visual
         await fetchTicketData();
       } else {
         console.error('❌ Resposta inválida do createTicketUser');
