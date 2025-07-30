@@ -291,7 +291,7 @@ const TicketPage = () => {
                   )}
                 </div>
 
-                {ticket.status === 'valid' && (
+                {(ticket.status === 'valid' || ticket.status === 'pending') && (
                   <button 
                     onClick={() => setUserModalOpen(true)}
                     disabled={!!ticketUser || ticket.status === 'used'}
@@ -334,7 +334,9 @@ const TicketPage = () => {
             }`}>
               <p>
                 {ticket.status === 'pending' ? 
-                  '⏳ Aguardando confirmação do organizador para poder definir o utilizador.' :
+                  (ticketUser ? 
+                    '⏳ Ingresso pendente de confirmação. Utilizador já definido.' :
+                    '⏳ Ingresso pendente de confirmação. Você pode definir o utilizador enquanto aguarda.') :
                  ticket.status === 'used' ? 
                   '🎉 Ingresso utilizado com sucesso! Esperamos que tenha curtido o evento!' :
                  ticketUser ? 
