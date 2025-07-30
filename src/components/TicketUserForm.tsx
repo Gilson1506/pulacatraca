@@ -21,6 +21,7 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   console.log('🔍 TicketUserForm - currentUser:', currentUser);
+  console.log('🚨 MODAL ATUALIZADO - VERSÃO NOVA!');
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -135,7 +136,7 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
           >
             ✕
           </button>
-          <h2 className="text-xl font-bold pr-8">👤 Definir Usuário do Ingresso</h2>
+          <h2 className="text-xl font-bold pr-8">👤 Definir Usuário do Ingresso [ATUALIZADO]</h2>
           <p className="text-pink-100 text-sm mt-1">
             Informe os dados de quem irá usar este ingresso
           </p>

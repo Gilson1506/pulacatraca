@@ -199,7 +199,7 @@ const TicketPage = () => {
       <div className="max-w-4xl mx-auto">
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-semibold">
           <ArrowLeft size={20} />
-          VOLTAR AO DASHBOARD
+          VOLTAR AO DASHBOARD [PÁGINA ATUALIZADA]
         </button>
 
         <header className="flex justify-between items-center bg-white p-4 rounded-t-lg border-b">
