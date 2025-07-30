@@ -53,7 +53,7 @@ export interface Ticket {
   event_id: string;
   user_id: string; // Comprador (buyer)
   ticket_user_id?: string; // Usuário do ingresso (pode ser diferente do comprador)
-  status: 'valid' | 'used' | 'cancelled' | 'expired';
+  status: 'valid' | 'used' | 'cancelled' | 'expired' | 'pending' | 'active';
   purchase_date: string;
   price: number;
   qr_code: string;

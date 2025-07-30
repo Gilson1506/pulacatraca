@@ -291,7 +291,7 @@ const TicketPage = () => {
                   )}
                 </div>
 
-                {(ticket.status === 'valid' || ticket.status === 'pending') && (
+                {(ticket.status === 'valid' || ticket.status === 'pending' || ticket.status === 'active') && (
                   <button 
                     onClick={() => setUserModalOpen(true)}
                     disabled={!!ticketUser || ticket.status === 'used'}
@@ -333,10 +333,10 @@ const TicketPage = () => {
               'bg-orange-100 border-orange-200 text-orange-700'
             }`}>
               <p>
-                {ticket.status === 'pending' ? 
+                {(ticket.status === 'pending' || ticket.status === 'active') ? 
                   (ticketUser ? 
-                    '⏳ Ingresso pendente de confirmação. Utilizador já definido.' :
-                    '⏳ Ingresso pendente de confirmação. Você pode definir o utilizador enquanto aguarda.') :
+                    '✅ Ingresso válido. Utilizador já definido.' :
+                    '👤 Defina o utilizador deste ingresso para poder utilizá-lo no evento.') :
                  ticket.status === 'used' ? 
                   '🎉 Ingresso utilizado com sucesso! Esperamos que tenha curtido o evento!' :
                  ticketUser ? 
