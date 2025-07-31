@@ -405,15 +405,21 @@ const CheckInPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
+          {/* Banner de Atualização */}
+          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg mb-6 text-center">
+            <h2 className="text-2xl font-bold">🚀 PÁGINA ATUALIZADA COM SUCESSO!</h2>
+            <p className="mt-2">Interface moderna implementada - Teste os botões abaixo</p>
+          </div>
+          
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Check-in de Participantes</h1>
-                <p className="text-gray-600">Gerencie o check-in dos participantes do evento</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">🎯 Check-in de Participantes - ATUALIZADO</h1>
+                <p className="text-gray-600">✨ Interface moderna - Gerencie o check-in dos participantes do evento</p>
               </div>
               
               {/* Controles */}
