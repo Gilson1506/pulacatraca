@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle, Volume2, VolumeX } from 'lucide-react';
+import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle, Volume2, VolumeX, X, Mail, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
@@ -442,6 +442,41 @@ const CheckInPage = () => {
                     <span className="text-sm font-medium text-green-700">Sistema Ativo</span>
                   </div>
                 </div>
+                
+                {/* Botões de teste */}
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => showModal('success', 'Teste de modal de sucesso!', {
+                      participant_name: 'João Silva',
+                      participant_email: 'joao@email.com',
+                      participant_document: '123.456.789-00',
+                      ticket_type: 'VIP',
+                      event_title: 'Evento de Teste',
+                      checkin_date: new Date().toISOString()
+                    })}
+                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                  >
+                    Teste Sucesso
+                  </button>
+                  <button
+                    onClick={() => showModal('already_checked', 'Teste de check-in já realizado!', {
+                      participant_name: 'Maria Santos',
+                      participant_email: 'maria@email.com',
+                      ticket_type: 'Padrão',
+                      event_title: 'Evento de Teste',
+                      checkin_date: new Date().toISOString()
+                    })}
+                    className="px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
+                  >
+                    Teste Aviso
+                  </button>
+                  <button
+                    onClick={() => showModal('error', 'Teste de erro no check-in!')}
+                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                  >
+                    Teste Erro
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -483,20 +518,29 @@ const CheckInPage = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* QR Code Scanner */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-bold mb-4">Scanner QR Code</h2>
+            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-pink-500">
+              <div className="flex items-center space-x-2 mb-4">
+                <QrCode className="h-6 w-6 text-pink-600" />
+                <h2 className="text-xl font-bold text-gray-900">Scanner QR Code</h2>
+              </div>
               
-              <div className="bg-gray-100 rounded-lg p-6 text-center mb-4">
+              <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg p-6 text-center mb-4 border border-pink-200">
                 {scannerActive ? (
                   <div className="space-y-4">
-                    <video 
-                      ref={videoRef}
-                      className="w-full max-w-sm mx-auto rounded-lg"
-                      style={{ maxHeight: '300px' }}
-                    />
+                    <div className="relative">
+                      <video 
+                        ref={videoRef}
+                        className="w-full max-w-sm mx-auto rounded-lg shadow-lg border-2 border-pink-300"
+                        style={{ maxHeight: '300px' }}
+                      />
+                      <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        <span>AO VIVO</span>
+                      </div>
+                    </div>
                     <button
                       onClick={stopQRScanner}
-                      className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 mx-auto"
+                      className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center space-x-2 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                       <CameraOff className="h-5 w-5" />
                       <span>Parar Scanner</span>
@@ -504,80 +548,143 @@ const CheckInPage = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <QrCode className="h-16 w-16 text-gray-400 mx-auto" />
-                    <p className="text-gray-600">
-                      {isScanning ? 'Processando...' : 'Clique para ativar a câmera e escanear QR codes'}
+                    <div className="relative">
+                      <QrCode className="h-20 w-20 text-pink-400 mx-auto animate-pulse" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-16 h-16 border-2 border-pink-300 rounded-lg animate-ping opacity-30"></div>
+                      </div>
+                    </div>
+                    <p className="text-gray-700 font-medium">
+                      {isScanning ? 'Processando QR Code...' : 'Clique para ativar a câmera e escanear QR codes'}
                     </p>
                     <button
                       onClick={startQRScanner}
                       disabled={isScanning}
-                      className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center space-x-2 mx-auto"
+                      className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-3 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
                     >
-                      <Camera className="h-5 w-5" />
-                      <span>{isScanning ? 'Processando...' : 'Ativar Scanner'}</span>
+                      <Camera className="h-6 w-6" />
+                      <span className="font-semibold">
+                        {isScanning ? 'Processando...' : 'Ativar Scanner QR'}
+                      </span>
                     </button>
                   </div>
                 )}
               </div>
+              
+              {/* Instruções */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="bg-blue-100 rounded-full p-1">
+                    <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-900">Como usar:</h4>
+                    <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                      <li>• Clique em "Ativar Scanner QR"</li>
+                      <li>• Aponte a câmera para o QR Code</li>
+                      <li>• O check-in será feito automaticamente</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Manual Search */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-bold mb-4">Busca Manual</h2>
+            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
+              <div className="flex items-center space-x-2 mb-4">
+                <Search className="h-6 w-6 text-blue-600" />
+                <h2 className="text-xl font-bold text-gray-900">Busca Manual</h2>
+              </div>
               
               <div className="space-y-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Buscar por nome, e-mail, documento ou ID"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-lg"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
+                  {searchQuery && (
+                    <button
+                      onClick={() => handleSearch('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Search Results */}
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto">
                   {isSearching ? (
-                    <div className="text-center py-4">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      <p className="text-sm text-gray-500 mt-2">Buscando participantes...</p>
+                    <div className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+                      <p className="text-sm text-gray-500 mt-3">Buscando participantes...</p>
                     </div>
                   ) : participants.length > 0 ? (
                     participants.map((participant) => (
-                      <div key={participant.ticket_user_id} className="border border-gray-200 rounded-lg p-3">
+                      <div key={participant.ticket_user_id} className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{participant.name}</p>
-                            <p className="text-sm text-gray-500">{participant.email}</p>
-                            {participant.document && (
-                              <p className="text-sm text-gray-500">Doc: {participant.document}</p>
-                            )}
-                            <p className="text-sm text-gray-500">Tipo: {participant.ticket_type}</p>
-                          </div>
-                          <div className="text-right">
-                            {participant.already_checked_in ? (
+                            <div className="flex items-center space-x-2 mb-2">
+                              <User className="h-5 w-5 text-gray-400" />
+                              <p className="font-semibold text-gray-900 text-lg">{participant.name}</p>
+                            </div>
+                            <div className="space-y-1 ml-7">
                               <div className="flex items-center space-x-2">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                <div>
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full block">
+                                <Mail className="h-4 w-4 text-gray-400" />
+                                <p className="text-sm text-gray-600">{participant.email}</p>
+                              </div>
+                              {participant.document && (
+                                <div className="flex items-center space-x-2">
+                                  <FileText className="h-4 w-4 text-gray-400" />
+                                  <p className="text-sm text-gray-600">Doc: {participant.document}</p>
+                                </div>
+                              )}
+                              <div className="flex items-center space-x-2">
+                                <Calendar className="h-4 w-4 text-gray-400" />
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                  {participant.ticket_type}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            {participant.already_checked_in ? (
+                              <div className="flex flex-col items-end space-y-2">
+                                <div className="flex items-center space-x-2 bg-green-100 px-3 py-2 rounded-full">
+                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                                  <span className="text-green-800 text-sm font-medium">
                                     ✓ Check-in realizado
                                   </span>
-                                  {participant.checkin_date && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {new Date(participant.checkin_date).toLocaleString('pt-BR')}
-                                    </p>
-                                  )}
                                 </div>
+                                {participant.checkin_date && (
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(participant.checkin_date).toLocaleString('pt-BR')}
+                                  </p>
+                                )}
                               </div>
                             ) : (
                               <button
                                 onClick={() => performCheckIn(participant.ticket_user_id)}
                                 disabled={isScanning}
-                                className="bg-pink-600 text-white px-3 py-2 rounded text-sm hover:bg-pink-700 transition-colors disabled:opacity-50"
+                                className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none font-semibold"
                               >
-                                {isScanning ? 'Processando...' : 'Fazer Check-in'}
+                                {isScanning ? (
+                                  <div className="flex items-center space-x-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Processando...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center space-x-2">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span>Fazer Check-in</span>
+                                  </div>
+                                )}
                               </button>
                             )}
                           </div>
@@ -585,9 +692,17 @@ const CheckInPage = () => {
                       </div>
                     ))
                   ) : searchQuery ? (
-                    <p className="text-center text-gray-500 py-4">Nenhum participante encontrado</p>
+                    <div className="text-center py-8">
+                      <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 font-medium">Nenhum participante encontrado</p>
+                      <p className="text-sm text-gray-400 mt-1">Tente buscar por outro termo</p>
+                    </div>
                   ) : (
-                    <p className="text-center text-gray-500 py-4">Digite para buscar participantes</p>
+                    <div className="text-center py-8">
+                      <User className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 font-medium">Digite para buscar participantes</p>
+                      <p className="text-sm text-gray-400 mt-1">Nome, e-mail, documento ou ID</p>
+                    </div>
                   )}
                 </div>
               </div>
