@@ -62,7 +62,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
           {/* Ano(s) */}
           {showYear && (
-          <span className="text-xs font-normal text-gray-500 mt-1" style={{ fontFamily: 'Open Sans, Nunito Sans, Roboto, Arial, sans-serif' }}>
+          <span className="text-xs font-normal text-gray-500 mt-1" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }}>
               {`${startYear} - ${endYear}`}
           </span>
           )}
@@ -78,7 +78,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <span className="text-3xl font-bold text-pink-600">{startDay}</span>
         <span className="text-sm font-semibold text-gray-900 mt-1">{startMonth}</span>
         {showYear && (
-        <span className="text-xs font-normal text-gray-500" style={{ fontFamily: 'Open Sans, Nunito Sans, Roboto, Arial, sans-serif' }}>{startYear}</span>
+        <span className="text-xs font-normal text-gray-500" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }}>{startYear}</span>
         )}
       </>
     );
@@ -92,12 +92,13 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <div className="flex flex-col items-center justify-center bg-white p-2 rounded-md text-center min-w-[70px] mr-2">
           {renderDate()}
         </div>
-        {/* Imagem ao centro (MOBILE) */}
-        <div className="relative w-32 flex-shrink-0">
+        {/* Imagem ao centro (MOBILE) - Ajustada para mostrar banner completo */}
+        <div className="relative w-40 flex-shrink-0">
         <img 
           src={event.image} 
           alt={event.title} 
-            className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
+            className="w-full h-28 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
+            style={{ objectPosition: 'center center' }}
         />
         </div>
         {/* Detalhes do Evento à direita (MOBILE) */}
@@ -113,12 +114,13 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
       </div>
       {/* Desktop: imagem em cima, linha com data à esquerda e detalhes à direita */}
       <div className="hidden md:block">
-        {/* Imagem em cima */}
+        {/* Imagem em cima - Ajustada para mostrar banner completo */}
         <div className="relative w-full">
           <img 
             src={event.image} 
             alt={event.title} 
-            className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+            style={{ objectPosition: 'center center' }}
           />
         </div>
         {/* Linha abaixo da imagem: data à esquerda, detalhes à direita */}
