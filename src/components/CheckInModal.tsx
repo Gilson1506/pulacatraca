@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, CheckCircle, XCircle, AlertTriangle, Calendar, User, Mail, FileText, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, CheckCircle, XCircle, AlertTriangle, Calendar, User, Mail, FileText, Clock, Ticket, MapPin, Sparkles } from 'lucide-react';
 
 interface CheckInModalProps {
   isOpen: boolean;
@@ -23,190 +23,330 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
   data,
   message
 }) => {
-  if (!isOpen) return null;
+  const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  const getModalStyles = () => {
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      setTimeout(() => setIsAnimating(true), 50);
+    } else {
+      setIsAnimating(false);
+      setTimeout(() => setIsVisible(false), 300);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsAnimating(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
+  if (!isVisible) return null;
+
+  const getModalConfig = () => {
     switch (type) {
       case 'success':
         return {
-          bg: 'bg-green-50',
-          border: 'border-green-200',
-          icon: <CheckCircle className="h-16 w-16 text-green-500" />,
-          iconBg: 'bg-green-100',
-          title: 'Check-in Realizado!',
+          gradient: 'from-green-400 via-green-500 to-green-600',
+          bgGradient: 'from-green-50 to-green-100',
+          borderColor: 'border-green-300',
+          icon: <CheckCircle className="h-20 w-20 text-white drop-shadow-lg" />,
+          iconBg: 'bg-gradient-to-br from-green-400 to-green-600',
+          title: '🎉 Check-in Realizado!',
           titleColor: 'text-green-800',
           messageColor: 'text-green-700',
-          buttonBg: 'bg-green-600 hover:bg-green-700',
-          animation: 'animate-bounce'
+          buttonGradient: 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700',
+          animation: 'animate-bounce-slow',
+          particles: true,
+          sound: '🔔'
         };
       case 'already_checked':
         return {
-          bg: 'bg-yellow-50',
-          border: 'border-yellow-200',
-          icon: <AlertTriangle className="h-16 w-16 text-yellow-500" />,
-          iconBg: 'bg-yellow-100',
-          title: 'Check-in Já Realizado',
+          gradient: 'from-yellow-400 via-yellow-500 to-orange-500',
+          bgGradient: 'from-yellow-50 to-orange-100',
+          borderColor: 'border-yellow-300',
+          icon: <AlertTriangle className="h-20 w-20 text-white drop-shadow-lg" />,
+          iconBg: 'bg-gradient-to-br from-yellow-400 to-orange-500',
+          title: '⚠️ Check-in Já Realizado',
           titleColor: 'text-yellow-800',
           messageColor: 'text-yellow-700',
-          buttonBg: 'bg-yellow-600 hover:bg-yellow-700',
-          animation: 'animate-pulse'
+          buttonGradient: 'from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600',
+          animation: 'animate-pulse-slow',
+          particles: false,
+          sound: '⚠️'
         };
       case 'error':
         return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          icon: <XCircle className="h-16 w-16 text-red-500" />,
-          iconBg: 'bg-red-100',
-          title: 'Erro no Check-in',
+          gradient: 'from-red-400 via-red-500 to-red-600',
+          bgGradient: 'from-red-50 to-red-100',
+          borderColor: 'border-red-300',
+          icon: <XCircle className="h-20 w-20 text-white drop-shadow-lg" />,
+          iconBg: 'bg-gradient-to-br from-red-400 to-red-600',
+          title: '❌ Erro no Check-in',
           titleColor: 'text-red-800',
           messageColor: 'text-red-700',
-          buttonBg: 'bg-red-600 hover:bg-red-700',
-          animation: 'animate-shake'
+          buttonGradient: 'from-red-500 to-red-600 hover:from-red-600 hover:to-red-700',
+          animation: 'animate-shake',
+          particles: false,
+          sound: '🚫'
         };
       default:
         return {
-          bg: 'bg-gray-50',
-          border: 'border-gray-200',
-          icon: <XCircle className="h-16 w-16 text-gray-500" />,
-          iconBg: 'bg-gray-100',
-          title: 'Resultado',
+          gradient: 'from-gray-400 via-gray-500 to-gray-600',
+          bgGradient: 'from-gray-50 to-gray-100',
+          borderColor: 'border-gray-300',
+          icon: <XCircle className="h-20 w-20 text-white drop-shadow-lg" />,
+          iconBg: 'bg-gradient-to-br from-gray-400 to-gray-600',
+          title: 'ℹ️ Resultado',
           titleColor: 'text-gray-800',
           messageColor: 'text-gray-700',
-          buttonBg: 'bg-gray-600 hover:bg-gray-700',
-          animation: ''
+          buttonGradient: 'from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700',
+          animation: '',
+          particles: false,
+          sound: 'ℹ️'
         };
     }
   };
 
-  const styles = getModalStyles();
+  const config = getModalConfig();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
-          onClick={onClose}
-        />
+    <>
+      {/* Overlay com animação */}
+      <div 
+        className={`fixed inset-0 z-50 transition-all duration-300 ${
+          isAnimating ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleOverlayClick}
+      >
+        <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" />
+        
+        {/* Particles de sucesso */}
+        {config.particles && isAnimating && (
+          <div className="absolute inset-0 pointer-events-none">
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute animate-float"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${3 + Math.random() * 2}s`
+                }}
+              >
+                <Sparkles className="h-4 w-4 text-green-400 opacity-70" />
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* Modal */}
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className={`p-3 rounded-full ${styles.iconBg}`}>
-              <div className={styles.animation}>
-                {styles.icon}
+        {/* Modal Container */}
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div 
+            className={`relative w-full max-w-lg transform transition-all duration-300 ${
+              isAnimating 
+                ? 'scale-100 translate-y-0 opacity-100' 
+                : 'scale-95 translate-y-4 opacity-0'
+            }`}
+          >
+            {/* Modal Background com gradiente */}
+            <div className={`bg-gradient-to-br ${config.bgGradient} rounded-3xl shadow-2xl border-2 ${config.borderColor} overflow-hidden`}>
+              
+              {/* Header com ícone animado */}
+              <div className="relative px-8 pt-8 pb-6">
+                {/* Botão fechar */}
+                <button
+                  onClick={handleClose}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200 group"
+                >
+                  <X className="h-5 w-5 text-gray-600 group-hover:text-gray-800" />
+                </button>
+
+                {/* Ícone principal */}
+                <div className="flex justify-center mb-6">
+                  <div className={`p-4 rounded-full ${config.iconBg} shadow-lg ${config.animation} relative`}>
+                    {config.icon}
+                    
+                    {/* Círculos de animação */}
+                    <div className={`absolute inset-0 rounded-full ${config.iconBg} opacity-30 animate-ping`} />
+                    <div className={`absolute inset-2 rounded-full ${config.iconBg} opacity-20 animate-ping`} style={{ animationDelay: '0.5s' }} />
+                  </div>
+                </div>
+
+                {/* Título */}
+                <h2 className={`text-3xl font-bold text-center mb-3 ${config.titleColor}`}>
+                  {config.title}
+                </h2>
+
+                {/* Mensagem principal */}
+                <p className={`text-lg text-center ${config.messageColor} font-medium`}>
+                  {message}
+                </p>
+              </div>
+
+              {/* Detalhes do participante */}
+              {data && (
+                <div className="px-8 pb-6">
+                  <div className="bg-white bg-opacity-70 rounded-2xl p-6 shadow-inner backdrop-blur-sm">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <User className="h-5 w-5 mr-2" />
+                      Detalhes do Check-in
+                    </h3>
+                    
+                    <div className="grid gap-4">
+                      {data.participant_name && (
+                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
+                          <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                            <User className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Participante</p>
+                            <p className="font-semibold text-gray-900">{data.participant_name}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {data.participant_email && (
+                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
+                          <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                            <Mail className="h-4 w-4 text-purple-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">E-mail</p>
+                            <p className="font-semibold text-gray-900">{data.participant_email}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {data.participant_document && (
+                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
+                          <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                            <FileText className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Documento</p>
+                            <p className="font-semibold text-gray-900">{data.participant_document}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {data.ticket_type && (
+                          <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
+                            <div className="p-2 bg-green-100 rounded-lg mr-3">
+                              <Ticket className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Ingresso</p>
+                              <p className="font-semibold text-gray-900">{data.ticket_type}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {data.checkin_date && (
+                          <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
+                            <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                              <Clock className="h-4 w-4 text-orange-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Data</p>
+                              <p className="font-semibold text-gray-900 text-sm">
+                                {new Date(data.checkin_date).toLocaleString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {data.event_title && (
+                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
+                          <div className="p-2 bg-pink-100 rounded-lg mr-3">
+                            <Calendar className="h-4 w-4 text-pink-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Evento</p>
+                            <p className="font-semibold text-gray-900">{data.event_title}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer com botão melhorado */}
+              <div className="px-8 pb-8">
+                <button
+                  onClick={handleClose}
+                  className={`w-full py-4 px-6 bg-gradient-to-r ${config.buttonGradient} text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-opacity-50`}
+                >
+                  <span className="flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    Entendido
+                  </span>
+                </button>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className={`p-6 rounded-xl ${styles.bg} ${styles.border} border-2`}>
-            <h3 className={`text-2xl font-bold mb-2 ${styles.titleColor}`}>
-              {styles.title}
-            </h3>
-            
-            <p className={`text-lg mb-4 ${styles.messageColor}`}>
-              {message}
-            </p>
-
-            {/* Participant Details */}
-            {data && (
-              <div className="space-y-3 bg-white bg-opacity-50 rounded-lg p-4">
-                {data.participant_name && (
-                  <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">Participante</p>
-                      <p className="font-medium text-gray-900">{data.participant_name}</p>
-                    </div>
-                  </div>
-                )}
-
-                {data.participant_email && (
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">E-mail</p>
-                      <p className="font-medium text-gray-900">{data.participant_email}</p>
-                    </div>
-                  </div>
-                )}
-
-                {data.participant_document && (
-                  <div className="flex items-center space-x-3">
-                    <FileText className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">Documento</p>
-                      <p className="font-medium text-gray-900">{data.participant_document}</p>
-                    </div>
-                  </div>
-                )}
-
-                {data.ticket_type && (
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">Tipo de Ingresso</p>
-                      <p className="font-medium text-gray-900">{data.ticket_type}</p>
-                    </div>
-                  </div>
-                )}
-
-                {data.event_title && (
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">Evento</p>
-                      <p className="font-medium text-gray-900">{data.event_title}</p>
-                    </div>
-                  </div>
-                )}
-
-                {data.checkin_date && (
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">Data do Check-in</p>
-                      <p className="font-medium text-gray-900">
-                        {new Date(data.checkin_date).toLocaleString('pt-BR')}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={onClose}
-              className={`px-6 py-3 text-white font-medium rounded-lg transition-colors ${styles.buttonBg}`}
-            >
-              Fechar
-            </button>
           </div>
         </div>
       </div>
 
+      {/* Estilos customizados */}
       <style jsx>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
-          20%, 40%, 60%, 80% { transform: translateX(10px); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
         }
+        
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          33% { transform: translateY(-10px) rotate(120deg); }
+          66% { transform: translateY(5px) rotate(240deg); }
+        }
+        
         .animate-shake {
-          animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+          animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        .animate-bounce-slow {
+          animation: bounce-slow 2s infinite;
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse-slow 2s infinite;
+        }
+        
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
         }
       `}</style>
-    </div>
+    </>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle } from 'lucide-react';
+import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle, Volume2, VolumeX } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
@@ -39,6 +39,7 @@ const CheckInPage = () => {
   const [scannerActive, setScannerActive] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -55,6 +56,7 @@ const CheckInPage = () => {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -76,7 +78,73 @@ const CheckInPage = () => {
     };
   }, []);
 
+  // Função para tocar sons de notificação
+  const playNotificationSound = (type: 'success' | 'already_checked' | 'error') => {
+    if (!soundEnabled) return;
+
+    try {
+      // Criar contexto de áudio se não existir
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+
+      const audioContext = audioContextRef.current;
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Configurar frequências diferentes para cada tipo
+      switch (type) {
+        case 'success':
+          // Som de sucesso: duas notas ascendentes
+          oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+          oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+          break;
+        case 'already_checked':
+          // Som de aviso: nota única média
+          oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
+          break;
+        case 'error':
+          // Som de erro: nota baixa
+          oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
+          break;
+      }
+
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Não foi possível reproduzir som:', error);
+    }
+  };
+
+  // Função para feedback háptico (vibração)
+  const triggerHapticFeedback = (type: 'success' | 'already_checked' | 'error') => {
+    if ('vibrate' in navigator) {
+      switch (type) {
+        case 'success':
+          navigator.vibrate([100, 50, 100]); // Padrão de sucesso
+          break;
+        case 'already_checked':
+          navigator.vibrate([200]); // Vibração única para aviso
+          break;
+        case 'error':
+          navigator.vibrate([300, 100, 300]); // Padrão de erro
+          break;
+      }
+    }
+  };
+
   const showModal = (type: 'success' | 'already_checked' | 'error', message: string, data?: any) => {
+    // Reproduzir som e feedback háptico
+    playNotificationSound(type);
+    triggerHapticFeedback(type);
+
     setModalState({
       isOpen: true,
       type,
@@ -87,6 +155,10 @@ const CheckInPage = () => {
 
   const closeModal = () => {
     setModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const toggleSound = () => {
+    setSoundEnabled(!soundEnabled);
   };
 
   const fetchCurrentEvent = async () => {
@@ -297,8 +369,40 @@ const CheckInPage = () => {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Check-in de Participantes</h1>
-            <p className="text-gray-600">Gerencie o check-in dos participantes do evento</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Check-in de Participantes</h1>
+                <p className="text-gray-600">Gerencie o check-in dos participantes do evento</p>
+              </div>
+              
+              {/* Controles */}
+              <div className="flex items-center space-x-4">
+                {/* Botão de som */}
+                <button
+                  onClick={toggleSound}
+                  className={`p-3 rounded-full transition-all duration-200 ${
+                    soundEnabled 
+                      ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                  }`}
+                  title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="h-5 w-5" />
+                  ) : (
+                    <VolumeX className="h-5 w-5" />
+                  )}
+                </button>
+                
+                {/* Status do sistema */}
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg px-4 py-2 border border-green-200">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-green-700">Sistema Ativo</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Event Info */}
