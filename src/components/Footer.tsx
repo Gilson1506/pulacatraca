@@ -12,15 +12,15 @@ const Footer = () => {
             alt="Logo PULACATRACA"
             className="h-24 w-auto object-contain"
           />
-          <div className="flex flex-col items-center gap-1 mt-2 mb-4">
-            <span className="text-sm text-gray-600">Português</span>
-            <span className="text-sm text-gray-600">English</span>
-            <span className="text-sm text-gray-600">Español</span>
+          <div className="flex gap-2 mt-2 mb-4">
+            <span className="text-2xl">🇧🇷</span>
+            <span className="text-2xl">🇺🇸</span>
+            <span className="text-2xl">🇪🇸</span>
           </div>
         </div>
 
         {/* Desktop Layout */}
-        <div className="hidden md:grid md:grid-cols-4 items-center px-4 pb-0 mt-0">
+        <div className="hidden md:flex md:justify-between md:items-center px-4 pb-0 mt-0">
           <div className="flex justify-center pt-2 pb-1">
             <img
               src="/logo-com-qr.png"
@@ -28,8 +28,11 @@ const Footer = () => {
               className="h-40 w-auto object-contain"
             />
           </div>
-          <div></div>
-          <div></div>
+          <div className="flex gap-3 pt-2 pb-1">
+            <span className="text-3xl">🇧🇷</span>
+            <span className="text-3xl">🇺🇸</span>
+            <span className="text-3xl">🇪🇸</span>
+          </div>
         </div>
       </div>
 
@@ -66,15 +69,8 @@ const Footer = () => {
 
         {/* Desktop Layout */}
         <div className="hidden md:flex flex-row flex-wrap items-start justify-center text-center gap-2 mt-1">
-          {/* Idiomas */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/4 mb-2">
-            <span className="font-semibold mb-2">Idiomas</span>
-            <span className="text-gray-600 text-sm">Português</span>
-            <span className="text-gray-600 text-sm">English</span>
-            <span className="text-gray-600 text-sm">Español</span>
-          </div>
           {/* Políticas */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/4 mb-2">
+          <div className="flex flex-col items-center min-w-[150px] w-1/3 mb-2">
             <span className="font-semibold mb-2">Políticas</span>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Política de privacidade</a>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Termos e Condições</a>
@@ -82,14 +78,14 @@ const Footer = () => {
           </div>
 
           {/* Apps */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/4 mb-2">
+          <div className="flex flex-col items-center min-w-[150px] w-1/3 mb-2">
             <span className="font-semibold mb-2">Baixe o APP</span>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Google Play</a>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Apple Store</a>
           </div>
 
           {/* Redes Sociais */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/4 mb-2">
+          <div className="flex flex-col items-center min-w-[150px] w-1/3 mb-2">
             <span className="font-semibold mb-2">Redes Sociais</span>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Instagram</a>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Facebook</a>
