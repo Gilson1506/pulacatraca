@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, X, Calendar, MapPin, Ticket, Clock, ArrowRight } from 'lucide-react';
+import { CheckCircle, X, Calendar, MapPin, Ticket, Clock, ArrowRight, Sparkles } from 'lucide-react';
 
 interface EventSuccessModalProps {
   isOpen: boolean;
@@ -50,25 +50,34 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100 animate-in fade-in-50 zoom-in-95">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100 animate-in fade-in-50 zoom-in-95">
         {/* Header com ícone de sucesso */}
-        <div className="relative p-8 pb-6 text-center">
+        <div className="relative p-8 pb-6 text-center bg-gradient-to-br from-pink-50 to-purple-50 rounded-t-3xl">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-4 right-4 p-2 hover:bg-white/50 rounded-full transition-colors"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
           
-          {/* Ícone de sucesso animado */}
+          {/* Ícone de sucesso com animação */}
           <div className="flex justify-center mb-6">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
-              <CheckCircle className="w-14 h-14 text-green-600" />
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-green-600 rounded-full flex items-center justify-center animate-bounce shadow-lg">
+                <CheckCircle className="w-12 h-12 text-white" />
+              </div>
+              {/* Sparkles animados */}
+              <div className="absolute -top-2 -right-2 animate-pulse">
+                <Sparkles className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div className="absolute -bottom-1 -left-2 animate-pulse delay-300">
+                <Sparkles className="w-4 h-4 text-pink-400" />
+              </div>
             </div>
           </div>
           
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
             🎉 Evento Criado!
           </h2>
           
@@ -81,17 +90,17 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
         </div>
 
         {/* Detalhes do evento */}
-        <div className="px-8 pb-6">
-          <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-6 border border-pink-100">
-            <h3 className="font-bold text-xl text-gray-900 mb-4 text-center">
+        <div className="px-8 py-6">
+          <div className="bg-gradient-to-r from-pink-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-pink-100 shadow-sm">
+            <h3 className="font-bold text-lg text-gray-900 mb-4 text-center">
               {eventData.title}
             </h3>
             
             <div className="space-y-4">
               {/* Data e Hora */}
               <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-5 h-5 text-pink-600" />
+                <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Calendar className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
@@ -105,8 +114,8 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
               
               {/* Localização */}
               <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <MapPin className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
@@ -121,8 +130,8 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
               
               {/* Ingressos */}
               <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Ticket className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 bg-gradient-to-r from-pink-600 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Ticket className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
@@ -139,33 +148,33 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
 
         {/* Próximos passos */}
         <div className="px-8 pb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
                 <Clock className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h4 className="font-semibold text-blue-900 mb-2">
+                <h4 className="font-semibold text-gray-900 mb-3">
                   Próximos Passos
                 </h4>
-                <ul className="text-sm text-blue-800 space-y-1.5">
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                    <span>Seu evento está sendo analisado pela equipe</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                    <span>Você será notificado sobre a aprovação</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                    <span>Após aprovado, aparecerá na página inicial</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                    <span>Os ingressos ficarão disponíveis para venda</span>
-                  </li>
-                </ul>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">Seu evento está sendo analisado pela equipe</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">Você será notificado sobre a aprovação</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">Após aprovado, aparecerá na página inicial</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">Os ingressos ficarão disponíveis para venda</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -175,7 +184,7 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
         <div className="px-8 pb-8 flex flex-col space-y-3">
           <button
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold hover:from-pink-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-semibold hover:from-pink-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2 shadow-lg"
           >
             <span>Continuar</span>
             <ArrowRight className="w-5 h-5" />
@@ -186,7 +195,7 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
               onClose();
               window.location.href = '/organizer-dashboard';
             }}
-            className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-2xl font-semibold hover:bg-gray-200 transition-colors"
           >
             Ver Meus Eventos
           </button>
