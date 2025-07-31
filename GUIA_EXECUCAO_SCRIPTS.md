@@ -22,17 +22,19 @@
 - ✅ Configura campos para venda de ingressos
 - ✅ Prepara estrutura para relacionamentos
 
-### **3️⃣ TERCEIRO: Tabelas de Ingressos (CORRIGIDO)**
+### **3️⃣ TERCEIRO: Script Final (TODOS OS PROBLEMAS CORRIGIDOS)**
 ```sql
--- Execute: fix_ticket_related_tables_corrected.sql
+-- Execute: fix_all_issues_final.sql
 ```
 **O que faz:**
-- ✅ **VERIFICA** estrutura atual das tabelas
+- ✅ **DIAGNÓSTICO COMPLETO** das tabelas existentes
+- ✅ **CORRIGE** `available_tickets` NOT NULL constraint
 - ✅ **GARANTE** que `tickets` tem colunas necessárias
 - ✅ **CRIA** `ticket_users` com 20+ campos
 - ✅ **ADICIONA** `ticket_user_id` à `tickets` (APÓS ticket_users existir)
 - ✅ **CRIA** `ticket_history` para auditoria
-- ✅ **CONFIGURA** foreign keys na ordem correta
+- ✅ **VERIFICA** colunas antes de criar foreign keys
+- ✅ **CONFIGURA** foreign keys com tratamento de erro
 - ✅ **IMPLEMENTA** automações (QR codes, histórico)
 - ✅ **DEFINE** políticas RLS seguras
 
@@ -115,9 +117,9 @@ FOREIGN KEY (ticket_id) REFERENCES tickets(id);
 -- Aguarde conclusão
 ```
 
-**🔸 TERCEIRO SCRIPT (CORRIGIDO):**
+**🔸 TERCEIRO SCRIPT (TODOS OS PROBLEMAS CORRIGIDOS):**
 ```sql
--- Cole todo o conteúdo de: fix_ticket_related_tables_corrected.sql
+-- Cole todo o conteúdo de: fix_all_issues_final.sql
 -- Clique em "Run"
 -- Aguarde conclusão (pode demorar 2-3 minutos)
 ```
@@ -125,14 +127,16 @@ FOREIGN KEY (ticket_id) REFERENCES tickets(id);
 #### **3. Verificar Execução:**
 Após cada script, verifique as mensagens:
 ```
-✅ DIAGNÓSTICO INICIAL DAS TABELAS
+✅ DIAGNÓSTICO COMPLETO DAS TABELAS
+✅ CORRIGINDO AVAILABLE_TICKETS
 ✅ CONFIGURANDO TABELA TICKETS
 ✅ CONFIGURANDO TABELA TICKET_USERS
 ✅ ADICIONANDO REFERÊNCIA TICKET_USER_ID
 ✅ COMPLETANDO TABELA TICKET_USERS
 ✅ CONFIGURANDO TABELA TICKET_HISTORY
+✅ VERIFICANDO COLUNAS ANTES DOS FOREIGN KEYS
 ✅ CONFIGURANDO FOREIGN KEYS
-✅ ATUALIZAÇÃO DAS TABELAS DE INGRESSOS CONCLUÍDA
+✅ CORREÇÃO DE TODOS OS PROBLEMAS CONCLUÍDA
 ```
 
 ---
