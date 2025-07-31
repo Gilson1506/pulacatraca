@@ -68,27 +68,27 @@ const Footer = () => {
         </div>
 
         {/* Desktop Layout */}
-        <div className="hidden md:flex flex-row flex-wrap items-start justify-center text-center gap-2 mt-1">
+        <div className="hidden md:flex flex-row items-start justify-evenly text-center py-4 mt-1">
           {/* Políticas */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/3 mb-2">
-            <span className="font-semibold mb-2">Políticas</span>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Política de privacidade</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Termos e Condições</a>
+          <div className="flex flex-col items-center min-w-[200px] flex-1 px-4">
+            <span className="font-semibold mb-3 text-gray-800">Políticas</span>
+            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Política de privacidade</a>
+            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Termos e Condições</a>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Política de cancelamento</a>
           </div>
 
           {/* Apps */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/3 mb-2">
-            <span className="font-semibold mb-2">Baixe o APP</span>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Google Play</a>
+          <div className="flex flex-col items-center min-w-[200px] flex-1 px-4">
+            <span className="font-semibold mb-3 text-gray-800">Baixe o APP</span>
+            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Google Play</a>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Apple Store</a>
           </div>
 
           {/* Redes Sociais */}
-          <div className="flex flex-col items-center min-w-[150px] w-1/3 mb-2">
-            <span className="font-semibold mb-2">Redes Sociais</span>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Instagram</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Facebook</a>
+          <div className="flex flex-col items-center min-w-[200px] flex-1 px-4">
+            <span className="font-semibold mb-3 text-gray-800">Redes Sociais</span>
+            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Instagram</a>
+            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Facebook</a>
             <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Linkedin</a>
           </div>
         </div>
