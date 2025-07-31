@@ -129,6 +129,22 @@ export interface BlockedIP {
   updated_at: string;
 }
 
+export interface CheckIn {
+  id: string;
+  ticket_id: string;
+  event_id: string;
+  organizer_id: string;
+  ticket_user_id?: string;
+  status: 'checked_in' | 'duplicate' | 'invalid';
+  created_at: string;
+  updated_at: string;
+  notes?: string;
+  ticket_code?: string;
+  ticket_type?: string;
+  customer_name?: string;
+  customer_document?: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -186,6 +202,11 @@ export interface Database {
         Row: BlockedIP;
         Insert: Omit<BlockedIP, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<BlockedIP, 'id'>>;
+      };
+      check_ins: {
+        Row: CheckIn;
+        Insert: Omit<CheckIn, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<CheckIn, 'id'>>;
       };
     };
   };
