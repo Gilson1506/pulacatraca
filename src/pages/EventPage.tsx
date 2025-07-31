@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
+import LoginPromptModal from '../components/LoginPromptModal';
 import { supabase } from '../lib/supabase';
 
 interface Event {
@@ -85,15 +86,23 @@ const EventPage = () => {
   console.log('EventPage - ID do evento:', eventId); // Log para debug
 
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState('');
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [event, setEvent] = useState<Event | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     console.log('EventPage - useEffect executado com ID:', eventId); // Log para debug
     fetchEvent();
+    checkUser();
   }, [eventId]);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+  };
 
   const fetchEvent = async () => {
     try {
@@ -509,6 +518,10 @@ const EventPage = () => {
         <button
           className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
           onClick={() => {
+            if (!user) {
+              setShowLoginModal(true);
+              return;
+            }
             setLoading(true);
             setTimeout(() => {
               setLoading(false);
@@ -688,6 +701,13 @@ const EventPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Login Modal */}
+      <LoginPromptModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        eventTitle={event?.title}
+      />
     </div>
   );
 };
