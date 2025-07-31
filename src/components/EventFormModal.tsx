@@ -477,8 +477,16 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       }
 
       alert('Evento criado com sucesso! Aguarde aprovação.');
-      onEventCreated();
-      onClose();
+      
+      // Verificar se onEventCreated é uma função antes de chamar
+      if (typeof onEventCreated === 'function') {
+        onEventCreated();
+      }
+      
+      // Verificar se onClose é uma função antes de chamar
+      if (typeof onClose === 'function') {
+        onClose();
+      }
 
     } catch (error) {
       console.error('Erro ao criar evento:', error);
