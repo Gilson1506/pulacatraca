@@ -433,6 +433,12 @@ const EventPage = () => {
                   src={event.image}
                   alt={event.title}
                   className="w-full h-full object-cover"
+                  style={{ 
+                    objectPosition: 'center center',
+                    imageRendering: 'high-quality',
+                    filter: 'contrast(1.02) saturate(1.05)'
+                  }}
+                  loading="eager"
                 />
               </div>
             </div>
@@ -448,6 +454,12 @@ const EventPage = () => {
                 src={event.image}
                 alt={event.title}
                 className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white"
+                style={{ 
+                  objectPosition: 'center center',
+                  imageRendering: 'high-quality',
+                  filter: 'contrast(1.02) saturate(1.05)'
+                }}
+                loading="eager"
               />
               <button
                 className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-40 rounded-full px-3 py-1 hover:bg-opacity-70 transition"

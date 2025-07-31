@@ -12,9 +12,10 @@ const HeroContainer: React.FC<HeroContainerProps> = ({ backgroundImage, children
       className="relative"
       style={{
         backgroundImage: `url(${backgroundImage})`,
-        backgroundPosition: 'center',
+        backgroundPosition: 'center center',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
+        imageRendering: 'high-quality',
       }}
     >
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-lg"></div>

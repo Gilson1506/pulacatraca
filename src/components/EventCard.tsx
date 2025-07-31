@@ -98,7 +98,12 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
           src={event.image} 
           alt={event.title} 
             className="w-full h-28 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
-            style={{ objectPosition: 'center center' }}
+            style={{ 
+              objectPosition: 'center center',
+              imageRendering: 'high-quality',
+              filter: 'contrast(1.02) saturate(1.05)'
+            }}
+            loading="lazy"
         />
         </div>
         {/* Detalhes do Evento à direita (MOBILE) */}
@@ -120,7 +125,12 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
             src={event.image} 
             alt={event.title} 
             className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
-            style={{ objectPosition: 'center center' }}
+            style={{ 
+              objectPosition: 'center center',
+              imageRendering: 'high-quality',
+              filter: 'contrast(1.02) saturate(1.05)'
+            }}
+            loading="lazy"
           />
         </div>
         {/* Linha abaixo da imagem: data à esquerda, detalhes à direita */}

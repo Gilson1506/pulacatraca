@@ -69,7 +69,13 @@ const EventCarousel = () => {
                 alt={event.title}
                 className="w-full h-full object-cover object-center"
                 draggable="false"
-                style={{ objectFit: 'cover', objectPosition: 'center center' }}
+                style={{ 
+                  objectFit: 'cover', 
+                  objectPosition: 'center center',
+                  imageRendering: 'high-quality',
+                  filter: 'contrast(1.02) saturate(1.05)'
+                }}
+                loading="eager"
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white space-y-6 max-w-4xl px-4">
