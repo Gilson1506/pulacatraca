@@ -1,870 +1,1264 @@
-import React, { useState, useEffect } from 'react';
-import { uploadEventBanner, deleteEventBanner } from '../lib/supabase';
-import LoadingButton from './LoadingButton';
+import React, { useState, useRef } from 'react';
+import { X, Upload, Calendar, Clock, MapPin, Ticket, Plus, Minus, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight, Link, Image, Type, Palette } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
+interface EventFormData {
+  // Seção 1: Informações básicas
+  title: string;
+  image: string;
+  subject: string;
+  category: string;
+  
+  // Seção 2: Data e horário
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+  
+  // Seção 3: Descrição
+  description: string;
+  
+  // Seção 4: Local
+  location_type: 'tbd' | 'physical' | 'online';
+  location_search: string;
+  location_name: string;
+  location_address: string;
+  location_cep: string;
+  location_street: string;
+  location_number: string;
+  location_complement: string;
+  location_neighborhood: string;
+  location_city: string;
+  location_state: string;
+  
+  // Seção 5: Ingressos
+  ticket_type: 'paid' | 'free';
+  tickets: TicketData[];
+}
+
+interface TicketData {
+  id: string;
+  title: string;
+  quantity: number;
+  price: number;
+  has_half_price: boolean;
+  sale_period_type: 'date' | 'batch';
+  sale_start_date: string;
+  sale_start_time: string;
+  sale_end_date: string;
+  sale_end_time: string;
+  availability: 'public' | 'restricted' | 'manual';
+  min_quantity: number;
+  max_quantity: number;
+  description: string;
+}
 
 interface EventFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  event?: Event;
-  onSubmit: (eventData: any) => void;
+  onEventCreated: () => void;
 }
 
-interface Event {
-  id?: string;
-  name: string;
-  date: string;
-  time: string;
-  endDate: string;
-  endTime: string;
-  location: string;
-  description: string;
-  status: 'ativo' | 'adiado' | 'cancelado';
-  ticketsSold?: number;
-  totalTickets: number;
-  revenue?: number;
-  category: string;
-  price: number;
-  image?: string;
-  dateLabel?: string;
-  importantNotes: string[];
-  sections: {
-    name: string;
-    details: string[];
-    note?: string;
-  }[];
-  attractions: string[];
-  contactInfo: {
-    phone: string;
-    hours: string[];
-  };
-}
+const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEventCreated }) => {
+  const { user } = useAuth();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLDivElement>(null);
 
-const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event, onSubmit }) => {
-  const [isMobile, setIsMobile] = useState(false);
-  const [currentSection, setCurrentSection] = useState('basic');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  
-  const [formData, setFormData] = useState<Event>(event || {
-    name: '',
-    date: '',
-    time: '',
-    endDate: '',
-    endTime: '',
-    location: '',
-    description: '',
-    status: 'ativo',
-    totalTickets: 100,
-    category: '',
-    price: 0,
+  const [formData, setFormData] = useState<EventFormData>({
+    // Seção 1
+    title: '',
     image: '',
-    importantNotes: [''],
-    sections: [{ name: '', details: [''], note: '' }],
-    attractions: [''],
-    contactInfo: {
-      phone: '',
-      hours: ['']
-    }
+    subject: '',
+    category: '',
+    
+    // Seção 2
+    start_date: '',
+    start_time: '',
+    end_date: '',
+    end_time: '',
+    
+    // Seção 3
+    description: '',
+    
+    // Seção 4
+    location_type: 'tbd',
+    location_search: '',
+    location_name: '',
+    location_address: '',
+    location_cep: '',
+    location_street: '',
+    location_number: '',
+    location_complement: '',
+    location_neighborhood: '',
+    location_city: '',
+    location_state: '',
+    
+    // Seção 5
+    ticket_type: 'paid',
+    tickets: []
   });
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Arquivo muito grande. Máximo 5MB.');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione apenas arquivos de imagem.');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const imageUrl = await uploadEventBanner(file);
-      setFormData({ ...formData, image: imageUrl });
-    } catch (error) {
-      console.error('Erro ao fazer upload:', error);
-      alert('Erro ao fazer upload da imagem.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleRemoveImage = async () => {
-    if (formData.image) {
-      try {
-        await deleteEventBanner(formData.image);
-      } catch (error) {
-        console.error('Erro ao deletar imagem:', error);
-      }
-      setFormData({ ...formData, image: '' });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      await onSubmit(formData);
-      onClose();
-    } catch (error) {
-      console.error('Erro ao salvar evento:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const addArrayItem = (field: keyof Event, index: number) => {
-    const newData = { ...formData };
-    if (field === 'importantNotes') {
-      (newData[field] as string[]).splice(index + 1, 0, '');
-    } else if (field === 'attractions') {
-      (newData[field] as string[]).splice(index + 1, 0, '');
-    }
-    setFormData(newData);
-  };
-
-  const removeArrayItem = (field: keyof Event, index: number) => {
-    const newData = { ...formData };
-    if (field === 'importantNotes' && (newData[field] as string[]).length > 1) {
-      (newData[field] as string[]).splice(index, 1);
-    } else if (field === 'attractions' && (newData[field] as string[]).length > 1) {
-      (newData[field] as string[]).splice(index, 1);
-    }
-    setFormData(newData);
-  };
-
-  const addSection = () => {
-    setFormData({
-      ...formData,
-      sections: [...formData.sections, { name: '', details: [''], note: '' }]
-    });
-  };
-
-  const removeSection = (sectionIndex: number) => {
-    if (formData.sections.length > 1) {
-      const newSections = [...formData.sections];
-      newSections.splice(sectionIndex, 1);
-      setFormData({ ...formData, sections: newSections });
-    }
-  };
-
-  const addSectionDetail = (sectionIndex: number, detailIndex: number) => {
-    const newSections = [...formData.sections];
-    newSections[sectionIndex].details.splice(detailIndex + 1, 0, '');
-    setFormData({ ...formData, sections: newSections });
-  };
-
-  const removeSectionDetail = (sectionIndex: number, detailIndex: number) => {
-    const newSections = [...formData.sections];
-    if (newSections[sectionIndex].details.length > 1) {
-      newSections[sectionIndex].details.splice(detailIndex, 1);
-      setFormData({ ...formData, sections: newSections });
-    }
-  };
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   if (!isOpen) return null;
 
-  const renderBannerUpload = () => (
-    <div className="mb-6">
-      <label className="block text-sm font-semibold text-gray-800 mb-3">
-        Banner do Evento
-      </label>
-      <p className="text-xs text-gray-600 mb-4">
-        Recomendado: 1200x600px, máximo 5MB (PNG, JPG, JPEG)
-      </p>
+  // Calcular duração do evento
+  const calculateEventDuration = () => {
+    if (!formData.start_date || !formData.end_date) return '';
+    
+    const start = new Date(`${formData.start_date}T${formData.start_time || '00:00'}`);
+    const end = new Date(`${formData.end_date}T${formData.end_time || '23:59'}`);
+    
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 dia';
+    return `${diffDays} dias`;
+  };
+
+  // Upload de imagem
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamanho (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Imagem muito grande. Máximo 2MB.');
+      return;
+    }
+
+    // Validar formato
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+      alert('Formato inválido. Use JPEG, PNG ou GIF.');
+      return;
+    }
+
+    try {
+      setUploadProgress(0);
       
-      {formData.image ? (
-        <div className="relative group">
-          <img 
-            src={formData.image} 
-            alt="Banner" 
-            className="w-full h-48 object-cover rounded-xl border-2 border-gray-200" 
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-xl flex items-center justify-center">
-            <button
-              type="button"
-              onClick={handleRemoveImage}
-              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-600 transform hover:scale-110"
+      // Preview local
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload para Supabase Storage
+      const fileName = `event_${Date.now()}_${file.name}`;
+      const { data, error } = await supabase.storage
+        .from('event-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          onUploadProgress: (progress) => {
+            setUploadProgress((progress.loaded / progress.total) * 100);
+          }
+        });
+
+      if (error) throw error;
+
+      // Obter URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({ ...prev, image: publicUrl }));
+      setUploadProgress(100);
+      
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      alert('Erro ao fazer upload da imagem');
+    }
+  };
+
+  // Comandos do editor de texto
+  const executeCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    if (descriptionRef.current) {
+      setFormData(prev => ({ 
+        ...prev, 
+        description: descriptionRef.current?.innerHTML || '' 
+      }));
+    }
+  };
+
+  // Adicionar novo ingresso
+  const addTicket = () => {
+    const newTicket: TicketData = {
+      id: `ticket_${Date.now()}`,
+      title: '',
+      quantity: 100,
+      price: 0,
+      has_half_price: false,
+      sale_period_type: 'date',
+      sale_start_date: '',
+      sale_start_time: '',
+      sale_end_date: '',
+      sale_end_time: '',
+      availability: 'public',
+      min_quantity: 1,
+      max_quantity: 5,
+      description: ''
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      tickets: [...prev.tickets, newTicket]
+    }));
+  };
+
+  // Remover ingresso
+  const removeTicket = (ticketId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tickets: prev.tickets.filter(t => t.id !== ticketId)
+    }));
+  };
+
+  // Atualizar ingresso
+  const updateTicket = (ticketId: string, updates: Partial<TicketData>) => {
+    setFormData(prev => ({
+      ...prev,
+      tickets: prev.tickets.map(t => 
+        t.id === ticketId ? { ...t, ...updates } : t
+      )
+    }));
+  };
+
+  // Submeter formulário
+  const handleSubmit = async () => {
+    if (!user) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // Validações básicas
+      if (!formData.title.trim()) {
+        alert('Nome do evento é obrigatório');
+        return;
+      }
+
+      if (!formData.start_date || !formData.start_time) {
+        alert('Data e hora de início são obrigatórias');
+        return;
+      }
+
+      // Criar evento
+      const eventData = {
+        title: formData.title.trim(),
+        description: formData.description,
+        start_date: `${formData.start_date}T${formData.start_time}:00`,
+        end_date: formData.end_date ? `${formData.end_date}T${formData.end_time || '23:59'}:00` : null,
+        location: formData.location_type === 'tbd' ? 'Local ainda será definido' : 
+                 formData.location_type === 'online' ? 'Evento Online' :
+                 `${formData.location_name || formData.location_street} ${formData.location_number || ''}, ${formData.location_city || ''} - ${formData.location_state || ''}`.trim(),
+        address: formData.location_type === 'physical' ? 
+                `${formData.location_street} ${formData.location_number}, ${formData.location_neighborhood}, ${formData.location_city} - ${formData.location_state}, ${formData.location_cep}` : null,
+        image: formData.image || '/default-event-image.jpg',
+        category: formData.subject || 'evento',
+        subcategory: formData.category || null,
+        price: formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price)) : 0,
+        organizer_id: user.id,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      };
+
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .insert([eventData])
+        .select()
+        .single();
+
+      if (eventError) throw eventError;
+
+      // Criar ingressos
+      if (formData.tickets.length > 0) {
+        const ticketsData = formData.tickets.map(ticket => ({
+          event_id: event.id,
+          name: ticket.title,
+          price: ticket.price,
+          quantity: ticket.quantity,
+          description: ticket.description || null,
+          sale_start: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
+          sale_end: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time}:00` : null,
+          min_quantity: ticket.min_quantity,
+          max_quantity: ticket.max_quantity,
+          availability: ticket.availability,
+          has_half_price: ticket.has_half_price,
+          created_at: new Date().toISOString()
+        }));
+
+        const { error: ticketsError } = await supabase
+          .from('tickets')
+          .insert(ticketsData);
+
+        if (ticketsError) {
+          console.error('Erro ao criar ingressos:', ticketsError);
+          // Não falhar se ingressos não foram criados
+        }
+      }
+
+      alert('Evento criado com sucesso! Aguarde aprovação.');
+      onEventCreated();
+      onClose();
+
+    } catch (error) {
+      console.error('Erro ao criar evento:', error);
+      alert('Erro ao criar evento. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderStep1 = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">1. Informações básicas</h3>
+        <p className="text-sm text-gray-600 mb-4">Adicione as principais informações do evento.</p>
+      </div>
+
+      {/* Nome do evento */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Nome do evento
+        </label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+          placeholder="Nome do evento"
+          maxLength={100}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          {100 - formData.title.length} caracteres restantes
+        </p>
+      </div>
+
+      {/* Upload de imagem */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Imagem de divulgação (opcional)
+        </label>
+        <div 
+          className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-500 transition-colors cursor-pointer"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {imagePreview ? (
+            <div className="relative">
+              <img 
+                src={imagePreview} 
+                alt="Preview" 
+                className="max-h-48 mx-auto rounded-lg"
+                style={{ 
+                  objectFit: 'cover',
+                  imageRendering: 'high-quality',
+                  filter: 'contrast(1.02) saturate(1.05)'
+                }}
+              />
+              {uploadProgress < 100 && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                  <div className="text-white text-sm">Uploading... {Math.round(uploadProgress)}%</div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-600">Clique ou arraste a imagem aqui</p>
+            </div>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/gif"
+          onChange={handleImageUpload}
+          className="hidden"
+        />
+        <div className="mt-2 text-xs text-gray-500 space-y-1">
+          <p>A dimensão recomendada é de 1600 x 838</p>
+          <p>(mesma proporção do formato utilizado nas páginas de evento no Facebook).</p>
+          <p>Formato JPEG, GIF ou PNG de no máximo 2MB.</p>
+          <p>Imagens com dimensões diferentes serão redimensionadas.</p>
+        </div>
+      </div>
+
+      {/* Classificação */}
+      <div>
+        <h4 className="text-md font-medium text-gray-800 mb-4">Classifique seu evento</h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assunto
+            </label>
+            <select
+              value={formData.subject}
+              onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
             >
-              ×
-            </button>
+              <option value="">Selecione o assunto</option>
+              <option value="show">Show</option>
+              <option value="teatro">Teatro</option>
+              <option value="palestra">Palestra</option>
+              <option value="workshop">Workshop</option>
+              <option value="festa">Festa</option>
+              <option value="esporte">Esporte</option>
+              <option value="negócios">Negócios</option>
+              <option value="educação">Educação</option>
+              <option value="tecnologia">Tecnologia</option>
+              <option value="arte">Arte</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Categoria (opcional)
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            >
+              <option value="">-- --</option>
+              <option value="música">Música</option>
+              <option value="comédia">Comédia</option>
+              <option value="drama">Drama</option>
+              <option value="infantil">Infantil</option>
+              <option value="adulto">Adulto</option>
+              <option value="família">Família</option>
+            </select>
           </div>
         </div>
-      ) : (
-        <label className="cursor-pointer block">
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-pink-400 hover:bg-pink-50 transition-all duration-200 group">
-            {isUploading ? (
-              <div className="text-center">
-                <div className="text-4xl mb-3">⏳</div>
-                <p className="text-sm text-gray-600 font-medium">Enviando imagem...</p>
-                <p className="text-xs text-gray-400">Por favor, aguarde</p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-200">📁</div>
-                <p className="text-sm text-gray-700 font-semibold mb-1">Clique para fazer upload</p>
-                <p className="text-xs text-gray-500">PNG, JPG, JPEG até 5MB</p>
-              </div>
-            )}
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">2. Data e horário</h3>
+        <p className="text-sm text-gray-600 mb-4">Informe aos participantes quando seu evento vai acontecer.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Data e hora de início */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data de Início *
+            </label>
+            <input
+              type="date"
+              value={formData.start_date}
+              onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              required
+            />
           </div>
-          <input
-            type="file"
-            onChange={handleImageUpload}
-            accept="image/*"
-            className="hidden"
-            disabled={isUploading}
-          />
-        </label>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Hora de Início *
+            </label>
+            <input
+              type="time"
+              value={formData.start_time}
+              onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Data e hora de término */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data de Término *
+            </label>
+            <input
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Hora de Término *
+            </label>
+            <input
+              type="time"
+              value={formData.end_time}
+              onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Duração calculada */}
+      {formData.start_date && formData.end_date && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Seu evento vai durar:</strong> {calculateEventDuration()}
+          </p>
+        </div>
       )}
     </div>
   );
 
-  const renderBasicFields = () => (
-    <div className="space-y-6">
-      {renderBannerUpload()}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="lg:col-span-2">
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Nome do Evento *
-          </label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            placeholder="Digite o nome do evento"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Categoria *
-          </label>
-          <select
-            value={formData.category}
-            onChange={e => setFormData({ ...formData, category: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            required
-          >
-            <option value="">Selecione uma categoria</option>
-            <option value="show">Show</option>
-            <option value="teatro">Teatro</option>
-            <option value="palestra">Palestra</option>
-            <option value="workshop">Workshop</option>
-            <option value="festa">Festa</option>
-            <option value="esporte">Esporte</option>
-            <option value="outro">Outro</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Preço do Ingresso (€) *
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.price}
-            onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            placeholder="0.00"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Data de Início *
-          </label>
-          <input
-            type="date"
-            value={formData.date}
-            onChange={e => setFormData({ ...formData, date: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Horário de Início *
-          </label>
-          <input
-            type="time"
-            value={formData.time}
-            onChange={e => setFormData({ ...formData, time: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Data de Término *
-          </label>
-          <input
-            type="date"
-            value={formData.endDate}
-            onChange={e => setFormData({ ...formData, endDate: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Horário de Término *
-          </label>
-          <input
-            type="time"
-            value={formData.endTime}
-            onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            required
-          />
-        </div>
-
-        <div className="lg:col-span-2">
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Localização *
-          </label>
-          <input
-            type="text"
-            value={formData.location}
-            onChange={e => setFormData({ ...formData, location: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            placeholder="Endereço completo do evento"
-            required
-          />
-        </div>
-
-        <div className="lg:col-span-2">
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Descrição *
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={e => setFormData({ ...formData, description: e.target.value })}
-            rows={4}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200 resize-none"
-            placeholder="Descreva o evento, atrações, programação..."
-            required
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderTicketsFields = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Total de Ingressos *
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={formData.totalTickets}
-            onChange={e => setFormData({ ...formData, totalTickets: parseInt(e.target.value) })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Status do Evento
-          </label>
-          <select
-            value={formData.status}
-            onChange={e => setFormData({ ...formData, status: e.target.value as 'ativo' | 'adiado' | 'cancelado' })}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-          >
-            <option value="ativo">✅ Ativo</option>
-            <option value="adiado">⏸️ Adiado</option>
-            <option value="cancelado">❌ Cancelado</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderDetailsFields = () => (
-    <div className="space-y-8">
-      {/* Important Notes */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <label className="block text-sm font-semibold text-gray-800">
-            Informações Importantes
-          </label>
-          <button
-            type="button"
-            onClick={() => addArrayItem('importantNotes', formData.importantNotes.length - 1)}
-            className="text-sm text-pink-600 hover:text-pink-700 font-medium hover:bg-pink-50 px-3 py-1 rounded-lg transition-all duration-200"
-          >
-            + Adicionar
-          </button>
-        </div>
-        <div className="space-y-3">
-          {formData.importantNotes.map((note, index) => (
-            <div key={index} className="flex gap-3">
-              <input
-                type="text"
-                value={note}
-                onChange={e => {
-                  const newNotes = [...formData.importantNotes];
-                  newNotes[index] = e.target.value;
-                  setFormData({ ...formData, importantNotes: newNotes });
-                }}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-                placeholder="Ex: Chegue 30 minutos antes do evento"
-              />
-              {formData.importantNotes.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem('importantNotes', index)}
-                  className="w-12 h-12 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Attractions */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <label className="block text-sm font-semibold text-gray-800">
-            Atrações do Evento
-          </label>
-          <button
-            type="button"
-            onClick={() => addArrayItem('attractions', formData.attractions.length - 1)}
-            className="text-sm text-pink-600 hover:text-pink-700 font-medium hover:bg-pink-50 px-3 py-1 rounded-lg transition-all duration-200"
-          >
-            + Adicionar
-          </button>
-        </div>
-        <div className="space-y-3">
-          {formData.attractions.map((attraction, index) => (
-            <div key={index} className="flex gap-3">
-              <input
-                type="text"
-                value={attraction}
-                onChange={e => {
-                  const newAttractions = [...formData.attractions];
-                  newAttractions[index] = e.target.value;
-                  setFormData({ ...formData, attractions: newAttractions });
-                }}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-                placeholder="Ex: Banda XYZ, DJ ABC"
-              />
-              {formData.attractions.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem('attractions', index)}
-                  className="w-12 h-12 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Sections */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <label className="block text-sm font-semibold text-gray-800">
-            Seções do Evento
-          </label>
-          <button
-            type="button"
-            onClick={addSection}
-            className="text-sm text-pink-600 hover:text-pink-700 font-medium hover:bg-pink-50 px-3 py-1 rounded-lg transition-all duration-200"
-          >
-            + Adicionar Seção
-          </button>
-        </div>
-        <div className="space-y-6">
-          {formData.sections.map((section, sectionIndex) => (
-            <div key={sectionIndex} className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-800">
-                  Seção {sectionIndex + 1}
-                </h4>
-                {formData.sections.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeSection(sectionIndex)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nome da Seção
-                  </label>
-                  <input
-                    type="text"
-                    value={section.name}
-                    onChange={e => {
-                      const newSections = [...formData.sections];
-                      newSections[sectionIndex].name = e.target.value;
-                      setFormData({ ...formData, sections: newSections });
-                    }}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-                    placeholder="Ex: Programação, Palestrantes, Horários"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Detalhes
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => addSectionDetail(sectionIndex, section.details.length - 1)}
-                      className="text-xs text-pink-600 hover:text-pink-700 font-medium"
-                    >
-                      + Adicionar detalhe
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {section.details.map((detail, detailIndex) => (
-                      <div key={detailIndex} className="flex gap-2">
-                        <input
-                          type="text"
-                          value={detail}
-                          onChange={e => {
-                            const newSections = [...formData.sections];
-                            newSections[sectionIndex].details[detailIndex] = e.target.value;
-                            setFormData({ ...formData, sections: newSections });
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-100"
-                          placeholder="Detalhe da seção"
-                        />
-                        {section.details.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeSectionDetail(sectionIndex, detailIndex)}
-                            className="w-10 h-10 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 flex items-center justify-center"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nota da Seção
-                  </label>
-                  <textarea
-                    value={section.note || ''}
-                    onChange={e => {
-                      const newSections = [...formData.sections];
-                      newSections[sectionIndex].note = e.target.value;
-                      setFormData({ ...formData, sections: newSections });
-                    }}
-                    rows={2}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200 resize-none"
-                    placeholder="Observações adicionais sobre esta seção"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderContactFields = () => (
+  const renderStep3 = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-semibold text-gray-800 mb-2">
-          Telefone de Contato *
-        </label>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">3. Descrição do evento</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Conte todos os detalhes do seu evento, como a programação e os diferenciais da sua produção!
+        </p>
+      </div>
+
+      {/* Toolbar do editor */}
+      <div className="border border-gray-300 rounded-t-lg bg-gray-50 p-2 flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={() => executeCommand('bold')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Negrito"
+        >
+          <Bold className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => executeCommand('italic')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Itálico"
+        >
+          <Italic className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => executeCommand('underline')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Sublinhado"
+        >
+          <Underline className="h-4 w-4" />
+        </button>
+        
+        <div className="w-px bg-gray-300 mx-1"></div>
+        
+        <button
+          type="button"
+          onClick={() => executeCommand('insertUnorderedList')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Lista com marcadores"
+        >
+          <List className="h-4 w-4" />
+        </button>
+        
+        <div className="w-px bg-gray-300 mx-1"></div>
+        
+        <button
+          type="button"
+          onClick={() => executeCommand('justifyLeft')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Alinhar à esquerda"
+        >
+          <AlignLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => executeCommand('justifyCenter')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Centralizar"
+        >
+          <AlignCenter className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => executeCommand('justifyRight')}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Alinhar à direita"
+        >
+          <AlignRight className="h-4 w-4" />
+        </button>
+        
+        <div className="w-px bg-gray-300 mx-1"></div>
+        
+        <button
+          type="button"
+          onClick={() => {
+            const url = prompt('Digite a URL:');
+            if (url) executeCommand('createLink', url);
+          }}
+          className="p-2 hover:bg-gray-200 rounded"
+          title="Adicionar link"
+        >
+          <Link className="h-4 w-4" />
+        </button>
+        
+        <select
+          onChange={(e) => executeCommand('fontSize', e.target.value)}
+          className="px-2 py-1 text-xs border border-gray-300 rounded"
+          title="Tamanho da fonte"
+        >
+          <option value="1">Pequena</option>
+          <option value="3" selected>Normal</option>
+          <option value="5">Grande</option>
+          <option value="7">Muito Grande</option>
+        </select>
+        
         <input
-          type="tel"
-          value={formData.contactInfo.phone}
-          onChange={e => setFormData({
-            ...formData,
-            contactInfo: { ...formData.contactInfo, phone: e.target.value }
-          })}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-          placeholder="+351 123 456 789"
-          required
+          type="color"
+          onChange={(e) => executeCommand('foreColor', e.target.value)}
+          className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+          title="Cor do texto"
         />
       </div>
 
+      {/* Editor de texto */}
+      <div
+        ref={descriptionRef}
+        contentEditable
+        className="min-h-[200px] p-4 border-x border-b border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+        onInput={() => {
+          if (descriptionRef.current) {
+            setFormData(prev => ({ 
+              ...prev, 
+              description: descriptionRef.current?.innerHTML || '' 
+            }));
+          }
+        }}
+        placeholder="Descreva seu evento aqui..."
+        style={{ minHeight: '200px' }}
+      />
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <div className="space-y-6">
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <label className="block text-sm font-semibold text-gray-800">
-            Horários de Atendimento *
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">4. Onde o seu evento vai acontecer?</h3>
+      </div>
+
+      {/* Tipo de local */}
+      <div className="space-y-4">
+        <div className="flex gap-4">
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="location_type"
+              value="tbd"
+              checked={formData.location_type === 'tbd'}
+              onChange={(e) => setFormData(prev => ({ ...prev, location_type: e.target.value as any }))}
+              className="mr-2"
+            />
+            Local ainda será definido
           </label>
-          <button
-            type="button"
-            onClick={() => setFormData({
-              ...formData,
-              contactInfo: { ...formData.contactInfo, hours: [...formData.contactInfo.hours, ''] }
-            })}
-            className="text-sm text-pink-600 hover:text-pink-700 font-medium hover:bg-pink-50 px-3 py-1 rounded-lg transition-all duration-200"
-          >
-            + Adicionar Horário
-          </button>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="location_type"
+              value="physical"
+              checked={formData.location_type === 'physical'}
+              onChange={(e) => setFormData(prev => ({ ...prev, location_type: e.target.value as any }))}
+              className="mr-2"
+            />
+            Local físico
+          </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="location_type"
+              value="online"
+              checked={formData.location_type === 'online'}
+              onChange={(e) => setFormData(prev => ({ ...prev, location_type: e.target.value as any }))}
+              className="mr-2"
+            />
+            Online
+          </label>
         </div>
-        <div className="space-y-3">
-          {formData.contactInfo.hours.map((hour, index) => (
-            <div key={index} className="flex gap-3">
+      </div>
+
+      {/* Campos do local físico */}
+      {formData.location_type === 'physical' && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Local
+            </label>
+            <input
+              type="text"
+              value={formData.location_search}
+              onChange={(e) => setFormData(prev => ({ ...prev, location_search: e.target.value }))}
+              placeholder="Digite para buscar..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Informe o endereço ou o nome do local do evento</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nome do Local
+            </label>
+            <input
+              type="text"
+              value={formData.location_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, location_name: e.target.value }))}
+              maxLength={100}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {100 - formData.location_name.length} caracteres restantes
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CEP
+              </label>
               <input
                 type="text"
-                value={hour}
-                onChange={e => {
-                  const newHours = [...formData.contactInfo.hours];
-                  newHours[index] = e.target.value;
-                  setFormData({
-                    ...formData,
-                    contactInfo: { ...formData.contactInfo, hours: newHours }
-                  });
-                }}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition-all duration-200"
-                placeholder="Ex: Segunda a Sexta: 9h às 18h"
-                required
+                value={formData.location_cep}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_cep: e.target.value }))}
+                placeholder="_____-___"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               />
-              {formData.contactInfo.hours.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newHours = [...formData.contactInfo.hours];
-                    newHours.splice(index, 1);
-                    setFormData({
-                      ...formData,
-                      contactInfo: { ...formData.contactInfo, hours: newHours }
-                    });
-                  }}
-                  className="w-12 h-12 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 flex items-center justify-center"
-                >
-                  ×
-                </button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Av./Rua
+              </label>
+              <input
+                type="text"
+                value={formData.location_street}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_street: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Número
+              </label>
+              <input
+                type="text"
+                value={formData.location_number}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_number: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Complemento
+              </label>
+              <input
+                type="text"
+                value={formData.location_complement}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_complement: e.target.value }))}
+                maxLength={250}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {250 - formData.location_complement.length} caracteres restantes
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bairro
+              </label>
+              <input
+                type="text"
+                value={formData.location_neighborhood}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_neighborhood: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cidade
+              </label>
+              <input
+                type="text"
+                value={formData.location_city}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_city: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado
+              </label>
+              <select
+                value={formData.location_state}
+                onChange={(e) => setFormData(prev => ({ ...prev, location_state: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="">Selecione</option>
+                <option value="AC">Acre</option>
+                <option value="AL">Alagoas</option>
+                <option value="AP">Amapá</option>
+                <option value="AM">Amazonas</option>
+                <option value="BA">Bahia</option>
+                <option value="CE">Ceará</option>
+                <option value="DF">Distrito Federal</option>
+                <option value="ES">Espírito Santo</option>
+                <option value="GO">Goiás</option>
+                <option value="MA">Maranhão</option>
+                <option value="MT">Mato Grosso</option>
+                <option value="MS">Mato Grosso do Sul</option>
+                <option value="MG">Minas Gerais</option>
+                <option value="PA">Pará</option>
+                <option value="PB">Paraíba</option>
+                <option value="PR">Paraná</option>
+                <option value="PE">Pernambuco</option>
+                <option value="PI">Piauí</option>
+                <option value="RJ">Rio de Janeiro</option>
+                <option value="RN">Rio Grande do Norte</option>
+                <option value="RS">Rio Grande do Sul</option>
+                <option value="RO">Rondônia</option>
+                <option value="RR">Roraima</option>
+                <option value="SC">Santa Catarina</option>
+                <option value="SP">São Paulo</option>
+                <option value="SE">Sergipe</option>
+                <option value="TO">Tocantins</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderStep5 = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">5. Ingressos</h3>
+        <p className="text-sm text-gray-600 mb-4">Que tipo de ingresso você deseja criar?</p>
+      </div>
+
+      {/* Tipo de ingresso */}
+      <div className="flex gap-4 mb-6">
+        <label className="flex items-center">
+          <input
+            type="radio"
+            name="ticket_type"
+            value="paid"
+            checked={formData.ticket_type === 'paid'}
+            onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
+            className="mr-2"
+          />
+          Ingressos pagos
+        </label>
+        <label className="flex items-center">
+          <input
+            type="radio"
+            name="ticket_type"
+            value="free"
+            checked={formData.ticket_type === 'free'}
+            onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
+            className="mr-2"
+          />
+          Ingressos gratuitos
+        </label>
+      </div>
+
+      {/* Lista de ingressos */}
+      <div className="space-y-6">
+        {formData.tickets.map((ticket, index) => (
+          <div key={ticket.id} className="border border-gray-200 rounded-lg p-6 relative">
+            {formData.tickets.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeTicket(ticket.id)}
+                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+
+            <h4 className="text-md font-medium text-gray-800 mb-4">
+              {formData.ticket_type === 'paid' ? 'Criar ingresso pago' : 'Criar ingresso gratuito'}
+            </h4>
+
+            {formData.ticket_type === 'paid' && (
+              <p className="text-xs text-gray-500 mb-4">
+                A taxa de serviço é repassada ao comprador, sendo exibida junto com o valor do ingresso
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Título do ingresso
+                </label>
+                <input
+                  type="text"
+                  value={ticket.title}
+                  onChange={(e) => updateTicket(ticket.id, { title: e.target.value })}
+                  placeholder="Ingresso único, Meia-Entrada, VIP, etc."
+                  maxLength={45}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {45 - ticket.title.length} caracteres restantes
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantidade
+                </label>
+                <input
+                  type="number"
+                  value={ticket.quantity}
+                  onChange={(e) => updateTicket(ticket.id, { quantity: parseInt(e.target.value) || 0 })}
+                  placeholder="Ex. 100"
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+            </div>
+
+            {formData.ticket_type === 'paid' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor a receber
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                    <input
+                      type="number"
+                      value={ticket.price}
+                      onChange={(e) => updateTicket(ticket.id, { price: parseFloat(e.target.value) || 0 })}
+                      step="0.01"
+                      min="0"
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor do comprador
+                  </label>
+                  <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
+                    R$ {(ticket.price * 1.1).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formData.ticket_type === 'paid' && (
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={ticket.has_half_price}
+                    onChange={(e) => updateTicket(ticket.id, { has_half_price: e.target.checked })}
+                    className="mr-2"
+                  />
+                  Criar meia-entrada para este ingresso
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Saiba mais sobre as políticas de meia-entrada
+                </p>
+              </div>
+            )}
+
+            {/* Período de vendas */}
+            <div className="mb-4">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Período das vendas deste ingresso:</h5>
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name={`sale_period_${ticket.id}`}
+                    value="date"
+                    checked={ticket.sale_period_type === 'date'}
+                    onChange={(e) => updateTicket(ticket.id, { sale_period_type: e.target.value as any })}
+                    className="mr-2"
+                  />
+                  Por data
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name={`sale_period_${ticket.id}`}
+                    value="batch"
+                    checked={ticket.sale_period_type === 'batch'}
+                    onChange={(e) => updateTicket(ticket.id, { sale_period_type: e.target.value as any })}
+                    className="mr-2"
+                  />
+                  Por lote
+                </label>
+              </div>
+
+              {ticket.sale_period_type === 'date' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Data de Início das Vendas *
+                    </label>
+                    <input
+                      type="date"
+                      value={ticket.sale_start_date}
+                      onChange={(e) => updateTicket(ticket.id, { sale_start_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Hora de Início *
+                    </label>
+                    <input
+                      type="time"
+                      value={ticket.sale_start_time}
+                      onChange={(e) => updateTicket(ticket.id, { sale_start_time: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                    <p className="text-xs text-gray-500">Horário de Brasília</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Data de Término das Vendas *
+                    </label>
+                    <input
+                      type="date"
+                      value={ticket.sale_end_date}
+                      onChange={(e) => updateTicket(ticket.id, { sale_end_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Hora de Término *
+                    </label>
+                    <input
+                      type="time"
+                      value={ticket.sale_end_time}
+                      onChange={(e) => updateTicket(ticket.id, { sale_end_time: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                    <p className="text-xs text-gray-500">Horário de Brasília</p>
+                  </div>
+                </div>
               )}
             </div>
-          ))}
-        </div>
+
+            {/* Disponibilidade */}
+            <div className="mb-4">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Disponibilidade do Ingresso:</h5>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name={`availability_${ticket.id}`}
+                    value="public"
+                    checked={ticket.availability === 'public'}
+                    onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
+                    className="mr-2"
+                  />
+                  Para todo o público
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name={`availability_${ticket.id}`}
+                    value="restricted"
+                    checked={ticket.availability === 'restricted'}
+                    onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
+                    className="mr-2"
+                  />
+                  Restrito a convidados
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name={`availability_${ticket.id}`}
+                    value="manual"
+                    checked={ticket.availability === 'manual'}
+                    onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
+                    className="mr-2"
+                  />
+                  Para ser adicionado manualmente
+                </label>
+              </div>
+            </div>
+
+            {/* Quantidade por compra */}
+            <div className="mb-4">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Quantidade permitida por compra</h5>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mínima
+                  </label>
+                  <input
+                    type="number"
+                    value={ticket.min_quantity}
+                    onChange={(e) => updateTicket(ticket.id, { min_quantity: parseInt(e.target.value) || 1 })}
+                    min="1"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Máxima
+                  </label>
+                  <input
+                    type="number"
+                    value={ticket.max_quantity}
+                    onChange={(e) => updateTicket(ticket.id, { max_quantity: parseInt(e.target.value) || 5 })}
+                    min="1"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Descrição */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição do Ingresso (opcional):
+              </label>
+              <textarea
+                value={ticket.description}
+                onChange={(e) => updateTicket(ticket.id, { description: e.target.value })}
+                placeholder="Informações adicionais ao nome do ingresso. Ex.: Esse ingresso dá direito a um copo"
+                maxLength={100}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {100 - ticket.description.length} caracteres restantes
+              </p>
+            </div>
+          </div>
+        ))}
+
+        {/* Botão para adicionar ingresso */}
+        <button
+          type="button"
+          onClick={addTicket}
+          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-pink-500 hover:text-pink-600 transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Adicionar outro tipo de ingresso
+        </button>
       </div>
     </div>
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden ${isMobile ? 'max-w-md max-h-[90vh]' : 'max-w-6xl max-h-[95vh]'}`}>
-        
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-pink-500 to-purple-600 z-10 px-6 py-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold">
-                {event ? 'Editar Evento' : 'Criar Novo Evento'}
-              </h2>
-              <p className="text-pink-100 text-sm mt-1">
-                {isMobile ? 'Preencha todos os campos' : 'Configure seu evento com todos os detalhes'}
-              </p>
-            </div>
-            <button 
-              onClick={onClose}
-              className="text-white hover:text-pink-200 hover:bg-white hover:bg-opacity-20 w-10 h-10 rounded-full transition-all duration-200 flex items-center justify-center"
-            >
-              ×
-            </button>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {currentStep === 1 && 'Informações Básicas'}
+            {currentStep === 2 && 'Data e Horário'}
+            {currentStep === 3 && 'Descrição do Evento'}
+            {currentStep === 4 && 'Local do Evento'}
+            {currentStep === 5 && 'Ingressos'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div className="px-6 py-2 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            {[1, 2, 3, 4, 5].map((step) => (
+              <div
+                key={step}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  step <= currentStep
+                    ? 'bg-pink-600 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                {step}
+              </div>
+            ))}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-pink-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(currentStep / 5) * 100}%` }}
+            />
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(95vh-80px)]">
-          {isMobile ? (
-            /* MOBILE: Simple single scroll view */
-            <div className="p-6 space-y-8">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <p className="text-blue-800 text-sm font-medium">
-                  📱 Versão Mobile Simplificada
-                </p>
-                <p className="text-blue-600 text-xs mt-1">
-                  Todos os campos em uma única tela para facilitar o preenchimento
-                </p>
-              </div>
+        {/* Content */}
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
+          {currentStep === 1 && renderStep1()}
+          {currentStep === 2 && renderStep2()}
+          {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
+          {currentStep === 5 && renderStep5()}
+        </div>
 
-              {renderBasicFields()}
-              
-              <hr className="border-gray-200" />
-              
-              {renderTicketsFields()}
-              
-              <hr className="border-gray-200" />
-              
-              {renderContactFields()}
+        {/* Footer */}
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+            disabled={currentStep === 1}
+            className="px-6 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            Voltar
+          </button>
 
-              {/* Mobile Actions */}
-              <div className="sticky bottom-0 bg-white pt-6 border-t border-gray-200 -mx-6 px-6 pb-6">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200"
-                  >
-                    Cancelar
-                  </button>
-                  <LoadingButton
-                    type="submit"
-                    isLoading={isSaving}
-                    loadingText="Salvando..."
-                    variant="primary"
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-200"
-                  >
-                    {event ? 'Salvar' : 'Criar Evento'}
-                  </LoadingButton>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* DESKTOP: Complete tabbed interface */
-            <div className="flex h-full">
-              {/* Sidebar Navigation */}
-              <div className="w-64 bg-gray-50 border-r border-gray-200 p-6">
-                <nav className="space-y-2">
-                  {[
-                    { id: 'basic', name: 'Informações Básicas', icon: '📝', desc: 'Nome, data, local' },
-                    { id: 'tickets', name: 'Ingressos', icon: '🎫', desc: 'Preços e disponibilidade' },
-                    { id: 'details', name: 'Detalhes', icon: '📋', desc: 'Atrações e seções' },
-                    { id: 'contact', name: 'Contato', icon: '📞', desc: 'Informações de contato' }
-                  ].map((section) => (
-                    <button
-                      key={section.id}
-                      type="button"
-                      onClick={() => setCurrentSection(section.id)}
-                      className={`w-full text-left p-4 rounded-xl transition-all duration-200 group ${
-                        currentSection === section.id
-                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
-                          : 'text-gray-700 hover:bg-white hover:shadow-md'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-lg">{section.icon}</span>
-                        <span className="font-semibold text-sm">{section.name}</span>
-                      </div>
-                      <p className={`text-xs ${
-                        currentSection === section.id ? 'text-pink-100' : 'text-gray-500'
-                      }`}>
-                        {section.desc}
-                      </p>
-                    </button>
-                  ))}
-                </nav>
-              </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancelar
+            </button>
 
-              {/* Main Content */}
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 p-8 overflow-y-auto">
-                  <div className="max-w-4xl">
-                    {currentSection === 'basic' && (
-                      <div>
-                        <div className="mb-8">
-                          <h3 className="text-2xl font-bold text-gray-900 mb-2">Informações Básicas</h3>
-                          <p className="text-gray-600">Configure as informações principais do seu evento</p>
-                        </div>
-                        {renderBasicFields()}
-                      </div>
-                    )}
-
-                    {currentSection === 'tickets' && (
-                      <div>
-                        <div className="mb-8">
-                          <h3 className="text-2xl font-bold text-gray-900 mb-2">Configurações de Ingressos</h3>
-                          <p className="text-gray-600">Defina preços, quantidade e status do evento</p>
-                        </div>
-                        {renderTicketsFields()}
-                      </div>
-                    )}
-
-                    {currentSection === 'details' && (
-                      <div>
-                        <div className="mb-8">
-                          <h3 className="text-2xl font-bold text-gray-900 mb-2">Detalhes do Evento</h3>
-                          <p className="text-gray-600">Adicione atrações, programação e informações extras</p>
-                        </div>
-                        {renderDetailsFields()}
-                      </div>
-                    )}
-
-                    {currentSection === 'contact' && (
-                      <div>
-                        <div className="mb-8">
-                          <h3 className="text-2xl font-bold text-gray-900 mb-2">Informações de Contato</h3>
-                          <p className="text-gray-600">Configure como os participantes podem entrar em contato</p>
-                        </div>
-                        {renderContactFields()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Desktop Actions */}
-                <div className="border-t border-gray-200 p-6 bg-gray-50">
-                  <div className="flex justify-between items-center max-w-4xl">
-                    <div className="text-sm text-gray-600">
-                      Seção: <span className="font-semibold capitalize">{currentSection}</span>
-                    </div>
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-white hover:shadow-md transition-all duration-200"
-                      >
-                        Cancelar
-                      </button>
-                      <LoadingButton
-                        type="submit"
-                        isLoading={isSaving}
-                        loadingText="Salvando..."
-                        variant="primary"
-                        className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-200 shadow-lg"
-                      >
-                        {event ? 'Salvar Alterações' : 'Criar Evento'}
-                      </LoadingButton>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </form>
+            {currentStep < 5 ? (
+              <button
+                onClick={() => setCurrentStep(currentStep + 1)}
+                className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+              >
+                Próximo
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  'Criar Evento'
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
