@@ -66,10 +66,19 @@ const HomePage = () => {
           start_date,
           end_date,
           location,
-          banner_url,
+          image,
+          subject,
+          subcategory,
           category,
           price,
-          description
+          description,
+          location_type,
+          location_name,
+          location_city,
+          location_state,
+          ticket_type,
+          created_at,
+          organizer_id
         `)
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .order('start_date', { ascending: true });
@@ -82,18 +91,64 @@ const HomePage = () => {
       }
 
       // Formatar eventos para o formato esperado pelo EventCard
-      const formattedEvents = eventsData?.map(event => ({
-        id: event.id,
-        title: event.title,
-        date: event.start_date?.split('T')[0] || '',
-        endDate: event.end_date?.split('T')[0],
-        location: event.location || '',
-        image: event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
-        category: event.category || 'Evento',
-        city: event.location?.split(',')[0] || '',
-        state: event.location?.split(',')[1]?.trim() || '',
-        price: event.price || 0,
-      })) || [];
+      const formattedEvents = eventsData?.map(event => {
+        // Formatar localização baseada no tipo
+        const formatLocation = () => {
+          if (event.location_type === 'online') {
+            return 'Evento Online';
+          } else if (event.location_type === 'tbd') {
+            return 'Local a definir';
+          } else {
+            // Usar dados detalhados se disponíveis
+            if (event.location_city && event.location_state) {
+              return `${event.location_city}, ${event.location_state}`;
+            }
+            // Fallback para location original
+            return event.location || '';
+          }
+        };
+
+        // Extrair cidade e estado
+        const getLocationParts = () => {
+          if (event.location_type === 'online') {
+            return { city: 'Online', state: '' };
+          } else if (event.location_type === 'tbd') {
+            return { city: 'A definir', state: '' };
+          } else if (event.location_city && event.location_state) {
+            return { 
+              city: event.location_city, 
+              state: event.location_state 
+            };
+          } else {
+            // Fallback para parsing da location original
+            const parts = event.location?.split(',') || [];
+            return {
+              city: parts[0]?.trim() || '',
+              state: parts[1]?.trim() || ''
+            };
+          }
+        };
+
+        const locationParts = getLocationParts();
+
+        return {
+          id: event.id,
+          title: event.title,
+          date: event.start_date?.split('T')[0] || '',
+          endDate: event.end_date?.split('T')[0],
+          location: formatLocation(),
+          image: event.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
+          category: event.subject || event.category || 'Evento',
+          subcategory: event.subcategory,
+          city: locationParts.city,
+          state: locationParts.state,
+          price: event.price || 0,
+          ticket_type: event.ticket_type,
+          location_type: event.location_type,
+          organizer_id: event.organizer_id,
+          created_at: event.created_at
+        };
+      }) || [];
 
       // Se não há eventos aprovados, usar fallback
       if (formattedEvents.length === 0) {
