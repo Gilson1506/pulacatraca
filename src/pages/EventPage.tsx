@@ -425,7 +425,7 @@ const EventPage = () => {
             <div className="w-full flex flex-col items-center">
               {/* Container da imagem com aspect ratio fixo */}
               <div
-                className="w-11/12 max-w-[340px] aspect-square mx-auto sm:w-[380px] sm:h-[380px] relative bg-black/10 backdrop-blur-sm rounded-lg sm:rounded-xl shadow-lg lg:shadow-2xl overflow-hidden cursor-pointer hover:ring-1 hover:ring-pink-400 transition-all"
+                className="w-11/12 max-w-[340px] aspect-[4/3] mx-auto sm:w-[380px] sm:h-[285px] relative bg-black/10 backdrop-blur-sm rounded-lg sm:rounded-xl shadow-lg lg:shadow-2xl overflow-hidden cursor-pointer hover:ring-1 hover:ring-pink-400 transition-all"
                 onClick={() => setShowImageModal(true)}
                 title="Clique para ampliar"
               >
@@ -436,7 +436,11 @@ const EventPage = () => {
                   style={{ 
                     objectPosition: 'center center',
                     imageRendering: 'high-quality',
-                    filter: 'contrast(1.02) saturate(1.05)'
+                    filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
+                    WebkitBackfaceVisibility: 'hidden',
+                    backfaceVisibility: 'hidden',
+                    WebkitTransform: 'translateZ(0)',
+                    transform: 'translateZ(0)'
                   }}
                   loading="eager"
                 />
@@ -457,7 +461,11 @@ const EventPage = () => {
                 style={{ 
                   objectPosition: 'center center',
                   imageRendering: 'high-quality',
-                  filter: 'contrast(1.02) saturate(1.05)'
+                  filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
+                  WebkitBackfaceVisibility: 'hidden',
+                  backfaceVisibility: 'hidden',
+                  maxWidth: '95vw',
+                  maxHeight: '85vh'
                 }}
                 loading="eager"
               />
