@@ -75,7 +75,12 @@ serve(async (req) => {
 async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   console.log(`Pagamento bem-sucedido: ${paymentIntent.id}`)
 
-  // Update payment status in database
+  // Handle transaction-based payments (events/tickets)
+  if (paymentIntent.metadata?.supabase_transaction_id) {
+    return await handleEventTicketPayment(paymentIntent)
+  }
+
+  // Legacy payment handling
   const { error } = await supabaseClient
     .from('payments')
     .update({
@@ -206,6 +211,121 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
         period_end: new Date(invoice.period_end * 1000).toISOString(),
         created_at: new Date().toISOString(),
       })
+  }
+}
+
+async function handleEventTicketPayment(paymentIntent: Stripe.PaymentIntent) {
+  const transactionId = paymentIntent.metadata.supabase_transaction_id
+  const userId = paymentIntent.metadata.supabase_user_id
+  const eventId = paymentIntent.metadata.event_id
+  const ticketTypeId = paymentIntent.metadata.ticket_type_id
+
+  console.log(`Processando pagamento de ingresso - Transação: ${transactionId}`)
+
+  try {
+    // Update transaction status
+    const { error: transactionError } = await supabaseClient
+      .from('transactions')
+      .update({
+        status: 'completed',
+        stripe_charge_id: paymentIntent.latest_charge,
+        payment_confirmed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', transactionId)
+
+    if (transactionError) {
+      console.error('Erro ao atualizar transação:', transactionError)
+      throw transactionError
+    }
+
+    // Update ticket purchase status
+    const { error: ticketError } = await supabaseClient
+      .from('ticket_purchases')
+      .update({
+        status: 'confirmed',
+        payment_confirmed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('transaction_id', transactionId)
+
+    if (ticketError) {
+      console.error('Erro ao atualizar compra de ingresso:', ticketError)
+      throw ticketError
+    }
+
+    // Generate unique ticket codes
+    const { data: ticketPurchase } = await supabaseClient
+      .from('ticket_purchases')
+      .select('quantity, id')
+      .eq('transaction_id', transactionId)
+      .single()
+
+    if (ticketPurchase) {
+      const tickets = []
+      for (let i = 0; i < ticketPurchase.quantity; i++) {
+        const ticketCode = generateTicketCode(eventId, ticketPurchase.id, i + 1)
+        tickets.push({
+          ticket_purchase_id: ticketPurchase.id,
+          user_id: userId,
+          event_id: eventId,
+          ticket_type_id: ticketTypeId,
+          ticket_code: ticketCode,
+          status: 'active',
+          created_at: new Date().toISOString(),
+        })
+      }
+
+      // Insert individual tickets
+      const { error: ticketsError } = await supabaseClient
+        .from('tickets')
+        .insert(tickets)
+
+      if (ticketsError) {
+        console.error('Erro ao criar ingressos individuais:', ticketsError)
+      }
+    }
+
+    // Send confirmation email with tickets
+    await sendTicketConfirmation(paymentIntent, transactionId)
+
+    console.log(`Pagamento de ingresso processado com sucesso: ${transactionId}`)
+
+  } catch (error) {
+    console.error('Erro ao processar pagamento de ingresso:', error)
+    throw error
+  }
+}
+
+function generateTicketCode(eventId: string, purchaseId: string, sequenceNumber: number): string {
+  const timestamp = Date.now().toString(36)
+  const eventPrefix = eventId.slice(-4).toUpperCase()
+  const purchasePrefix = purchaseId.slice(-4).toUpperCase()
+  const sequence = sequenceNumber.toString().padStart(2, '0')
+  
+  return `${eventPrefix}-${purchasePrefix}-${timestamp}-${sequence}`
+}
+
+async function sendTicketConfirmation(paymentIntent: Stripe.PaymentIntent, transactionId: string) {
+  // Get transaction and event details
+  const { data: transaction } = await supabaseClient
+    .from('transactions')
+    .select(`
+      *,
+      events!inner(title, event_date, location),
+      event_ticket_types!inner(ticket_type, price),
+      ticket_purchases!inner(*)
+    `)
+    .eq('id', transactionId)
+    .single()
+
+  if (transaction) {
+    console.log(`Enviando confirmação de ingressos para usuário: ${transaction.user_id}`)
+    console.log(`Evento: ${transaction.events.title}`)
+    console.log(`Quantidade: ${transaction.quantity} ingressos`)
+    
+    // Here you would implement email sending logic
+    // For now, we'll just log the details
   }
 }
 
