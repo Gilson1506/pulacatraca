@@ -275,12 +275,25 @@ const OrganizerEvents = () => {
       const { data: eventsData, error } = await supabase
         .from('events')
         .select(`
-          *,
-          tickets:tickets(count),
-          transactions:transactions(sum:amount)
+          *
         `)
         .eq('organizer_id', user.id) // ✅ APENAS EVENTOS DO ORGANIZADOR
         .order('created_at', { ascending: false });
+
+      // Buscar contagem de tickets separadamente para evitar erro de relacionamentos múltiplos
+      let ticketCounts: { [key: string]: number } = {};
+      if (eventsData && eventsData.length > 0) {
+        const eventIds = eventsData.map(event => event.id);
+        const { data: ticketsData } = await supabase
+          .from('tickets')
+          .select('event_id')
+          .in('event_id', eventIds);
+        
+        // Contar tickets por evento
+        ticketsData?.forEach(ticket => {
+          ticketCounts[ticket.event_id] = (ticketCounts[ticket.event_id] || 0) + 1;
+        });
+      }
 
       if (error) throw error;
 
@@ -292,9 +305,9 @@ const OrganizerEvents = () => {
         location: event.location,
         description: event.description,
         status: event.status,
-        ticketsSold: event.tickets?.count || 0,
+        ticketsSold: ticketCounts[event.id] || 0,
         totalTickets: event.total_tickets || 0,
-        revenue: event.transactions?.sum || 0,
+        revenue: 0, // TODO: Implementar cálculo de receita separadamente
         category: event.category,
         price: event.price || 0, // ✅ INCLUIR PREÇO DO EVENTO
         image: event.banner_url
