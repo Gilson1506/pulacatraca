@@ -311,19 +311,7 @@ const EventPage = () => {
       if (ticketsData && ticketsData.length > 0) {
         setAvailableTickets(ticketsData);
       } else {
-        // Fallback para ticket padrão baseado no evento
-        setAvailableTickets([
-          {
-            id: 'default',
-            name: 'Ingresso Geral',
-            price: eventData.price || 0,
-            quantity: eventData.available_tickets || 0,
-            description: 'Acesso geral ao evento',
-            has_half_price: eventData.ticket_type === 'paid' && (eventData.price || 0) > 0,
-            min_quantity: 1,
-            max_quantity: 10
-          }
-        ]);
+        setAvailableTickets([]);
       }
       
     } catch (error) {
