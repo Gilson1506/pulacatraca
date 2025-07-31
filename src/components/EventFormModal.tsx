@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, Upload, Calendar, Clock, MapPin, Ticket, Plus, Minus, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight, Link, Image, Type, Palette } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import EventSuccessModal from './EventSuccessModal';
 
 interface EventFormData {
   // Seção 1: Informações básicas
@@ -103,6 +104,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
   const [imagePreview, setImagePreview] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdEventData, setCreatedEventData] = useState<any>(null);
 
   if (!isOpen) return null;
 
@@ -476,17 +479,49 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         }
       }
 
-      alert('Evento criado com sucesso! Aguarde aprovação.');
+      // Preparar dados para o modal de sucesso
+      const successData = {
+        title: eventData.title,
+        start_date: eventData.start_date,
+        start_time: formData.start_time,
+        ticket_type: eventData.ticket_type,
+        tickets_count: formData.tickets.length,
+        location_type: eventData.location_type,
+        location: eventData.location,
+        location_name: eventData.location_name,
+        location_city: eventData.location_city,
+        location_state: eventData.location_state
+      };
       
-      // Verificar se onEventCreated é uma função antes de chamar
-      if (typeof onEventCreated === 'function') {
-        onEventCreated();
-      }
+      setCreatedEventData(successData);
+      setShowSuccessModal(true);
       
-      // Verificar se onClose é uma função antes de chamar
-      if (typeof onClose === 'function') {
-        onClose();
-      }
+      // Reset form
+      setFormData({
+        title: '',
+        image: '',
+        subject: '',
+        category: '',
+        start_date: '',
+        start_time: '',
+        end_date: '',
+        end_time: '',
+        description: '',
+        location_type: 'tbd',
+        location_search: '',
+        location_name: '',
+        location_cep: '',
+        location_street: '',
+        location_number: '',
+        location_complement: '',
+        location_neighborhood: '',
+        location_city: '',
+        location_state: '',
+        ticket_type: 'paid',
+        tickets: []
+      });
+      setCurrentStep(1);
+      setImagePreview('');
 
     } catch (error) {
       console.error('Erro ao criar evento:', error);
@@ -1446,6 +1481,24 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           </div>
         </div>
       </div>
+      
+      {/* Modal de Sucesso */}
+      {showSuccessModal && createdEventData && (
+        <EventSuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            setCreatedEventData(null);
+            if (typeof onEventCreated === 'function') {
+              onEventCreated();
+            }
+            if (typeof onClose === 'function') {
+              onClose();
+            }
+          }}
+          eventData={createdEventData}
+        />
+      )}
     </div>
   );
 };

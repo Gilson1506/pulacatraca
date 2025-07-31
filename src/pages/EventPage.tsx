@@ -3,6 +3,7 @@ import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2,
 import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
+import TicketSelector from '../components/TicketSelector';
 import { supabase } from '../lib/supabase';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
@@ -94,6 +95,10 @@ const EventPage = () => {
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [event, setEvent] = useState<Event | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [availableTickets, setAvailableTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [ticketQuantity, setTicketQuantity] = useState(1);
+  const [halfPriceQuantity, setHalfPriceQuantity] = useState(0);
   const { trackPurchaseFlow } = useAnalytics();
   const { shouldUseAuthModal } = useABTesting();
   
@@ -163,6 +168,25 @@ const EventPage = () => {
         .eq('id', eventId)
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
+
+      // Buscar tickets do evento
+      const { data: ticketsData, error: ticketsError } = await supabase
+        .from('tickets')
+        .select(`
+          id,
+          name,
+          price,
+          quantity,
+          description,
+          availability,
+          has_half_price,
+          sale_start_date,
+          sale_end_date,
+          min_quantity,
+          max_quantity
+        `)
+        .eq('event_id', eventId)
+        .order('price', { ascending: true });
 
       if (error) {
         console.error('EventPage - Erro ao buscar evento:', error); // Log para debug
@@ -282,6 +306,26 @@ const EventPage = () => {
       };
 
       setEvent(formattedEvent);
+      
+      // Processar tickets se existirem
+      if (ticketsData && ticketsData.length > 0) {
+        setAvailableTickets(ticketsData);
+      } else {
+        // Fallback para ticket padrão baseado no evento
+        setAvailableTickets([
+          {
+            id: 'default',
+            name: 'Ingresso Geral',
+            price: eventData.price || 0,
+            quantity: eventData.available_tickets || 0,
+            description: 'Acesso geral ao evento',
+            has_half_price: eventData.ticket_type === 'paid' && (eventData.price || 0) > 0,
+            min_quantity: 1,
+            max_quantity: 10
+          }
+        ]);
+      }
+      
     } catch (error) {
       console.error('Erro ao buscar evento:', error);
       navigate('/');
@@ -596,6 +640,20 @@ const EventPage = () => {
           </div>
         </div>
       </HeroContainer>
+
+      {/* Seleção de Ingressos */}
+      {availableTickets.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <TicketSelector 
+            tickets={availableTickets}
+            onSelectionChange={(ticket, fullQty, halfQty) => {
+              setSelectedTicket(ticket);
+              setTicketQuantity(fullQty);
+              setHalfPriceQuantity(halfQty);
+            }}
+          />
+        </div>
+      )}
 
       {/* Botão de compra em desktop */}
       <div className="hidden lg:flex w-full justify-end px-4 lg:pr-16 mt-6 mb-12 relative z-30">
