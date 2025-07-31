@@ -164,44 +164,59 @@ const CheckInPage = () => {
   const fetchCurrentEvent = async () => {
     if (!user) {
       console.log('❌ fetchCurrentEvent: Usuário não encontrado');
+      setIsLoading(false);
       return;
     }
     
     try {
+      setIsLoading(true);
       console.log('🔍 Buscando evento atual para organizador:', user.id);
       
-      // Buscar eventos do organizador atual
+      // Buscar eventos do organizador atual (incluir todos os status para debug)
       const { data: events, error } = await supabase
         .from('events')
-        .select('id, title, start_date, location, organizer_id')
+        .select('id, title, start_date, location, organizer_id, status')
         .eq('organizer_id', user.id)
-        .eq('status', 'approved')
-        .order('start_date', { ascending: true })
-        .limit(1);
+        .order('start_date', { ascending: false })
+        .limit(5); // Pegar mais eventos para debug
 
       if (error) {
         console.error('❌ Erro ao buscar evento:', error);
+        showModal('error', `Erro ao buscar evento: ${error.message}`);
+        setIsLoading(false);
         return;
       }
 
-      console.log('📅 Eventos encontrados:', events);
+      console.log('📅 Todos os eventos encontrados:', events);
       
-      if (events && events.length > 0) {
-        console.log('✅ Evento selecionado:', events[0]);
-        setCurrentEvent(events[0]);
+      // Filtrar eventos aprovados
+      const approvedEvents = events?.filter(e => e.status === 'approved') || [];
+      console.log('✅ Eventos aprovados:', approvedEvents);
+      
+      if (approvedEvents.length > 0) {
+        console.log('✅ Evento selecionado:', approvedEvents[0]);
+        setCurrentEvent(approvedEvents[0]);
       } else {
-        console.log('⚠️ Nenhum evento aprovado encontrado para o organizador');
-        showModal('error', 'Nenhum evento aprovado encontrado. Verifique se você tem eventos aprovados.');
+        console.log('⚠️ Nenhum evento aprovado encontrado');
+        if (events && events.length > 0) {
+          console.log('📋 Status dos eventos encontrados:', events.map(e => ({ title: e.title, status: e.status })));
+          showModal('error', `Nenhum evento aprovado encontrado. Você tem ${events.length} evento(s), mas nenhum está aprovado.`);
+        } else {
+          showModal('error', 'Nenhum evento encontrado. Crie um evento primeiro.');
+        }
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('❌ Erro ao buscar evento atual:', error);
       showModal('error', `Erro ao buscar evento: ${error.message || 'Erro desconhecido'}`);
+      setIsLoading(false);
     }
   };
 
   const fetchParticipants = async (searchTerm?: string) => {
     if (!user || !currentEvent) {
       console.log('❌ fetchParticipants: Usuário ou evento não encontrado', { user: !!user, currentEvent: !!currentEvent });
+      setIsLoading(false);
       return;
     }
     
@@ -210,9 +225,10 @@ const CheckInPage = () => {
       console.log('🔍 Buscando participantes...', {
         event_id: currentEvent.id,
         organizer_id: user.id,
-        search_term: searchTerm
+        search_term: searchTerm || 'null'
       });
       
+      // Tentar chamar a função RPC
       const { data, error } = await supabase.rpc('search_event_participants', {
         p_event_id: currentEvent.id,
         p_organizer_id: user.id,
@@ -221,21 +237,54 @@ const CheckInPage = () => {
 
       if (error) {
         console.error('❌ Erro na função RPC search_event_participants:', error);
+        
+        // Se a função RPC não existir, mostrar erro específico
+        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+          showModal('error', 'Função de busca não encontrada. Execute o script SQL para criar as funções necessárias.');
+          setIsLoading(false);
+          setIsSearching(false);
+          return;
+        }
+        
         throw error;
       }
 
       console.log('✅ Dados recebidos da função RPC:', data);
+      
+      // Verificar se data é um array
+      if (!Array.isArray(data)) {
+        console.error('❌ Dados recebidos não são um array:', data);
+        showModal('error', 'Formato de dados inválido recebido do servidor.');
+        setIsLoading(false);
+        setIsSearching(false);
+        return;
+      }
+      
       const participantsList = data as ParticipantSearchResult[];
       setParticipants(participantsList);
       
       // Calcular estatísticas
-      setTotalParticipants(participantsList.length);
-      setCheckedInCount(participantsList.filter(p => p.already_checked_in).length);
+      const total = participantsList.length;
+      const checkedIn = participantsList.filter(p => p.already_checked_in).length;
+      
+      setTotalParticipants(total);
+      setCheckedInCount(checkedIn);
       
       console.log('📊 Estatísticas atualizadas:', {
-        total: participantsList.length,
-        checkedIn: participantsList.filter(p => p.already_checked_in).length
+        total: total,
+        checkedIn: checkedIn,
+        pending: total - checkedIn
       });
+
+      // Se não há participantes, mostrar mensagem informativa
+      if (total === 0) {
+        if (searchTerm) {
+          console.log('🔍 Nenhum participante encontrado para a busca:', searchTerm);
+        } else {
+          console.log('📝 Nenhum participante encontrado para este evento');
+          showModal('error', 'Nenhum participante encontrado para este evento. Verifique se há ingressos vendidos.');
+        }
+      }
 
     } catch (error) {
       console.error('❌ Erro ao buscar participantes:', error);
@@ -269,22 +318,64 @@ const CheckInPage = () => {
 
       if (error) {
         console.error('❌ Erro na função RPC perform_participant_checkin:', error);
+        
+        // Se a função RPC não existir, mostrar erro específico
+        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+          showModal('error', 'Função de check-in não encontrada. Execute o script SQL para criar as funções necessárias.');
+          setIsScanning(false);
+          return;
+        }
+        
         throw error;
       }
 
       console.log('✅ Resultado do check-in:', data);
+      
+      // Verificar se data é um array e tem pelo menos um elemento
+      if (!Array.isArray(data) || data.length === 0) {
+        console.error('❌ Dados de retorno inválidos:', data);
+        showModal('error', 'Resposta inválida do servidor durante o check-in.');
+        setIsScanning(false);
+        return;
+      }
+      
       const result = data[0] as CheckInResult;
+      console.log('📋 Resultado processado:', result);
       
       if (result.success) {
         console.log('🎉 Check-in realizado com sucesso!');
-        showModal('success', result.message, result.participant_info);
-        // Recarregar participantes
-        await fetchParticipants(searchQuery);
+        
+        // Montar dados do participante para o modal
+        const participantInfo = {
+          participant_name: result.participant_name,
+          participant_email: result.participant_email,
+          participant_document: result.participant_document,
+          ticket_type: result.ticket_type,
+          event_title: result.event_title,
+          checkin_date: result.checkin_date
+        };
+        
+        showModal('success', result.message, participantInfo);
+        
+        // Recarregar participantes após um pequeno delay
+        setTimeout(() => {
+          fetchParticipants(searchQuery);
+        }, 1000);
+        
       } else {
         console.log('⚠️ Check-in não realizado:', result.message);
+        
         // Verificar se é duplicata
-        if (result.message.includes('já foi realizado')) {
-          showModal('already_checked', result.message, result.participant_info);
+        if (result.message.includes('já foi realizado') || result.message.includes('already')) {
+          const participantInfo = {
+            participant_name: result.participant_name,
+            participant_email: result.participant_email,
+            participant_document: result.participant_document,
+            ticket_type: result.ticket_type,
+            event_title: result.event_title,
+            checkin_date: result.checkin_date
+          };
+          showModal('already_checked', result.message, participantInfo);
         } else {
           showModal('error', result.message);
         }

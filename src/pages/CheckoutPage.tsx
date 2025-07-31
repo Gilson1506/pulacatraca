@@ -657,19 +657,19 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
                   variant="primary"
                   size="lg"
                 >
-                  {`Finalizar Compra - R$ ${totalPrice.toFixed(2)}`}
+                  Finalizar Compra
                 </LoadingButton>
                 
                 {/* Informações adicionais */}
                 <div className="mt-4 text-center">
                   <p className="text-xs text-gray-500">
-                    🔒 Compra segura • Dados protegidos
+                    Compra segura • Dados protegidos
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    ✅ Usuário: {userProfile?.name || user?.email}
+                    Usuário: {userProfile?.name || user?.email}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    ⏳ Ingressos ficam pendentes até confirmação do organizador
+                    Ingressos ficam pendentes até confirmação do organizador
                   </p>
                 </div>
                 {/* Logos dos métodos de pagamento */}

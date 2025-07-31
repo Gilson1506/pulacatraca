@@ -263,13 +263,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, event,
             required
           >
             <option value="">Selecione uma categoria</option>
-            <option value="show">🎵 Show</option>
-            <option value="teatro">🎭 Teatro</option>
-            <option value="palestra">🎤 Palestra</option>
-            <option value="workshop">🛠️ Workshop</option>
-            <option value="festa">🎉 Festa</option>
-            <option value="esporte">⚽ Esporte</option>
-            <option value="outro">📝 Outro</option>
+            <option value="show">Show</option>
+            <option value="teatro">Teatro</option>
+            <option value="palestra">Palestra</option>
+            <option value="workshop">Workshop</option>
+            <option value="festa">Festa</option>
+            <option value="esporte">Esporte</option>
+            <option value="outro">Outro</option>
           </select>
         </div>
 
