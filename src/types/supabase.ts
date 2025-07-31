@@ -131,18 +131,23 @@ export interface BlockedIP {
 
 export interface CheckIn {
   id: string;
-  ticket_id: string;
+  ticket_user_id: string;
   event_id: string;
   organizer_id: string;
-  ticket_user_id?: string;
-  status: 'checked_in' | 'duplicate' | 'invalid';
   created_at: string;
   updated_at: string;
   notes?: string;
-  ticket_code?: string;
-  ticket_type?: string;
-  customer_name?: string;
-  customer_document?: string;
+}
+
+export interface ParticipantSearchResult {
+  ticket_user_id: string;
+  name: string;
+  email: string;
+  document?: string;
+  ticket_id: string;
+  ticket_type: string;
+  already_checked_in: boolean;
+  checkin_date?: string;
 }
 
 export interface Database {
@@ -203,7 +208,7 @@ export interface Database {
         Insert: Omit<BlockedIP, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<BlockedIP, 'id'>>;
       };
-      check_ins: {
+      checkin: {
         Row: CheckIn;
         Insert: Omit<CheckIn, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<CheckIn, 'id'>>;

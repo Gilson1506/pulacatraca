@@ -1,52 +1,57 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { QrCode, CheckCircle, XCircle, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users } from 'lucide-react';
+import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { ParticipantSearchResult } from '../types/supabase';
+import CheckInModal from '../components/CheckInModal';
 import QrScanner from 'qr-scanner';
-
-interface CheckInRecord {
-  id: string;
-  ticketId: string;
-  ticketCode: string;
-  eventName: string;
-  customerName: string;
-  ticketType: string;
-  checkInTime: string;
-  status: 'checked_in' | 'duplicate' | 'invalid';
-  customerDocument?: string;
-}
 
 interface Event {
   id: string;
   title: string;
   start_date: string;
   location: string;
-  total_tickets: number;
-  checked_in_count: number;
+  organizer_id: string;
 }
 
-interface SearchTicket {
-  ticket_id: string;
-  ticket_code: string;
-  ticket_type: string;
-  customer_name: string;
-  customer_document?: string;
-  customer_email: string;
-  status: string;
-  already_checked_in: boolean;
+interface CheckInResult {
+  success: boolean;
+  message: string;
+  checkin_id?: string;
+  participant_info?: {
+    participant_name: string;
+    participant_email: string;
+    participant_document?: string;
+    ticket_type: string;
+    event_title: string;
+    checkin_date: string;
+  };
 }
 
 const CheckInPage = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [checkInRecords, setCheckInRecords] = useState<CheckInRecord[]>([]);
-  const [searchResults, setSearchResults] = useState<SearchTicket[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
+  const [participants, setParticipants] = useState<ParticipantSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null);
+  const [totalParticipants, setTotalParticipants] = useState(0);
+  const [checkedInCount, setCheckedInCount] = useState(0);
+  
+  // Modal state
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'already_checked' | 'error';
+    message: string;
+    data?: any;
+  }>({
+    isOpen: false,
+    type: 'success',
+    message: '',
+    data: null
+  });
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
@@ -54,9 +59,14 @@ const CheckInPage = () => {
   useEffect(() => {
     if (user) {
       fetchCurrentEvent();
-      fetchCheckInRecords();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (currentEvent) {
+      fetchParticipants();
+    }
+  }, [currentEvent]);
 
   useEffect(() => {
     return () => {
@@ -66,9 +76,17 @@ const CheckInPage = () => {
     };
   }, []);
 
-  const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 5000);
+  const showModal = (type: 'success' | 'already_checked' | 'error', message: string, data?: any) => {
+    setModalState({
+      isOpen: true,
+      type,
+      message,
+      data
+    });
+  };
+
+  const closeModal = () => {
+    setModalState(prev => ({ ...prev, isOpen: false }));
   };
 
   const fetchCurrentEvent = async () => {
@@ -78,144 +96,125 @@ const CheckInPage = () => {
       // Buscar eventos do organizador atual
       const { data: events, error } = await supabase
         .from('events')
-        .select(`
-          id,
-          title,
-          start_date,
-          location,
-          total_tickets
-        `)
+        .select('id, title, start_date, location, organizer_id')
         .eq('organizer_id', user.id)
         .eq('status', 'approved')
         .order('start_date', { ascending: true })
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (error) {
         console.error('Erro ao buscar evento:', error);
         return;
       }
 
-      // Contar check-ins para este evento
-      const { count: checkedInCount } = await supabase
-        .from('check_ins')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', events.id)
-        .eq('status', 'checked_in');
-
-      setCurrentEvent({
-        ...events,
-        checked_in_count: checkedInCount || 0
-      });
+      if (events && events.length > 0) {
+        setCurrentEvent(events[0]);
+      }
     } catch (error) {
       console.error('Erro ao buscar evento atual:', error);
     }
   };
 
-  const fetchCheckInRecords = async () => {
+  const fetchParticipants = async (searchTerm?: string) => {
     if (!user || !currentEvent) return;
     
     try {
-      setIsLoading(true);
-      const { data: records, error } = await supabase
-        .from('check_ins')
-        .select(`
-          id,
-          ticket_id,
-          status,
-          created_at,
-          ticket_code,
-          ticket_type,
-          customer_name,
-          customer_document
-        `)
-        .eq('event_id', currentEvent.id)
-        .eq('organizer_id', user.id)
-        .order('created_at', { ascending: false });
+      setIsSearching(true);
+      
+      const { data, error } = await supabase.rpc('search_event_participants', {
+        p_event_id: currentEvent.id,
+        p_organizer_id: user.id,
+        p_search_term: searchTerm || null
+      });
 
       if (error) throw error;
 
-      const formattedRecords: CheckInRecord[] = records?.map(record => ({
-        id: record.id,
-        ticketId: record.ticket_id,
-        ticketCode: record.ticket_code || '',
-        eventName: currentEvent.title,
-        customerName: record.customer_name || '',
-        ticketType: record.ticket_type || '',
-        checkInTime: record.created_at,
-        status: record.status as 'checked_in' | 'duplicate' | 'invalid',
-        customerDocument: record.customer_document
-      })) || [];
+      const participantsList = data as ParticipantSearchResult[];
+      setParticipants(participantsList);
+      
+      // Calcular estatísticas
+      setTotalParticipants(participantsList.length);
+      setCheckedInCount(participantsList.filter(p => p.already_checked_in).length);
 
-      setCheckInRecords(formattedRecords);
     } catch (error) {
-      console.error('Erro ao buscar registros de check-in:', error);
-      showMessage('error', 'Erro ao carregar registros de check-in');
+      console.error('Erro ao buscar participantes:', error);
+      showModal('error', 'Erro ao carregar participantes do evento');
     } finally {
+      setIsSearching(false);
       setIsLoading(false);
     }
   };
 
-  const searchTickets = async (searchTerm: string) => {
-    if (!user || !currentEvent || !searchTerm.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    try {
-      setIsSearching(true);
-      const { data, error } = await supabase.rpc('search_tickets_for_checkin', {
-        p_search_term: searchTerm.trim(),
-        p_event_id: currentEvent.id,
-        p_organizer_id: user.id
-      });
-
-      if (error) throw error;
-      setSearchResults(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar tickets:', error);
-      showMessage('error', 'Erro ao buscar participantes');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const performCheckIn = async (ticketCode: string) => {
+  const performCheckIn = async (ticketUserId: string) => {
     if (!user || !currentEvent) {
-      showMessage('error', 'Erro: usuário ou evento não encontrado');
+      showModal('error', 'Erro: usuário ou evento não encontrado');
       return;
     }
 
     try {
       setIsScanning(true);
       
-      const { data, error } = await supabase.rpc('perform_check_in', {
-        p_ticket_code: ticketCode,
+      const { data, error } = await supabase.rpc('perform_participant_checkin', {
+        p_ticket_user_id: ticketUserId,
         p_event_id: currentEvent.id,
         p_organizer_id: user.id
       });
 
       if (error) throw error;
 
-      const result = data[0];
+      const result = data[0] as CheckInResult;
       
       if (result.success) {
-        showMessage('success', result.message);
-        // Atualizar contador do evento
-        setCurrentEvent(prev => prev ? {
-          ...prev,
-          checked_in_count: prev.checked_in_count + 1
-        } : null);
+        showModal('success', result.message, result.participant_info);
+        // Recarregar participantes
+        await fetchParticipants(searchQuery);
       } else {
-        showMessage('error', result.message);
+        // Verificar se é duplicata
+        if (result.message.includes('já foi realizado')) {
+          showModal('already_checked', result.message, result.participant_info);
+        } else {
+          showModal('error', result.message);
+        }
       }
-
-      // Recarregar registros
-      await fetchCheckInRecords();
       
     } catch (error) {
       console.error('Erro ao processar check-in:', error);
-      showMessage('error', 'Erro ao processar check-in');
+      showModal('error', 'Erro ao processar check-in');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleQRCodeScan = async (qrData: string) => {
+    if (!user || !currentEvent) return;
+
+    try {
+      setIsScanning(true);
+      
+      const { data, error } = await supabase.rpc('checkin_by_qr_code', {
+        p_qr_code: qrData,
+        p_event_id: currentEvent.id,
+        p_organizer_id: user.id
+      });
+
+      if (error) throw error;
+
+      const result = data[0] as CheckInResult;
+      
+      if (result.success) {
+        showModal('success', result.message, result.participant_info);
+        await fetchParticipants(searchQuery);
+      } else {
+        if (result.message.includes('já foi realizado')) {
+          showModal('already_checked', result.message, result.participant_info);
+        } else {
+          showModal('error', result.message);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Erro ao processar QR code:', error);
+      showModal('error', 'Erro ao processar QR code');
     } finally {
       setIsScanning(false);
     }
@@ -230,7 +229,7 @@ const CheckInPage = () => {
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         result => {
-          performCheckIn(result.data);
+          handleQRCodeScan(result.data);
           stopQRScanner();
         },
         {
@@ -246,7 +245,7 @@ const CheckInPage = () => {
       await qrScannerRef.current.start();
     } catch (error) {
       console.error('Erro ao iniciar scanner:', error);
-      showMessage('error', 'Erro ao acessar a câmera');
+      showModal('error', 'Erro ao acessar a câmera. Verifique as permissões.');
       setScannerActive(false);
     }
   };
@@ -260,54 +259,17 @@ const CheckInPage = () => {
     setScannerActive(false);
   };
 
-  const handleManualCheckIn = async (ticketCode: string) => {
-    await performCheckIn(ticketCode);
-    setSearchQuery('');
-    setSearchResults([]);
+  const handleSearch = (searchTerm: string) => {
+    setSearchQuery(searchTerm);
+    fetchParticipants(searchTerm);
   };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'checked_in':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'duplicate':
-        return <XCircle className="h-5 w-5 text-yellow-600" />;
-      case 'invalid':
-        return <XCircle className="h-5 w-5 text-red-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'checked_in': return 'Check-in realizado';
-      case 'duplicate': return 'Duplicado';
-      case 'invalid': return 'Inválido';
-      default: return 'Desconhecido';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'checked_in': return 'bg-green-100 text-green-800';
-      case 'duplicate': return 'bg-yellow-100 text-yellow-800';
-      case 'invalid': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const filteredRecords = checkInRecords.filter(record =>
-    record.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.ticketCode.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Carregando sistema de check-in...</p>
+          <p className="text-gray-600">Carregando sistema de check-in...</p>
         </div>
       </div>
     );
@@ -335,18 +297,8 @@ const CheckInPage = () => {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Check-in de Eventos</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Check-in de Participantes</h1>
             <p className="text-gray-600">Gerencie o check-in dos participantes do evento</p>
-            
-            {message && (
-              <div className={`mt-4 p-4 rounded-lg ${
-                message.type === 'success' ? 'bg-green-100 text-green-800' :
-                message.type === 'error' ? 'bg-red-100 text-red-800' :
-                'bg-blue-100 text-blue-800'
-              }`}>
-                {message.text}
-              </div>
-            )}
           </div>
 
           {/* Event Info */}
@@ -371,7 +323,7 @@ const CheckInPage = () => {
                 <Users className="h-5 w-5 text-gray-400" />
                 <div>
                   <p className="text-sm text-gray-500">Check-ins</p>
-                  <p className="font-medium">{currentEvent.checked_in_count} de {currentEvent.total_tickets}</p>
+                  <p className="font-medium">{checkedInCount} de {totalParticipants}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -385,196 +337,162 @@ const CheckInPage = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* QR Code Scanner & Manual Search */}
-            <div className="space-y-6">
-              {/* QR Scanner */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-bold mb-4">Scanner QR Code</h2>
-                
-                <div className="bg-gray-100 rounded-lg p-6 text-center mb-4">
-                  {scannerActive ? (
-                    <div className="space-y-4">
-                      <video 
-                        ref={videoRef}
-                        className="w-full max-w-sm mx-auto rounded-lg"
-                        style={{ maxHeight: '300px' }}
-                      />
-                      <button
-                        onClick={stopQRScanner}
-                        className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 mx-auto"
-                      >
-                        <CameraOff className="h-5 w-5" />
-                        <span>Parar Scanner</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <QrCode className="h-16 w-16 text-gray-400 mx-auto" />
-                      <p className="text-gray-600">
-                        {isScanning ? 'Processando...' : 'Clique para ativar a câmera e escanear QR codes'}
-                      </p>
-                      <button
-                        onClick={startQRScanner}
-                        disabled={isScanning}
-                        className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center space-x-2 mx-auto"
-                      >
-                        <Camera className="h-5 w-5" />
-                        <span>{isScanning ? 'Processando...' : 'Ativar Scanner'}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Manual Search */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-bold mb-4">Busca Manual</h2>
-                
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar por nome, documento ou código"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        searchTickets(e.target.value);
-                      }}
+            {/* QR Code Scanner */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-bold mb-4">Scanner QR Code</h2>
+              
+              <div className="bg-gray-100 rounded-lg p-6 text-center mb-4">
+                {scannerActive ? (
+                  <div className="space-y-4">
+                    <video 
+                      ref={videoRef}
+                      className="w-full max-w-sm mx-auto rounded-lg"
+                      style={{ maxHeight: '300px' }}
                     />
+                    <button
+                      onClick={stopQRScanner}
+                      className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 mx-auto"
+                    >
+                      <CameraOff className="h-5 w-5" />
+                      <span>Parar Scanner</span>
+                    </button>
                   </div>
-
-                  {/* Search Results */}
-                  {isSearching ? (
-                    <div className="text-center py-4">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      <p className="text-sm text-gray-500 mt-2">Buscando...</p>
-                    </div>
-                  ) : searchResults.length > 0 ? (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {searchResults.map((ticket) => (
-                        <div key={ticket.ticket_id} className="border border-gray-200 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{ticket.customer_name}</p>
-                              <p className="text-sm text-gray-500">{ticket.ticket_type}</p>
-                              {ticket.customer_document && (
-                                <p className="text-sm text-gray-500">Doc: {ticket.customer_document}</p>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              {ticket.already_checked_in ? (
-                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                  ✓ Check-in realizado
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => handleManualCheckIn(ticket.ticket_code)}
-                                  className="bg-pink-600 text-white px-3 py-1 rounded text-sm hover:bg-pink-700 transition-colors"
-                                >
-                                  Fazer Check-in
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : searchQuery && (
-                    <p className="text-center text-gray-500 py-4">Nenhum participante encontrado</p>
-                  )}
-                </div>
+                ) : (
+                  <div className="space-y-4">
+                    <QrCode className="h-16 w-16 text-gray-400 mx-auto" />
+                    <p className="text-gray-600">
+                      {isScanning ? 'Processando...' : 'Clique para ativar a câmera e escanear QR codes'}
+                    </p>
+                    <button
+                      onClick={startQRScanner}
+                      disabled={isScanning}
+                      className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center space-x-2 mx-auto"
+                    >
+                      <Camera className="h-5 w-5" />
+                      <span>{isScanning ? 'Processando...' : 'Ativar Scanner'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Check-in Records */}
+            {/* Manual Search */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-bold mb-4">Registros Recentes</h2>
+              <h2 className="text-xl font-bold mb-4">Busca Manual</h2>
               
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {filteredRecords.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <User className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p>Nenhum check-in registrado ainda</p>
-                  </div>
-                ) : (
-                  filteredRecords.map((record) => (
-                    <div key={record.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          {getStatusIcon(record.status)}
-                          <div>
-                            <p className="font-medium text-gray-900">{record.customerName}</p>
-                            <p className="text-sm text-gray-500">{record.ticketType}</p>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome, e-mail, documento ou ID"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                </div>
+
+                {/* Search Results */}
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {isSearching ? (
+                    <div className="text-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      <p className="text-sm text-gray-500 mt-2">Buscando participantes...</p>
+                    </div>
+                  ) : participants.length > 0 ? (
+                    participants.map((participant) => (
+                      <div key={participant.ticket_user_id} className="border border-gray-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{participant.name}</p>
+                            <p className="text-sm text-gray-500">{participant.email}</p>
+                            {participant.document && (
+                              <p className="text-sm text-gray-500">Doc: {participant.document}</p>
+                            )}
+                            <p className="text-sm text-gray-500">Tipo: {participant.ticket_type}</p>
+                          </div>
+                          <div className="text-right">
+                            {participant.already_checked_in ? (
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <div>
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full block">
+                                    ✓ Check-in realizado
+                                  </span>
+                                  {participant.checkin_date && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {new Date(participant.checkin_date).toLocaleString('pt-BR')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => performCheckIn(participant.ticket_user_id)}
+                                disabled={isScanning}
+                                className="bg-pink-600 text-white px-3 py-2 rounded text-sm hover:bg-pink-700 transition-colors disabled:opacity-50"
+                              >
+                                {isScanning ? 'Processando...' : 'Fazer Check-in'}
+                              </button>
+                            )}
                           </div>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
-                          {getStatusText(record.status)}
-                        </span>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        <p>Código: {record.ticketCode}</p>
-                        {record.customerDocument && <p>Doc: {record.customerDocument}</p>}
-                        <p>Check-in: {new Date(record.checkInTime).toLocaleString('pt-BR')}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  ) : searchQuery ? (
+                    <p className="text-center text-gray-500 py-4">Nenhum participante encontrado</p>
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">Digite para buscar participantes</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Statistics */}
           <div className="bg-white rounded-lg shadow-sm p-6 mt-8">
-            <h2 className="text-xl font-bold mb-4">Estatísticas</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <h2 className="text-xl font-bold mb-4">Estatísticas do Evento</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-green-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-green-600">Check-ins realizados</p>
-                    <p className="text-2xl font-bold text-green-900">
-                      {checkInRecords.filter(r => r.status === 'checked_in').length}
-                    </p>
+                    <p className="text-2xl font-bold text-green-900">{checkedInCount}</p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-600">Duplicados</p>
-                    <p className="text-2xl font-bold text-yellow-900">
-                      {checkInRecords.filter(r => r.status === 'duplicate').length}
-                    </p>
-                  </div>
-                  <XCircle className="h-8 w-8 text-yellow-600" />
-                </div>
-              </div>
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-red-600">Inválidos</p>
-                    <p className="text-2xl font-bold text-red-900">
-                      {checkInRecords.filter(r => r.status === 'invalid').length}
-                    </p>
-                  </div>
-                  <XCircle className="h-8 w-8 text-red-600" />
                 </div>
               </div>
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-blue-600">Total de tentativas</p>
-                    <p className="text-2xl font-bold text-blue-900">{checkInRecords.length}</p>
+                    <p className="text-sm text-blue-600">Total de participantes</p>
+                    <p className="text-2xl font-bold text-blue-900">{totalParticipants}</p>
                   </div>
-                  <User className="h-8 w-8 text-blue-600" />
+                  <Users className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-yellow-600">Pendentes</p>
+                    <p className="text-2xl font-bold text-yellow-900">{totalParticipants - checkedInCount}</p>
+                  </div>
+                  <User className="h-8 w-8 text-yellow-600" />
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de Check-in */}
+      <CheckInModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        type={modalState.type}
+        message={modalState.message}
+        data={modalState.data}
+      />
     </div>
   );
 };
