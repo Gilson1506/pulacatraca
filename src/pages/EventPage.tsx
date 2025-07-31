@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
 import { supabase } from '../lib/supabase';
+import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
+import { useABTesting } from '../hooks/useABTesting';
 
 interface Event {
   id: string;
@@ -92,12 +94,24 @@ const EventPage = () => {
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [event, setEvent] = useState<Event | null>(null);
   const [user, setUser] = useState<any>(null);
+  const { trackPurchaseFlow } = useAnalytics();
+  const { shouldUseAuthModal } = useABTesting();
+  
+  // Track page view automaticamente
+  usePageTracking('event_page');
 
   useEffect(() => {
     console.log('EventPage - useEffect executado com ID:', eventId); // Log para debug
     fetchEvent();
     checkUser();
   }, [eventId]);
+
+  // Track visualização do evento quando carregado
+  useEffect(() => {
+    if (event && eventId) {
+      trackPurchaseFlow.eventView(eventId, event.title);
+    }
+  }, [event, eventId]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -518,20 +532,38 @@ const EventPage = () => {
         <button
           className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
           onClick={() => {
+            // Track purchase intent
+            if (event.tickets[0]) {
+              trackPurchaseFlow.purchaseIntent(
+                event.id,
+                event.tickets[0].name,
+                event.tickets[0].price
+              );
+            }
+
             if (!user) {
-              navigate('/auth-required', {
-                state: {
-                  event: {
-                    id: event.id,
-                    title: event.title,
-                    date: event.date,
-                    location: event.address,
-                    image: event.image,
+              // Track auth required
+              trackPurchaseFlow.authRequired(event.id, 'unknown');
+              
+              // Usar modal ou página baseado no A/B test
+              if (shouldUseAuthModal()) {
+                setShowLoginModal(true);
+                return;
+              } else {
+                navigate('/auth-required', {
+                  state: {
+                    event: {
+                      id: event.id,
+                      title: event.title,
+                      date: event.date,
+                      location: event.address,
+                      image: event.image,
+                    },
+                    ticket: event.tickets[0],
                   },
-                  ticket: event.tickets[0],
-                },
-              });
-              return;
+                });
+                return;
+              }
             }
             setLoading(true);
             setTimeout(() => {
@@ -598,20 +630,38 @@ const EventPage = () => {
               <button
                 className="w-full py-3 px-4 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-md flex items-center justify-center"
                 onClick={() => {
+                  // Track purchase intent
+                  if (event.tickets[0]) {
+                    trackPurchaseFlow.purchaseIntent(
+                      event.id,
+                      event.tickets[0].name,
+                      event.tickets[0].price
+                    );
+                  }
+
                   if (!user) {
-                    navigate('/auth-required', {
-                      state: {
-                        event: {
-                          id: event.id,
-                          title: event.title,
-                          date: event.date,
-                          location: event.address,
-                          image: event.image,
+                    // Track auth required
+                    trackPurchaseFlow.authRequired(event.id, 'unknown');
+                    
+                    // Usar modal ou página baseado no A/B test
+                    if (shouldUseAuthModal()) {
+                      setShowLoginModal(true);
+                      return;
+                    } else {
+                      navigate('/auth-required', {
+                        state: {
+                          event: {
+                            id: event.id,
+                            title: event.title,
+                            date: event.date,
+                            location: event.address,
+                            image: event.image,
+                          },
+                          ticket: event.tickets[0],
                         },
-                        ticket: event.tickets[0],
-                      },
-                    });
-                    return;
+                      });
+                      return;
+                    }
                   }
                   setLoading(true);
                   setTimeout(() => {

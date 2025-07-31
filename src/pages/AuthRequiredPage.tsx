@@ -2,12 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogIn, UserPlus, ShoppingCart, Lock, ArrowRight, CheckCircle, Clock, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 
 const AuthRequiredPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { trackPurchaseFlow } = useAnalytics();
+
+  // Track page view automaticamente
+  usePageTracking('auth_required_page');
 
   // Dados do evento/ingresso vindos do state
   const eventData = location.state?.event;
@@ -40,6 +45,11 @@ const AuthRequiredPage = () => {
   };
 
   const handleLogin = () => {
+    // Track click no login
+    if (eventData?.id) {
+      trackPurchaseFlow.authRequired(eventData.id, 'returning');
+    }
+
     // Salvar dados no sessionStorage para recuperar após login
     if (eventData || ticketData) {
       sessionStorage.setItem('checkout_data', JSON.stringify({
@@ -52,6 +62,11 @@ const AuthRequiredPage = () => {
   };
 
   const handleRegister = () => {
+    // Track click no registro
+    if (eventData?.id) {
+      trackPurchaseFlow.authRequired(eventData.id, 'new');
+    }
+
     // Salvar dados no sessionStorage para recuperar após registro
     if (eventData || ticketData) {
       sessionStorage.setItem('checkout_data', JSON.stringify({

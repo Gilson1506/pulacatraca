@@ -13,11 +13,15 @@ import OrganizerRegisterPage from './pages/OrganizerRegisterPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import TicketPage from './pages/TicketPage';
 import AuthRequiredPage from './pages/AuthRequiredPage';
+import ABTestingDashboard, { useABTestingDashboardShortcut } from './components/ABTestingDashboard';
 
 const AppRoutes = () => {
   const location = useLocation();
   const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard') || location.pathname.startsWith('/ingresso');
   const hideHeader = location.pathname.startsWith('/event/') || location.pathname.startsWith('/ingresso');
+  
+  // A/B Testing Dashboard (apenas em desenvolvimento)
+  const { isOpen, setIsOpen } = useABTestingDashboardShortcut();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -38,6 +42,12 @@ const AppRoutes = () => {
         </Routes>
       </main>
       {!hideFooter && <Footer />}
+      
+      {/* A/B Testing Dashboard */}
+      <ABTestingDashboard 
+        isOpen={isOpen} 
+        onClose={() => setIsOpen(false)} 
+      />
     </div>
   );
 };
