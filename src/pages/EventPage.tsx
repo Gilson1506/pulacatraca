@@ -519,7 +519,18 @@ const EventPage = () => {
           className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
           onClick={() => {
             if (!user) {
-              setShowLoginModal(true);
+              navigate('/auth-required', {
+                state: {
+                  event: {
+                    id: event.id,
+                    title: event.title,
+                    date: event.date,
+                    location: event.address,
+                    image: event.image,
+                  },
+                  ticket: event.tickets[0],
+                },
+              });
               return;
             }
             setLoading(true);
@@ -587,6 +598,21 @@ const EventPage = () => {
               <button
                 className="w-full py-3 px-4 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-md flex items-center justify-center"
                 onClick={() => {
+                  if (!user) {
+                    navigate('/auth-required', {
+                      state: {
+                        event: {
+                          id: event.id,
+                          title: event.title,
+                          date: event.date,
+                          location: event.address,
+                          image: event.image,
+                        },
+                        ticket: event.tickets[0],
+                      },
+                    });
+                    return;
+                  }
                   setLoading(true);
                   setTimeout(() => {
                     setLoading(false);

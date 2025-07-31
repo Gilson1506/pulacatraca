@@ -64,6 +64,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(profile);
       
+      // Check for saved checkout data
+      const checkoutData = sessionStorage.getItem('checkout_data');
+      if (checkoutData) {
+        try {
+          const data = JSON.parse(checkoutData);
+          sessionStorage.removeItem('checkout_data');
+          // Redirect to checkout with saved data
+          setTimeout(() => {
+            navigate(data.returnTo, { 
+              state: { 
+                event: data.event, 
+                ticket: data.ticket 
+              } 
+            });
+          }, 100);
+          return data.returnTo;
+        } catch (error) {
+          console.error('Erro ao processar dados do checkout:', error);
+        }
+      }
+      
       // Return the appropriate dashboard route
       if (profile.role === 'organizer' || profile.role === 'admin') {
         return '/organizer-dashboard';
