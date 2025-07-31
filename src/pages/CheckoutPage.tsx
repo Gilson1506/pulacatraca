@@ -560,7 +560,15 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-600 drop-shadow-sm">{event.title}</h3>
                     <p className="text-sm text-gray-500">{new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                    <p className="text-sm text-gray-500">{event.location}</p>
+                    <p className="text-sm text-gray-500">{event.address || event.location}</p>
+                    {eventData && eventData.location_type === 'online' && (
+                      <p className="text-xs text-blue-600 mt-1">Evento Online - Link será enviado por email</p>
+                    )}
+                    {eventData && eventData.end_date && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Término: {new Date(eventData.end_date).toLocaleDateString('pt-BR')} às {eventData.end_date.split('T')[1]?.substring(0, 5)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

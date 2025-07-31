@@ -138,14 +138,27 @@ const EventPage = () => {
           start_date,
           end_date,
           location,
-          banner_url,
+          image,
+          subject,
+          subcategory,
           category,
           price,
           status,
           organizer_id,
           available_tickets,
           total_tickets,
-          tags
+          tags,
+          location_type,
+          location_name,
+          location_city,
+          location_state,
+          location_street,
+          location_number,
+          location_neighborhood,
+          location_cep,
+          ticket_type,
+          created_at,
+          updated_at
         `)
         .eq('id', eventId)
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
@@ -166,20 +179,58 @@ const EventPage = () => {
 
       console.log('EventPage - Dados brutos do evento:', eventData); // Log para debug
 
+      // Formatar endereço completo
+      const formatAddress = () => {
+        if (eventData.location_type === 'online') {
+          return 'Evento Online';
+        } else if (eventData.location_type === 'tbd') {
+          return 'Local ainda será definido';
+        } else {
+          // Montar endereço físico completo
+          const addressParts = [];
+          if (eventData.location_name) addressParts.push(eventData.location_name);
+          if (eventData.location_street) {
+            let streetInfo = eventData.location_street;
+            if (eventData.location_number) streetInfo += `, ${eventData.location_number}`;
+            addressParts.push(streetInfo);
+          }
+          if (eventData.location_neighborhood) addressParts.push(eventData.location_neighborhood);
+          if (eventData.location_city && eventData.location_state) {
+            addressParts.push(`${eventData.location_city} - ${eventData.location_state}`);
+          }
+          if (eventData.location_cep) addressParts.push(`CEP: ${eventData.location_cep}`);
+          
+          return addressParts.length > 0 ? addressParts.join(', ') : (eventData.location || 'Local não informado');
+        }
+      };
+
+      // Formatar duração do evento
+      const formatDuration = () => {
+        if (!eventData.start_date || !eventData.end_date) return '';
+        
+        const start = new Date(eventData.start_date);
+        const end = new Date(eventData.end_date);
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) return '1 dia';
+        return `${diffDays} dias`;
+      };
+
       const formattedEvent: Event = {
         id: eventData.id,
         title: eventData.title,
         description: eventData.description || 'Descrição não disponível',
         date: eventData.start_date?.split('T')[0] || '',
         time: eventData.start_date?.split('T')[1]?.substring(0, 5) || '',
-        location: eventData.location || 'Local não informado',
-        address: eventData.location || 'Endereço não informado',
+        location: eventData.location_name || eventData.location || 'Local não informado',
+        address: formatAddress(),
         dateLabel: new Date(eventData.start_date).toLocaleDateString('pt-BR', {
           day: 'numeric',
           month: 'long',
           year: 'numeric'
         }),
-        image: eventData.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDgwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
+        image: eventData.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDgwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
         tickets: [
           {
             id: '1',
@@ -190,11 +241,30 @@ const EventPage = () => {
         ],
         sections: [
           {
-            name: 'Informações Gerais',
+            name: 'Informações do Evento',
             details: [
+              ...(eventData.subject ? [`Assunto: ${eventData.subject}`] : []),
+              ...(eventData.subcategory ? [`Subcategoria: ${eventData.subcategory}`] : []),
               `Categoria: ${eventData.category || 'Não informado'}`,
+              ...(eventData.ticket_type ? [`Tipo de ingresso: ${eventData.ticket_type === 'paid' ? 'Pago' : 'Gratuito'}`] : []),
+              ...(eventData.end_date ? [`Duração: ${formatDuration()}`] : [])
+            ]
+          },
+          {
+            name: 'Local e Data',
+            details: [
+              `Tipo de local: ${eventData.location_type === 'physical' ? 'Físico' : eventData.location_type === 'online' ? 'Online' : 'A definir'}`,
+              `Data de início: ${new Date(eventData.start_date).toLocaleDateString('pt-BR')} às ${eventData.start_date?.split('T')[1]?.substring(0, 5) || ''}`,
+              ...(eventData.end_date ? [`Data de término: ${new Date(eventData.end_date).toLocaleDateString('pt-BR')} às ${eventData.end_date?.split('T')[1]?.substring(0, 5) || ''}`] : []),
+              `Endereço: ${formatAddress()}`
+            ]
+          },
+          {
+            name: 'Ingressos',
+            details: [
               `Ingressos disponíveis: ${eventData.available_tickets || 0}`,
-              `Total de ingressos: ${eventData.total_tickets || 0}`
+              `Total de ingressos: ${eventData.total_tickets || 0}`,
+              `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2)}`}`
             ]
           }
         ],
@@ -202,7 +272,7 @@ const EventPage = () => {
         importantNotes: [
           'Chegue com antecedência',
           'Documento obrigatório',
-          'Proibido entrada de bebidas',
+          ...(eventData.location_type === 'online' ? ['Link de acesso será enviado por email'] : ['Proibido entrada de bebidas']),
           'Evento sujeito a alterações'
         ],
         contactInfo: {

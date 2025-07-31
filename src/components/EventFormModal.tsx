@@ -407,16 +407,35 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         description: formData.description,
         start_date: `${formData.start_date}T${formData.start_time}:00`,
         end_date: formData.end_date ? `${formData.end_date}T${formData.end_time || '23:59'}:00` : null,
+        
+        // Campos de assunto e categoria
+        subject: formData.subject,
+        subcategory: formData.category || null,
+        category: formData.subject || 'evento',
+        
+        // Campos de localização
         location: formData.location_type === 'tbd' ? 'Local ainda será definido' : 
                  formData.location_type === 'online' ? 'Evento Online' :
                  `${formData.location_name || formData.location_street} ${formData.location_number || ''}, ${formData.location_city || ''} - ${formData.location_state || ''}`.trim(),
-        address: formData.location_type === 'physical' ? 
-                `${formData.location_street} ${formData.location_number}, ${formData.location_neighborhood}, ${formData.location_city} - ${formData.location_state}, ${formData.location_cep}` : null,
-        image: formData.image || '/default-event-image.jpg',
-        category: formData.subject || 'evento',
-        subcategory: formData.category || null,
+        location_type: formData.location_type,
+        location_search: formData.location_search || null,
+        location_name: formData.location_name || null,
+        location_cep: formData.location_cep || null,
+        location_street: formData.location_street || null,
+        location_number: formData.location_number || null,
+        location_complement: formData.location_complement || null,
+        location_neighborhood: formData.location_neighborhood || null,
+        location_city: formData.location_city || null,
+        location_state: formData.location_state || null,
+        
+        // Campos de ingresso e imagem
+        ticket_type: formData.ticket_type,
+        image: formData.image || null,
         price: formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price)) : 0,
+        
+        // Campos de controle
         organizer_id: user.id,
+        created_by: user.id,
         status: 'pending',
         created_at: new Date().toISOString()
       };
@@ -437,8 +456,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           price: ticket.price,
           quantity: ticket.quantity,
           description: ticket.description || null,
-          sale_start: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
-          sale_end: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time}:00` : null,
+          sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
+          sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time}:00` : null,
+          sale_period_type: ticket.sale_period_type,
           min_quantity: ticket.min_quantity,
           max_quantity: ticket.max_quantity,
           availability: ticket.availability,
