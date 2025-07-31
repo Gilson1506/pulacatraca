@@ -162,9 +162,14 @@ const CheckInPage = () => {
   };
 
   const fetchCurrentEvent = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('❌ fetchCurrentEvent: Usuário não encontrado');
+      return;
+    }
     
     try {
+      console.log('🔍 Buscando evento atual para organizador:', user.id);
+      
       // Buscar eventos do organizador atual
       const { data: events, error } = await supabase
         .from('events')
@@ -175,23 +180,38 @@ const CheckInPage = () => {
         .limit(1);
 
       if (error) {
-        console.error('Erro ao buscar evento:', error);
+        console.error('❌ Erro ao buscar evento:', error);
         return;
       }
 
+      console.log('📅 Eventos encontrados:', events);
+      
       if (events && events.length > 0) {
+        console.log('✅ Evento selecionado:', events[0]);
         setCurrentEvent(events[0]);
+      } else {
+        console.log('⚠️ Nenhum evento aprovado encontrado para o organizador');
+        showModal('error', 'Nenhum evento aprovado encontrado. Verifique se você tem eventos aprovados.');
       }
     } catch (error) {
-      console.error('Erro ao buscar evento atual:', error);
+      console.error('❌ Erro ao buscar evento atual:', error);
+      showModal('error', `Erro ao buscar evento: ${error.message || 'Erro desconhecido'}`);
     }
   };
 
   const fetchParticipants = async (searchTerm?: string) => {
-    if (!user || !currentEvent) return;
+    if (!user || !currentEvent) {
+      console.log('❌ fetchParticipants: Usuário ou evento não encontrado', { user: !!user, currentEvent: !!currentEvent });
+      return;
+    }
     
     try {
       setIsSearching(true);
+      console.log('🔍 Buscando participantes...', {
+        event_id: currentEvent.id,
+        organizer_id: user.id,
+        search_term: searchTerm
+      });
       
       const { data, error } = await supabase.rpc('search_event_participants', {
         p_event_id: currentEvent.id,
@@ -199,18 +219,27 @@ const CheckInPage = () => {
         p_search_term: searchTerm || null
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro na função RPC search_event_participants:', error);
+        throw error;
+      }
 
+      console.log('✅ Dados recebidos da função RPC:', data);
       const participantsList = data as ParticipantSearchResult[];
       setParticipants(participantsList);
       
       // Calcular estatísticas
       setTotalParticipants(participantsList.length);
       setCheckedInCount(participantsList.filter(p => p.already_checked_in).length);
+      
+      console.log('📊 Estatísticas atualizadas:', {
+        total: participantsList.length,
+        checkedIn: participantsList.filter(p => p.already_checked_in).length
+      });
 
     } catch (error) {
-      console.error('Erro ao buscar participantes:', error);
-      showModal('error', 'Erro ao carregar participantes do evento');
+      console.error('❌ Erro ao buscar participantes:', error);
+      showModal('error', `Erro ao carregar participantes: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsSearching(false);
       setIsLoading(false);
@@ -219,12 +248,18 @@ const CheckInPage = () => {
 
   const performCheckIn = async (ticketUserId: string) => {
     if (!user || !currentEvent) {
+      console.log('❌ performCheckIn: Usuário ou evento não encontrado');
       showModal('error', 'Erro: usuário ou evento não encontrado');
       return;
     }
 
     try {
       setIsScanning(true);
+      console.log('🎯 Realizando check-in...', {
+        ticket_user_id: ticketUserId,
+        event_id: currentEvent.id,
+        organizer_id: user.id
+      });
       
       const { data, error } = await supabase.rpc('perform_participant_checkin', {
         p_ticket_user_id: ticketUserId,
@@ -232,15 +267,21 @@ const CheckInPage = () => {
         p_organizer_id: user.id
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro na função RPC perform_participant_checkin:', error);
+        throw error;
+      }
 
+      console.log('✅ Resultado do check-in:', data);
       const result = data[0] as CheckInResult;
       
       if (result.success) {
+        console.log('🎉 Check-in realizado com sucesso!');
         showModal('success', result.message, result.participant_info);
         // Recarregar participantes
         await fetchParticipants(searchQuery);
       } else {
+        console.log('⚠️ Check-in não realizado:', result.message);
         // Verificar se é duplicata
         if (result.message.includes('já foi realizado')) {
           showModal('already_checked', result.message, result.participant_info);
@@ -250,8 +291,8 @@ const CheckInPage = () => {
       }
       
     } catch (error) {
-      console.error('Erro ao processar check-in:', error);
-      showModal('error', 'Erro ao processar check-in');
+      console.error('❌ Erro ao processar check-in:', error);
+      showModal('error', `Erro ao processar check-in: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsScanning(false);
     }
