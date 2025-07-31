@@ -125,15 +125,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validar tamanho (2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Imagem muito grande. Máximo 2MB.');
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Imagem muito grande. Máximo 5MB.');
       return;
     }
 
     // Validar formato
-    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
-      alert('Formato inválido. Use JPEG, PNG ou GIF.');
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+      alert('Formato inválido. Use JPEG, PNG, GIF ou WebP.');
       return;
     }
 
@@ -147,31 +147,91 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       };
       reader.readAsDataURL(file);
 
+      // Sanitizar nome do arquivo
+      const sanitizedFileName = file.name
+        .replace(/[^a-zA-Z0-9.-]/g, '_')
+        .replace(/_{2,}/g, '_')
+        .toLowerCase();
+      
+      const fileName = `event_${Date.now()}_${sanitizedFileName}`;
+      
+      console.log('🔄 Iniciando upload:', fileName);
+
+      // Verificar se o bucket existe
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      console.log('📦 Buckets disponíveis:', buckets);
+      
+      if (bucketsError) {
+        console.error('❌ Erro ao listar buckets:', bucketsError);
+      }
+
+      // Tentar criar o bucket se não existir
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .createBucket('event-images', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+
+      if (bucketError && !bucketError.message.includes('already exists')) {
+        console.error('❌ Erro ao criar bucket:', bucketError);
+      }
+
       // Upload para Supabase Storage
-      const fileName = `event_${Date.now()}_${file.name}`;
       const { data, error } = await supabase.storage
         .from('event-images')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: true, // Permitir sobrescrever
           onUploadProgress: (progress) => {
-            setUploadProgress((progress.loaded / progress.total) * 100);
+            const percent = (progress.loaded / progress.total) * 100;
+            setUploadProgress(percent);
+            console.log(`📊 Upload progress: ${percent.toFixed(1)}%`);
           }
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro no upload:', error);
+        throw error;
+      }
+
+      console.log('✅ Upload concluído:', data);
 
       // Obter URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('event-images')
         .getPublicUrl(fileName);
 
+      console.log('🔗 URL pública:', publicUrl);
+
       setFormData(prev => ({ ...prev, image: publicUrl }));
       setUploadProgress(100);
       
+      // Reset input file
+      if (event.target) {
+        event.target.value = '';
+      }
+      
     } catch (error) {
-      console.error('Erro no upload:', error);
-      alert('Erro ao fazer upload da imagem');
+      console.error('❌ Erro no upload:', error);
+      setUploadProgress(0);
+      setImagePreview('');
+      
+      // Mensagem de erro mais específica
+      let errorMessage = 'Erro ao fazer upload da imagem';
+      if (error.message) {
+        if (error.message.includes('not found')) {
+          errorMessage = 'Bucket de imagens não encontrado. Verifique a configuração do Supabase.';
+        } else if (error.message.includes('permission')) {
+          errorMessage = 'Sem permissão para upload. Verifique as políticas RLS.';
+        } else if (error.message.includes('size')) {
+          errorMessage = 'Arquivo muito grande. Máximo 5MB.';
+        } else {
+          errorMessage = `Erro: ${error.message}`;
+        }
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -183,6 +243,100 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         ...prev, 
         description: descriptionRef.current?.innerHTML || '' 
       }));
+    }
+  };
+
+  // Validar etapa atual
+  const validateCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        if (!formData.title.trim()) {
+          alert('Nome do evento é obrigatório');
+          return false;
+        }
+        if (!formData.subject) {
+          alert('Assunto do evento é obrigatório');
+          return false;
+        }
+        return true;
+        
+      case 2:
+        if (!formData.start_date) {
+          alert('Data de início é obrigatória');
+          return false;
+        }
+        if (!formData.start_time) {
+          alert('Hora de início é obrigatória');
+          return false;
+        }
+        if (!formData.end_date) {
+          alert('Data de término é obrigatória');
+          return false;
+        }
+        if (!formData.end_time) {
+          alert('Hora de término é obrigatória');
+          return false;
+        }
+        
+        // Validar se data de término é após início
+        const start = new Date(`${formData.start_date}T${formData.start_time}`);
+        const end = new Date(`${formData.end_date}T${formData.end_time}`);
+        if (end <= start) {
+          alert('Data de término deve ser posterior à data de início');
+          return false;
+        }
+        return true;
+        
+      case 3:
+        // Descrição é opcional, mas vamos sugerir
+        if (!formData.description.trim()) {
+          const confirm = window.confirm('Descrição está vazia. Deseja continuar mesmo assim?');
+          return confirm;
+        }
+        return true;
+        
+      case 4:
+        if (formData.location_type === 'physical') {
+          if (!formData.location_city || !formData.location_state) {
+            alert('Para eventos físicos, cidade e estado são obrigatórios');
+            return false;
+          }
+        }
+        return true;
+        
+      case 5:
+        if (formData.tickets.length === 0) {
+          const confirm = window.confirm('Nenhum ingresso foi criado. Deseja criar um evento sem ingressos?');
+          return confirm;
+        }
+        
+        // Validar ingressos
+        for (let i = 0; i < formData.tickets.length; i++) {
+          const ticket = formData.tickets[i];
+          if (!ticket.title.trim()) {
+            alert(`Título do ingresso ${i + 1} é obrigatório`);
+            return false;
+          }
+          if (ticket.quantity <= 0) {
+            alert(`Quantidade do ingresso ${i + 1} deve ser maior que zero`);
+            return false;
+          }
+          if (formData.ticket_type === 'paid' && ticket.price < 0) {
+            alert(`Preço do ingresso ${i + 1} não pode ser negativo`);
+            return false;
+          }
+        }
+        return true;
+        
+      default:
+        return true;
+    }
+  };
+
+  // Ir para próxima etapa
+  const goToNextStep = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep(Math.min(5, currentStep + 1));
     }
   };
 
@@ -380,12 +534,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           onChange={handleImageUpload}
           className="hidden"
         />
-        <div className="mt-2 text-xs text-gray-500 space-y-1">
-          <p>A dimensão recomendada é de 1600 x 838</p>
-          <p>(mesma proporção do formato utilizado nas páginas de evento no Facebook).</p>
-          <p>Formato JPEG, GIF ou PNG de no máximo 2MB.</p>
-          <p>Imagens com dimensões diferentes serão redimensionadas.</p>
-        </div>
+                 <div className="mt-2 text-xs text-gray-500 space-y-1">
+           <p>A dimensão recomendada é de 1600 x 838</p>
+           <p>(mesma proporção do formato utilizado nas páginas de evento no Facebook).</p>
+           <p>Formato JPEG, PNG, GIF ou WebP de no máximo 5MB.</p>
+           <p>Imagens com dimensões diferentes serão redimensionadas.</p>
+         </div>
       </div>
 
       {/* Classificação */}
@@ -1164,11 +1318,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
             {currentStep === 1 && 'Informações Básicas'}
             {currentStep === 2 && 'Data e Horário'}
             {currentStep === 3 && 'Descrição do Evento'}
@@ -1177,19 +1331,19 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
         {/* Progress bar */}
-        <div className="px-6 py-2 bg-gray-50">
+        <div className="px-4 sm:px-6 py-2 bg-gray-50">
           <div className="flex items-center justify-between mb-2">
             {[1, 2, 3, 4, 5].map((step) => (
               <div
                 key={step}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
                   step <= currentStep
                     ? 'bg-pink-600 text-white'
                     : 'bg-gray-200 text-gray-600'
@@ -1208,7 +1362,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 max-h-[calc(95vh-200px)] sm:max-h-[60vh] overflow-y-auto">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
@@ -1217,27 +1371,27 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
             disabled={currentStep === 1}
-            className="px-6 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+            className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
           >
             Voltar
           </button>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-2 text-gray-600 hover:text-gray-800"
+              className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800"
             >
               Cancelar
             </button>
 
             {currentStep < 5 ? (
               <button
-                onClick={() => setCurrentStep(currentStep + 1)}
-                className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                onClick={goToNextStep}
+                className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
               >
                 Próximo
               </button>
@@ -1245,15 +1399,19 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Criando...
+                    <span className="hidden sm:inline">Criando...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
-                  'Criar Evento'
+                  <>
+                    <span className="hidden sm:inline">Criar Evento</span>
+                    <span className="sm:hidden">Criar</span>
+                  </>
                 )}
               </button>
             )}
