@@ -167,7 +167,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       // Tentar criar o bucket se não existir
       const { data: bucketData, error: bucketError } = await supabase.storage
-        .createBucket('event-images', {
+        .createBucket('event_banners', {
           public: true,
           allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
           fileSizeLimit: 5242880 // 5MB
@@ -179,7 +179,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       // Upload para Supabase Storage
       const { data, error } = await supabase.storage
-        .from('event-images')
+        .from('event_banners')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true, // Permitir sobrescrever
@@ -199,7 +199,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       // Obter URL pública
       const { data: { publicUrl } } = supabase.storage
-        .from('event-images')
+        .from('event_banners')
         .getPublicUrl(fileName);
 
       console.log('🔗 URL pública:', publicUrl);
@@ -221,7 +221,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       let errorMessage = 'Erro ao fazer upload da imagem';
       if (error.message) {
         if (error.message.includes('not found')) {
-          errorMessage = 'Bucket de imagens não encontrado. Verifique a configuração do Supabase.';
+          errorMessage = 'Bucket event_banners não encontrado. Verifique a configuração do Supabase.';
         } else if (error.message.includes('permission')) {
           errorMessage = 'Sem permissão para upload. Verifique as políticas RLS.';
         } else if (error.message.includes('size')) {
