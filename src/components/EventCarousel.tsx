@@ -67,8 +67,9 @@ const EventCarousel = () => {
               <img 
                 src={event.image}
                 alt={event.title}
-                className="w-full h-full object-cover rounded-xl"
+                className="w-full h-full object-cover object-center"
                 draggable="false"
+                style={{ objectFit: 'cover', objectPosition: 'center center' }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white space-y-6 max-w-4xl px-4">
