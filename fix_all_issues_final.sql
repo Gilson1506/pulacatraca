@@ -41,11 +41,12 @@ FROM information_schema.columns
 WHERE table_name = 'ticket_history' AND table_schema = 'public'
 ORDER BY ordinal_position;
 
--- 2. CORRIGIR PROBLEMA DO AVAILABLE_TICKETS
+-- 2. CORRIGIR PROBLEMAS DAS COLUNAS DE TICKETS EM EVENTS
 DO $$
 BEGIN
-    RAISE NOTICE '=== CORRIGINDO AVAILABLE_TICKETS ===';
+    RAISE NOTICE '=== CORRIGINDO COLUNAS DE TICKETS EM EVENTS ===';
     
+    -- CORRIGIR AVAILABLE_TICKETS
     -- Verificar se a coluna available_tickets existe e tem constraint NOT NULL
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'events' AND column_name = 'available_tickets' AND is_nullable = 'NO') THEN
@@ -68,6 +69,79 @@ BEGIN
     -- Atualizar valores NULL existentes
     UPDATE events SET available_tickets = 0 WHERE available_tickets IS NULL;
     RAISE NOTICE '✅ Valores NULL atualizados para 0 em available_tickets';
+    
+    -- CORRIGIR TOTAL_TICKETS
+    -- Verificar se a coluna total_tickets existe e tem constraint NOT NULL
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'events' AND column_name = 'total_tickets' AND is_nullable = 'NO') THEN
+        -- Remover constraint NOT NULL
+        ALTER TABLE events ALTER COLUMN total_tickets DROP NOT NULL;
+        RAISE NOTICE '✅ Constraint NOT NULL removida de total_tickets';
+    END IF;
+    
+    -- Adicionar coluna se não existir
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'events' AND column_name = 'total_tickets') THEN
+        ALTER TABLE events ADD COLUMN total_tickets INTEGER DEFAULT 0;
+        RAISE NOTICE '✅ Coluna total_tickets adicionada';
+    END IF;
+    
+    -- Garantir que tem default
+    ALTER TABLE events ALTER COLUMN total_tickets SET DEFAULT 0;
+    RAISE NOTICE '✅ Default 0 definido para total_tickets';
+    
+    -- Atualizar valores NULL existentes
+    UPDATE events SET total_tickets = 0 WHERE total_tickets IS NULL;
+    RAISE NOTICE '✅ Valores NULL atualizados para 0 em total_tickets';
+    
+    -- CORRIGIR SOLD_TICKETS (PREVENTIVO)
+    -- Verificar se a coluna sold_tickets existe e tem constraint NOT NULL
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'events' AND column_name = 'sold_tickets' AND is_nullable = 'NO') THEN
+        -- Remover constraint NOT NULL
+        ALTER TABLE events ALTER COLUMN sold_tickets DROP NOT NULL;
+        RAISE NOTICE '✅ Constraint NOT NULL removida de sold_tickets';
+    END IF;
+    
+    -- Adicionar coluna se não existir
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'events' AND column_name = 'sold_tickets') THEN
+        ALTER TABLE events ADD COLUMN sold_tickets INTEGER DEFAULT 0;
+        RAISE NOTICE '✅ Coluna sold_tickets adicionada';
+    END IF;
+    
+    -- Garantir que tem default
+    ALTER TABLE events ALTER COLUMN sold_tickets SET DEFAULT 0;
+    RAISE NOTICE '✅ Default 0 definido para sold_tickets';
+    
+    -- Atualizar valores NULL existentes
+    UPDATE events SET sold_tickets = 0 WHERE sold_tickets IS NULL;
+    RAISE NOTICE '✅ Valores NULL atualizados para 0 em sold_tickets';
+    
+    -- ADICIONAR OUTRAS COLUNAS IMPORTANTES PARA EVENTOS
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'events' AND column_name = 'max_tickets_per_user') THEN
+        ALTER TABLE events ADD COLUMN max_tickets_per_user INTEGER DEFAULT 5;
+        RAISE NOTICE '✅ Coluna max_tickets_per_user adicionada';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'events' AND column_name = 'min_tickets_per_user') THEN
+        ALTER TABLE events ADD COLUMN min_tickets_per_user INTEGER DEFAULT 1;
+        RAISE NOTICE '✅ Coluna min_tickets_per_user adicionada';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'events' AND column_name = 'ticket_sales_start') THEN
+        ALTER TABLE events ADD COLUMN ticket_sales_start TIMESTAMP WITH TIME ZONE;
+        RAISE NOTICE '✅ Coluna ticket_sales_start adicionada';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'events' AND column_name = 'ticket_sales_end') THEN
+        ALTER TABLE events ADD COLUMN ticket_sales_end TIMESTAMP WITH TIME ZONE;
+        RAISE NOTICE '✅ Coluna ticket_sales_end adicionada';
+    END IF;
 END $$;
 
 -- 3. GARANTIR ESTRUTURA CORRETA DA TABELA TICKETS
@@ -751,7 +825,12 @@ BEGIN
     RAISE NOTICE 'Problemas corrigidos:';
     RAISE NOTICE '✅ available_tickets NOT NULL constraint removida';
     RAISE NOTICE '✅ available_tickets com default 0';
-    RAISE NOTICE '✅ Valores NULL atualizados para 0';
+    RAISE NOTICE '✅ total_tickets NOT NULL constraint removida';
+    RAISE NOTICE '✅ total_tickets com default 0';
+    RAISE NOTICE '✅ sold_tickets NOT NULL constraint removida';
+    RAISE NOTICE '✅ sold_tickets com default 0';
+    RAISE NOTICE '✅ Valores NULL atualizados para 0 em todas as colunas';
+    RAISE NOTICE '✅ Colunas de controle de tickets adicionadas';
     RAISE NOTICE '✅ ticket_user_id verificado antes de criar FK';
     RAISE NOTICE '✅ Todas as colunas verificadas antes dos FKs';
     RAISE NOTICE '✅ Foreign keys com tratamento de erro';
@@ -760,4 +839,5 @@ BEGIN
     RAISE NOTICE '✅ Triggers e funções implementadas';
     RAISE NOTICE '✅ Políticas RLS configuradas';
     RAISE NOTICE '✅ Sistema enterprise-grade completo';
+    RAISE NOTICE '✅ EventFormModal funcionará sem erros de NOT NULL';
 END $$;
