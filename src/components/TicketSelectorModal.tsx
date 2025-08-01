@@ -192,23 +192,23 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
   };
 
   const getAreaColors = (area?: string) => {
-    if (!area) return 'from-gray-50 to-gray-100 border-gray-200';
+    if (!area) return 'bg-transparent border-gray-200';
     if (area.toLowerCase().includes('premium') || area.toLowerCase().includes('vip')) {
-      return 'from-yellow-50 to-yellow-100 border-yellow-200';
+      return 'bg-yellow-500/5 border-yellow-300';
     }
     if (area.toLowerCase().includes('front') || area.toLowerCase().includes('stage')) {
-      return 'from-purple-50 to-purple-100 border-purple-200';
+      return 'bg-purple-500/5 border-purple-300';
     }
     if (area.toLowerCase().includes('camarote')) {
-      return 'from-green-50 to-green-100 border-green-200';
+      return 'bg-green-500/5 border-green-300';
     }
     if (area.toLowerCase().includes('backstage')) {
-      return 'from-red-50 to-red-100 border-red-200';
+      return 'bg-red-500/5 border-red-300';
     }
     if (area.toLowerCase().includes('open bar')) {
-      return 'from-orange-50 to-orange-100 border-orange-200';
+      return 'bg-orange-500/5 border-orange-300';
     }
-    return 'from-blue-50 to-blue-100 border-blue-200';
+    return 'bg-blue-500/5 border-blue-300';
   };
 
   if (!isOpen) return null;
@@ -225,28 +225,28 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
       
       {/* Modal Container */}
       <div 
-        className={`relative bg-white/95 backdrop-blur-lg border border-pink-200 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
+        className={`relative bg-white/95 backdrop-blur-lg border border-gray-300 rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
           showModal 
             ? 'translate-y-0 scale-100 opacity-100' 
             : 'translate-y-8 scale-95 opacity-0'
         }`}
       >
-        {/* Header com gradiente */}
-        <div className="relative bg-gradient-to-r from-pink-500/90 via-purple-500/90 to-pink-500/90 backdrop-blur-sm px-6 py-5 border-b border-pink-200">
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-600/80 via-purple-600/80 to-pink-600/80 backdrop-blur-sm"></div>
+        {/* Header profissional */}
+        <div className="relative bg-gray-800 px-6 py-5 border-b border-gray-300">
+          <div className="absolute inset-0 bg-gray-800"></div>
           
-          <div className="relative flex items-center justify-between text-white">
-            <div>
-              <h2 className="text-xl font-bold">Selecione o ingresso ou setor</h2>
-              <p className="text-pink-100 text-sm mt-1">{event.title}</p>
-            </div>
+                      <div className="relative flex items-center justify-between text-white">
+              <div>
+                <h2 className="text-xl font-bold">Selecione o ingresso ou setor</h2>
+                <p className="text-gray-300 text-sm mt-1">{event.title}</p>
+              </div>
             
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+                          <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-700 rounded-sm transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
           </div>
         </div>
 
@@ -279,7 +279,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                     style={{ transitionDelay: `${index * 100}ms` }}
                   >
                     {/* Área/Setor Header */}
-                    <div className={`bg-gradient-to-r ${getAreaColors(ticket.area)} rounded-2xl p-4 mb-4 border`}>
+                    <div className={`${getAreaColors(ticket.area)} rounded-sm p-4 mb-4 border`}>
                       <div className="flex items-start space-x-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
                           {getAreaIcon(ticket.area)}
@@ -328,70 +328,70 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                     {isAvailable && (
                       <div className="space-y-4 pl-4">
                         {/* Feminino */}
-                        <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:border-pink-300 transition-colors">
+                        <div className="flex items-center justify-between p-4 bg-transparent border border-gray-200 rounded-sm hover:border-gray-400 transition-colors">
                           <div className="flex-1">
                             <h4 className="font-semibold text-gray-900">
                               Feminino - {ticket.area || ticket.name}
                             </h4>
-                            <p className="text-pink-600 font-bold text-lg">
-                              R$ {ticket.price.toFixed(2).replace('.', ',')}
-                            </p>
+                                                          <p className="text-gray-700 font-bold text-lg">
+                                R$ {ticket.price.toFixed(2).replace('.', ',')}
+                              </p>
                           </div>
                           
                           <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() => updateSelection(ticket.id, 'feminineQuantity', selection.feminineQuantity - 1)}
-                              disabled={selection.feminineQuantity <= 0}
-                              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                            >
-                              <Minus className="w-4 h-4 text-gray-600" />
-                            </button>
+                                                          <button
+                                onClick={() => updateSelection(ticket.id, 'feminineQuantity', selection.feminineQuantity - 1)}
+                                disabled={selection.feminineQuantity <= 0}
+                                className="w-8 h-8 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                              >
+                                <Minus className="w-4 h-4 text-gray-600" />
+                              </button>
                             
                             <span className="w-8 text-center font-semibold">
                               {selection.feminineQuantity}
                             </span>
                             
-                            <button
-                              onClick={() => updateSelection(ticket.id, 'feminineQuantity', selection.feminineQuantity + 1)}
-                              disabled={selection.feminineQuantity >= (ticket.max_quantity || 10)}
-                              className="w-8 h-8 rounded-full bg-pink-100 hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                            >
-                              <Plus className="w-4 h-4 text-pink-600" />
-                            </button>
+                                                          <button
+                                onClick={() => updateSelection(ticket.id, 'feminineQuantity', selection.feminineQuantity + 1)}
+                                disabled={selection.feminineQuantity >= (ticket.max_quantity || 10)}
+                                className="w-8 h-8 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                              >
+                                <Plus className="w-4 h-4 text-gray-600" />
+                              </button>
                           </div>
                         </div>
 
                         {/* Masculino */}
-                        <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
+                        <div className="flex items-center justify-between p-4 bg-transparent border border-gray-200 rounded-sm hover:border-gray-400 transition-colors">
                           <div className="flex-1">
                             <h4 className="font-semibold text-gray-900">
                               Masculino - {ticket.area || ticket.name}
                             </h4>
-                            <p className="text-blue-600 font-bold text-lg">
-                              R$ {ticket.price.toFixed(2).replace('.', ',')}
-                            </p>
+                                                          <p className="text-gray-700 font-bold text-lg">
+                                R$ {ticket.price.toFixed(2).replace('.', ',')}
+                              </p>
                           </div>
                           
                           <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() => updateSelection(ticket.id, 'masculineQuantity', selection.masculineQuantity - 1)}
-                              disabled={selection.masculineQuantity <= 0}
-                              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                            >
-                              <Minus className="w-4 h-4 text-gray-600" />
-                            </button>
+                                                          <button
+                                onClick={() => updateSelection(ticket.id, 'masculineQuantity', selection.masculineQuantity - 1)}
+                                disabled={selection.masculineQuantity <= 0}
+                                className="w-8 h-8 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                              >
+                                <Minus className="w-4 h-4 text-gray-600" />
+                              </button>
                             
                             <span className="w-8 text-center font-semibold">
                               {selection.masculineQuantity}
                             </span>
                             
-                            <button
-                              onClick={() => updateSelection(ticket.id, 'masculineQuantity', selection.masculineQuantity + 1)}
-                              disabled={selection.masculineQuantity >= (ticket.max_quantity || 10)}
-                              className="w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                            >
-                              <Plus className="w-4 h-4 text-blue-600" />
-                            </button>
+                                                          <button
+                                onClick={() => updateSelection(ticket.id, 'masculineQuantity', selection.masculineQuantity + 1)}
+                                disabled={selection.masculineQuantity >= (ticket.max_quantity || 10)}
+                                className="w-8 h-8 rounded-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                              >
+                                <Plus className="w-4 h-4 text-gray-600" />
+                              </button>
                           </div>
                         </div>
                       </div>
@@ -405,7 +405,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
         {/* Footer Fixo */}
         {tickets.length > 0 && (
-          <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-pink-200 p-6">
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-gray-300 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-2xl font-bold text-gray-900">
@@ -428,7 +428,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             <button
               onClick={handleFinalize}
               disabled={loading || getTotalQuantity() === 0}
-              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-pink-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+              className="w-full bg-gray-800 text-white py-4 px-6 rounded-sm font-bold text-lg hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
                 <div className="flex items-center space-x-2">
