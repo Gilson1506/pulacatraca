@@ -856,25 +856,6 @@ const EventPage = () => {
           image: event.image
         }}
         user={user}
-        onAuthRequired={() => {
-          setShowTicketModal(false);
-          if (shouldUseAuthModal()) {
-            setShowLoginModal(true);
-          } else {
-            navigate('/auth-required', {
-              state: {
-                event: {
-                  id: event.id,
-                  title: event.title,
-                  date: event.date,
-                  location: event.address,
-                  image: event.image,
-                },
-                redirectTo: `/event/${event.id}`
-              },
-            });
-          }
-        }}
       />
 
     </div>

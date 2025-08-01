@@ -51,22 +51,22 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <div className="relative bg-pink-500/15 backdrop-blur-sm border border-pink-400/40 rounded-lg shadow-2xl w-full max-w-md h-[85vh] overflow-hidden transform transition-all duration-500 ease-out translate-y-0 scale-100 opacity-100">
+      <div className="relative bg-white backdrop-blur-sm border border-gray-300 rounded-lg shadow-2xl w-full max-w-md h-[85vh] overflow-hidden transform transition-all duration-500 ease-out translate-y-0 scale-100 opacity-100">
         {/* Header simples */}
-        <div className="relative bg-pink-600/25 backdrop-blur-md px-4 py-4 border-b border-pink-400/40">
-          <div className="absolute inset-0 bg-pink-600/25"></div>
+        <div className="relative bg-gray-100 backdrop-blur-md px-4 py-4 border-b border-gray-300">
+          <div className="absolute inset-0 bg-gray-100"></div>
           
-          <div className="relative flex items-center justify-between text-white">
+          <div className="relative flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white drop-shadow-lg">✅ Evento Criado!</h2>
-              <p className="text-pink-100 text-xs mt-1 drop-shadow-md">Aguardando aprovação</p>
+              <h2 className="text-lg font-bold text-pink-600 drop-shadow-sm">✅ Evento Criado!</h2>
+              <p className="text-gray-600 text-xs mt-1">Aguardando aprovação</p>
             </div>
             
             <button
               onClick={onClose}
-              className="p-2 hover:bg-pink-500/20 rounded-sm transition-colors backdrop-blur-sm"
+              className="p-2 hover:bg-gray-200 rounded-sm transition-colors"
             >
-              <X className="w-6 h-6 text-white drop-shadow-lg" />
+              <X className="w-6 h-6 text-gray-600" />
             </button>
           </div>
         </div>
@@ -74,35 +74,33 @@ const EventSuccessModal: React.FC<EventSuccessModalProps> = ({ isOpen, onClose, 
         {/* Conteúdo simplificado */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="text-center space-y-4">
-            <div className="bg-pink-500/10 backdrop-blur-sm border border-pink-300/50 rounded-sm p-4">
-              <h3 className="font-bold text-lg text-gray-900 drop-shadow-sm mb-2">
+            <div className="bg-gray-50 border border-gray-200 rounded-sm p-4">
+              <h3 className="font-bold text-lg text-pink-600 mb-2">
                 {eventData.title}
               </h3>
-              <p className="text-gray-700 text-sm drop-shadow-sm">
+              <p className="text-gray-700 text-sm">
                 📅 {formatDate(eventData.start_date)} às {formatTime(eventData.start_time)}
               </p>
-              <p className="text-gray-700 text-sm drop-shadow-sm">
+              <p className="text-gray-700 text-sm">
                 📍 {getLocationText()}
               </p>
-              <p className="text-gray-700 text-sm drop-shadow-sm">
+              <p className="text-gray-700 text-sm">
                 🎫 {getTicketTypeText()} ({eventData.tickets_count} tipo{eventData.tickets_count > 1 ? 's' : ''})
               </p>
             </div>
             
-            <p className="text-gray-600 text-sm drop-shadow-sm">
+            <p className="text-gray-600 text-sm">
               Seu evento está em análise e será publicado após aprovação.
             </p>
           </div>
         </div>
 
-
-
         {/* Footer com botão simples */}
-        <div className="sticky bottom-0 bg-pink-500/15 backdrop-blur-md border-t border-pink-400/40 p-4">
-                      <button
-              onClick={onClose}
-              className="w-full bg-pink-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-sm font-bold text-base hover:bg-pink-700/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center drop-shadow-lg"
-            >
+        <div className="sticky bottom-0 bg-gray-100 border-t border-gray-300 p-4">
+          <button
+            onClick={onClose}
+            className="w-full bg-pink-600 text-white py-3 px-4 rounded-sm font-bold text-base hover:bg-pink-700 transition-all duration-200 flex items-center justify-center"
+          >
             Continuar
           </button>
         </div>

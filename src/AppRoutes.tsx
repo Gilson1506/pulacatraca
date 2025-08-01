@@ -12,7 +12,6 @@ import CheckInPage from './pages/CheckInPage';
 import OrganizerRegisterPage from './pages/OrganizerRegisterPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import TicketPage from './pages/TicketPage';
-import AuthRequiredPage from './pages/AuthRequiredPage';
 import ABTestingDashboard, { useABTestingDashboardShortcut } from './components/ABTestingDashboard';
 
 const AppRoutes = () => {
@@ -34,7 +33,6 @@ const AppRoutes = () => {
           <Route path="/event/:eventId" element={<EventPage />} />
           <Route path="/ingresso/:ticketId" element={<TicketPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/auth-required" element={<AuthRequiredPage />} />
           <Route path="/profile/*" element={<ProfilePage />} />
           <Route path="/checkin" element={<CheckInPage />} />
           <Route path="/organizer-register" element={<OrganizerRegisterPage />} />
