@@ -620,7 +620,7 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
   }
 
   // Renderiza uma tela de erro se os dados não foram passados corretamente
-  if (!event || !ticket) {
+  if (!event || (!selectedTickets && !ticket)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center p-8">
