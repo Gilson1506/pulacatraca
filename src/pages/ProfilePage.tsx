@@ -41,7 +41,7 @@ interface UserTicket {
     start_date?: string;
     date?: string;
     location: string;
-    banner_url: string | null;
+    image: string | null;
     price: number;
   };
 }
@@ -71,7 +71,7 @@ interface UserOrder {
     start_date?: string;
     date?: string;
     location: string;
-    banner_url: string | null;
+    image: string | null;
     price?: number;
   };
 }
@@ -111,18 +111,18 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
           payment_method,
           payment_status,
           created_at,
-          ticket:tickets!inner(
+          ticket:tickets!ticket_users_ticket_id_fkey(
             id,
             name,
             area,
             ticket_type
           ),
-          event:events!inner(
+          event:events!ticket_users_event_id_fkey(
             title,
             description,
             start_date,
             location,
-            banner_url,
+            image,
             price
           )
         `)
@@ -144,7 +144,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, description, start_date, location, banner_url, price)
+          event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
         `)
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false });
@@ -156,7 +156,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
           .from('tickets')
           .select(`
             *,
-            event:events!inner(title, description, start_date, location, banner_url, price)
+            event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
@@ -168,7 +168,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
             .from('transactions')
             .select(`
               *,
-              event:events!inner(title, description, start_date, location, banner_url, price)
+              event:events!transactions_event_id_fkey(title, description, start_date, location, image, price)
             `)
             .eq('buyer_id', user.id)
             .order('created_at', { ascending: false });
@@ -246,7 +246,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
               </div>
               {/* Imagem sempre primeiro no mobile */}
               <img 
-                src={order.event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iI0YzNjhBNyIvPgo8dGV4dCB4PSI0MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+'} 
+                src={order.event.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iI0YzNjhBNyIvPgo8dGV4dCB4PSI0MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+'} 
                 alt={order.event.title} 
                 className="w-20 h-20 object-cover rounded-full mx-auto my-2 sm:mx-4 sm:my-0 order-1" 
               />
@@ -324,7 +324,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
             description,
             start_date,
             location,
-            banner_url,
+            image,
             price
           )
         `)
@@ -347,7 +347,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         .from('tickets')
         .select(`
           *,
-          event:events!inner(title, description, start_date, location, banner_url, price)
+          event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
         `)
         .eq('buyer_id', user.id)
         .in('status', ['active', 'used'])
@@ -360,7 +360,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
           .from('tickets')
           .select(`
             *,
-            event:events!inner(title, description, start_date, location, banner_url, price)
+            event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
           `)
           .eq('user_id', user.id)
           .in('status', ['active', 'used'])
