@@ -192,60 +192,60 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
   };
 
   const getAreaColors = (area?: string) => {
-    if (!area) return 'bg-transparent border-gray-200';
+    if (!area) return 'bg-white/5 border-gray-300/50';
     if (area.toLowerCase().includes('premium') || area.toLowerCase().includes('vip')) {
-      return 'bg-yellow-500/5 border-yellow-300';
+      return 'bg-yellow-500/10 border-yellow-400/60';
     }
     if (area.toLowerCase().includes('front') || area.toLowerCase().includes('stage')) {
-      return 'bg-purple-500/5 border-purple-300';
+      return 'bg-purple-500/10 border-purple-400/60';
     }
     if (area.toLowerCase().includes('camarote')) {
-      return 'bg-green-500/5 border-green-300';
+      return 'bg-green-500/10 border-green-400/60';
     }
     if (area.toLowerCase().includes('backstage')) {
-      return 'bg-red-500/5 border-red-300';
+      return 'bg-red-500/10 border-red-400/60';
     }
     if (area.toLowerCase().includes('open bar')) {
-      return 'bg-orange-500/5 border-orange-300';
+      return 'bg-orange-500/10 border-orange-400/60';
     }
-    return 'bg-blue-500/5 border-blue-300';
+    return 'bg-blue-500/10 border-blue-400/60';
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      {/* Backdrop com blur */}
+      {/* Backdrop transparente */}
       <div 
-        className={`absolute inset-0 bg-black transition-all duration-500 ${
-          showModal ? 'bg-opacity-40 backdrop-blur-md' : 'bg-opacity-0'
+        className={`absolute inset-0 transition-all duration-500 ${
+          showModal ? 'bg-opacity-0' : 'bg-opacity-0'
         }`}
         onClick={onClose}
       />
       
       {/* Modal Container */}
       <div 
-        className={`relative bg-white/95 backdrop-blur-lg border border-gray-300 rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
+        className={`relative bg-white/15 backdrop-blur-sm border border-gray-400/30 rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
           showModal 
             ? 'translate-y-0 scale-100 opacity-100' 
             : 'translate-y-8 scale-95 opacity-0'
         }`}
       >
-        {/* Header profissional */}
-        <div className="relative bg-gray-800 px-6 py-5 border-b border-gray-300">
-          <div className="absolute inset-0 bg-gray-800"></div>
+        {/* Header transparente */}
+        <div className="relative bg-gray-900/20 backdrop-blur-md px-6 py-5 border-b border-gray-400/30">
+          <div className="absolute inset-0 bg-gray-900/20"></div>
           
                       <div className="relative flex items-center justify-between text-white">
               <div>
-                <h2 className="text-xl font-bold">Selecione o ingresso ou setor</h2>
-                <p className="text-gray-300 text-sm mt-1">{event.title}</p>
+                <h2 className="text-xl font-bold text-white drop-shadow-lg">Selecione o ingresso ou setor</h2>
+                <p className="text-gray-100 text-sm mt-1 drop-shadow-md">{event.title}</p>
               </div>
             
                           <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-700 rounded-sm transition-colors"
+                className="p-2 hover:bg-white/10 rounded-sm transition-colors backdrop-blur-sm"
               >
-                <X className="w-6 h-6" />
+                <X className="w-6 h-6 text-white drop-shadow-lg" />
               </button>
           </div>
         </div>
@@ -279,25 +279,25 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                     style={{ transitionDelay: `${index * 100}ms` }}
                   >
                     {/* Área/Setor Header */}
-                    <div className={`${getAreaColors(ticket.area)} rounded-sm p-4 mb-4 border`}>
+                    <div className={`${getAreaColors(ticket.area)} backdrop-blur-md rounded-sm p-4 mb-4 border`}>
                       <div className="flex items-start space-x-3">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          {getAreaIcon(ticket.area)}
-                        </div>
+                                                  <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
+                            {getAreaIcon(ticket.area)}
+                          </div>
                         
                         <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg">
+                          <h3 className="font-bold text-gray-900 text-lg drop-shadow-sm">
                             {ticket.area || ticket.name || 'Ingresso'}
                           </h3>
                           
                           {ticket.sector && (
-                            <p className="text-purple-600 font-medium">
+                            <p className="text-purple-600 font-medium drop-shadow-sm">
                               {ticket.sector}
                             </p>
                           )}
                           
                           {ticket.description && (
-                            <p className="text-gray-600 text-sm mt-1">
+                            <p className="text-gray-700 text-sm mt-1 drop-shadow-sm">
                               {ticket.description}
                             </p>
                           )}
@@ -328,12 +328,12 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                     {isAvailable && (
                       <div className="space-y-4 pl-4">
                         {/* Feminino */}
-                        <div className="flex items-center justify-between p-4 bg-transparent border border-gray-200 rounded-sm hover:border-gray-400 transition-colors">
+                        <div className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-sm border border-gray-300/50 rounded-sm hover:border-gray-400/70 transition-colors">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">
-                              Feminino - {ticket.area || ticket.name}
-                            </h4>
-                                                          <p className="text-gray-700 font-bold text-lg">
+                                                          <h4 className="font-semibold text-gray-900 drop-shadow-sm">
+                                Feminino - {ticket.area || ticket.name}
+                              </h4>
+                              <p className="text-gray-800 font-bold text-lg drop-shadow-sm">
                                 R$ {ticket.price.toFixed(2).replace('.', ',')}
                               </p>
                           </div>
@@ -362,12 +362,12 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                         </div>
 
                         {/* Masculino */}
-                        <div className="flex items-center justify-between p-4 bg-transparent border border-gray-200 rounded-sm hover:border-gray-400 transition-colors">
+                        <div className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-sm border border-gray-300/50 rounded-sm hover:border-gray-400/70 transition-colors">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">
-                              Masculino - {ticket.area || ticket.name}
-                            </h4>
-                                                          <p className="text-gray-700 font-bold text-lg">
+                                                          <h4 className="font-semibold text-gray-900 drop-shadow-sm">
+                                Masculino - {ticket.area || ticket.name}
+                              </h4>
+                              <p className="text-gray-800 font-bold text-lg drop-shadow-sm">
                                 R$ {ticket.price.toFixed(2).replace('.', ',')}
                               </p>
                           </div>
@@ -405,20 +405,20 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
         {/* Footer Fixo */}
         {tickets.length > 0 && (
-          <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-gray-300 p-6">
+          <div className="sticky bottom-0 bg-white/10 backdrop-blur-md border-t border-gray-400/30 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900 drop-shadow-md">
                   Total: R$ {calculateTotal().toFixed(2).replace('.', ',')}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-700 drop-shadow-sm">
                   + Taxa Adm.
                 </p>
               </div>
               
               {getTotalQuantity() > 0 && (
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-700 drop-shadow-sm">
                     {getTotalQuantity()} ingresso{getTotalQuantity() > 1 ? 's' : ''} selecionado{getTotalQuantity() > 1 ? 's' : ''}
                   </p>
                 </div>
@@ -428,7 +428,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             <button
               onClick={handleFinalize}
               disabled={loading || getTotalQuantity() === 0}
-              className="w-full bg-gray-800 text-white py-4 px-6 rounded-sm font-bold text-lg hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full bg-gray-900/80 backdrop-blur-sm text-white py-4 px-6 rounded-sm font-bold text-lg hover:bg-gray-800/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center drop-shadow-lg"
             >
               {loading ? (
                 <div className="flex items-center space-x-2">
