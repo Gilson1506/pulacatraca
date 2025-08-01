@@ -173,7 +173,7 @@ const EventPage = () => {
       // 🎫 BUSCAR INGRESSOS COM DADOS DO EVENTO VIA FOREIGN KEY
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
-        .select('*, events!fk_tickets_to_events(*)')
+        .select('*, events!tickets_events_fk(*)')
         .eq('event_id', eventId)
         .order('price', { ascending: true });
 
