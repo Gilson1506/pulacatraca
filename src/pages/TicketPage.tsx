@@ -39,12 +39,33 @@ const TicketPage = () => {
     try {
       setIsLoading(true);
       console.log('🎫 Buscando dados do ingresso:', ticketId);
+      console.log('👤 Usuário atual:', currentUser?.id);
 
-      // Buscar dados do ingresso com relacionamentos
-      const ticketData = await getTicketWithUser(ticketId);
+      // Tentar buscar dados do ingresso com relacionamentos
+      let ticketData;
+      try {
+        ticketData = await getTicketWithUser(ticketId);
+        console.log('🎫 Dados do ticket recebidos via getTicketWithUser:', ticketData);
+      } catch (error) {
+        console.log('⚠️ Erro com getTicketWithUser, tentando busca direta:', error);
+        
+        // Busca direta se a função restritiva falhar
+        const { data: directTicket, error: directError } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('id', ticketId)
+          .single();
+          
+        if (directError) {
+          throw new Error(`Ingresso não encontrado: ${directError.message}`);
+        }
+        
+        ticketData = directTicket;
+        console.log('🎫 Dados do ticket recebidos via busca direta:', ticketData);
+      }
       
       // Buscar dados reais do evento diretamente da tabela events
-      console.log('🎫 Buscando dados reais do evento...');
+      console.log('🎫 Buscando dados reais do evento para ID:', ticketData.event_id);
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select(`
@@ -58,15 +79,16 @@ const TicketPage = () => {
           category,
           price,
           status,
-          organizer_id,
-          available_tickets,
-          total_tickets,
-          tags
+          organizer_id
         `)
         .eq('id', ticketData.event_id)
         .single();
 
-      if (!eventError && eventData) {
+      if (eventError) {
+        console.error('❌ Erro ao buscar evento:', eventError);
+        console.log('⚠️ Evento não encontrado, usando dados básicos do ticket');
+        setTicket(ticketData);
+      } else if (eventData) {
         console.log('✅ Dados reais do evento encontrados:', eventData);
         
         // Combinar dados do ticket com dados reais do evento
@@ -104,11 +126,22 @@ const TicketPage = () => {
     } catch (error) {
       console.error('❌ Erro ao buscar ingresso:', error);
       
+      // Verificar tipo específico de erro
       if (error.message?.includes('Could not find a relationship') || 
           error.message?.includes('ticket_users')) {
+        console.log('🔧 Sistema não configurado - redirecionando para configuração');
         setSystemNotConfigured(true);
+      } else if (error.message?.includes('Ingresso não encontrado')) {
+        console.log('🎫 Ingresso não existe no banco de dados');
+        alert('Este ingresso não foi encontrado. Verifique o link e tente novamente.');
+        navigate('/dashboard');
+      } else if (error.message?.includes('não autenticado')) {
+        console.log('🔐 Usuário não autenticado');
+        alert('Você precisa estar logado para visualizar este ingresso.');
+        navigate('/login');
       } else {
-        alert('Ingresso não encontrado ou você não tem permissão para visualizá-lo.');
+        console.log('❓ Erro genérico:', error.message);
+        alert(`Erro ao carregar ingresso: ${error.message || 'Erro desconhecido'}`);
         navigate('/dashboard');
       }
     } finally {
@@ -280,7 +313,7 @@ const TicketPage = () => {
         {/* Logo do App */}
         <div className="flex justify-center mb-6">
           <img 
-            src="/logo.png" 
+            src="/logo2.png" 
             alt="Logo"
             className="h-16 w-auto object-contain"
             onError={(e) => {
