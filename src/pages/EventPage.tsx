@@ -170,17 +170,10 @@ const EventPage = () => {
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
 
-      // 🎫 BUSCAR TIPOS DE INGRESSOS DA TABELA EVENTS
+      // 🎫 BUSCAR INGRESSOS COM DADOS DO EVENTO VIA FOREIGN KEY
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from('event_ticket_types')
-        .select(`
-          id,
-          ticket_type as name,
-          price,
-          description,
-          quantity_available as quantity,
-          stripe_price_id
-        `)
+        .from('tickets')
+        .select('*, events!fk_tickets_to_events(*)')
         .eq('event_id', eventId)
         .order('price', { ascending: true });
 
