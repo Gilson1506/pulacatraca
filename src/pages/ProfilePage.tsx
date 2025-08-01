@@ -311,7 +311,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
           total_price,
           purchase_date,
           created_at,
-          ticket:tickets!inner(
+          ticket:tickets!ticket_users_ticket_id_fkey(
             id,
             name,
             code,
@@ -319,7 +319,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
             area,
             ticket_type
           ),
-          event:events!inner(
+          event:events!ticket_users_event_id_fkey(
             title,
             description,
             start_date,
