@@ -16,17 +16,30 @@ function getInitials(name: string) {
 // 🎫 Interface para Ingressos
 interface UserTicket {
   id: string;
-  event_id: string;
-  code: string;
-  ticket_type: string;
+  event_id?: string;
+  code?: string;
+  ticket_type?: string;
   status: 'pending' | 'active' | 'used' | 'cancelled';
   created_at: string;
-  used_at: string | null;
-  user_id: string | null;
+  used_at?: string | null;
+  user_id?: string | null;
+  quantity?: number;
+  unit_price?: number;
+  total_price?: number;
+  purchase_date?: string;
+  ticket?: {
+    id: string;
+    name: string;
+    code: string;
+    status: string;
+    area: string;
+    ticket_type: string;
+  };
   event: {
     title: string;
     description: string;
-    date: string;
+    start_date?: string;
+    date?: string;
     location: string;
     banner_url: string | null;
     price: number;
@@ -36,17 +49,30 @@ interface UserTicket {
 // 📋 Interface para Histórico de Pedidos
 interface UserOrder {
   id: string;
-  event_id: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  event_id?: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'active' | 'used';
   created_at: string;
-  amount: number;
-  payment_method: string | null;
+  amount?: number;
+  payment_method?: string | null;
+  quantity?: number;
+  unit_price?: number;
+  total_price?: number;
+  purchase_date?: string;
+  payment_status?: string;
+  ticket?: {
+    id: string;
+    name: string;
+    area: string;
+    ticket_type: string;
+  };
   event: {
     title: string;
     description: string;
-    date: string;
+    start_date?: string;
+    date?: string;
     location: string;
     banner_url: string | null;
+    price?: number;
   };
 }
 
@@ -71,11 +97,49 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Primeiro tentar com buyer_id
+      // Tentar buscar via ticket_users primeiro (histórico de pedidos)
+      console.log('🔄 Tentando buscar histórico via ticket_users...');
+      const { data: ordersFromTicketUsers, error: ticketUsersError } = await supabase
+        .from('ticket_users')
+        .select(`
+          id,
+          status,
+          quantity,
+          unit_price,
+          total_price,
+          purchase_date,
+          payment_method,
+          payment_status,
+          created_at,
+          ticket:tickets!inner(
+            id,
+            name,
+            area,
+            ticket_type
+          ),
+          event:events!inner(
+            title,
+            description,
+            start_date,
+            location,
+            banner_url,
+            price
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (!ticketUsersError && ordersFromTicketUsers && ordersFromTicketUsers.length > 0) {
+        console.log('✅ Histórico encontrado via ticket_users:', ordersFromTicketUsers.length);
+        setUserOrders(ordersFromTicketUsers);
+        return;
+      }
+
+      // Fallback: buscar diretamente da tabela tickets
       let ordersData = null;
       let error = null;
 
-      console.log('🔄 Tentando buscar com buyer_id...');
+      console.log('🔄 Fallback: Tentando buscar com buyer_id...');
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select(`
@@ -235,11 +299,50 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Primeiro tentar com buyer_id
+      // Tentar buscar via ticket_users primeiro
+      console.log('🔄 Tentando buscar via ticket_users...');
+      const { data: ticketUsersData, error: ticketUsersError } = await supabase
+        .from('ticket_users')
+        .select(`
+          id,
+          status,
+          quantity,
+          unit_price,
+          total_price,
+          purchase_date,
+          created_at,
+          ticket:tickets!inner(
+            id,
+            name,
+            code,
+            status,
+            area,
+            ticket_type
+          ),
+          event:events!inner(
+            title,
+            description,
+            start_date,
+            location,
+            banner_url,
+            price
+          )
+        `)
+        .eq('user_id', user.id)
+        .in('status', ['active', 'used'])
+        .order('created_at', { ascending: false });
+
+      if (!ticketUsersError && ticketUsersData && ticketUsersData.length > 0) {
+        console.log('✅ Ingressos encontrados via ticket_users:', ticketUsersData.length);
+        setUserTickets(ticketUsersData);
+        return;
+      }
+
+      // Fallback: buscar diretamente da tabela tickets
       let ticketsData = null;
       let error = null;
 
-      console.log('🔄 Tentando buscar ingressos com buyer_id...');
+      console.log('🔄 Fallback: Tentando buscar ingressos com buyer_id...');
       const { data: buyerTicketsData, error: buyerTicketsError } = await supabase
         .from('tickets')
         .select(`
@@ -305,8 +408,14 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
   };
 
   const now = new Date();
-  const activeTickets = userTickets.filter(ticket => new Date(ticket.event.start_date) >= now);
-  const pastTickets = userTickets.filter(ticket => new Date(ticket.event.start_date) < now);
+  const activeTickets = userTickets.filter(ticket => {
+    const eventDate = ticket.event.start_date || ticket.event.date;
+    return eventDate && new Date(eventDate) >= now;
+  });
+  const pastTickets = userTickets.filter(ticket => {
+    const eventDate = ticket.event.start_date || ticket.event.date;
+    return eventDate && new Date(eventDate) < now;
+  });
 
   if (isLoading) {
     return (
@@ -332,9 +441,9 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                 <div key={ticket.id} className="flex flex-col sm:flex-row items-center bg-white rounded-xl shadow border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                   {/* Data (desktop only) */}
                   <div className="hidden sm:flex flex-col items-center justify-center p-4 min-w-[80px]">
-                    <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.start_date).getDate()}</span>
-                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                    <span className="text-xs text-gray-400">{new Date(ticket.event.start_date).getFullYear()}</span>
+                    <span className="text-pink-600 font-bold text-2xl leading-none">{new Date(ticket.event.start_date || ticket.event.date || '').getDate()}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date || ticket.event.date || '').toLocaleString('pt-BR', { month: 'short' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(ticket.event.start_date || ticket.event.date || '').getFullYear()}</span>
                   </div>
                 {/* Imagem sempre primeiro no mobile */}
                 <img 
@@ -362,9 +471,9 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
                 </div>
                                   {/* Data (mobile only, abaixo do status) */}
                   <div className="flex sm:hidden flex-row items-center justify-center gap-2 pb-2">
-                    <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.start_date).getDate()}</span>
-                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date).toLocaleString('pt-BR', { month: 'short' })}</span>
-                    <span className="text-xs text-gray-400">{new Date(ticket.event.start_date).getFullYear()}</span>
+                    <span className="text-pink-600 font-bold text-xl leading-none">{new Date(ticket.event.start_date || ticket.event.date || '').getDate()}</span>
+                    <span className="text-xs font-semibold text-gray-700 uppercase">{new Date(ticket.event.start_date || ticket.event.date || '').toLocaleString('pt-BR', { month: 'short' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(ticket.event.start_date || ticket.event.date || '').getFullYear()}</span>
                   </div>
                 </div>
               ))}

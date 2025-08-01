@@ -6,6 +6,7 @@ interface TicketData {
   id: string;
   name: string;
   price: number;
+  price_feminine?: number;
   quantity: number;
   description?: string;
   area?: string;
@@ -16,6 +17,8 @@ interface TicketData {
   max_quantity?: number;
   sale_start_date?: string;
   sale_end_date?: string;
+  ticket_type?: string;
+  status?: string;
 }
 
 interface TicketSelectorModalProps {
@@ -100,7 +103,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
       if (!ticket) return total;
       
       const masculineTotal = selection.masculineQuantity * ticket.price;
-      const feminineTotal = selection.feminineQuantity * ticket.price;
+      const feminineTotal = selection.feminineQuantity * (ticket.price_feminine || ticket.price);
       
       return total + masculineTotal + feminineTotal;
     }, 0);
@@ -334,7 +337,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                                 Feminino - {ticket.area || ticket.name}
                               </h4>
                               <p className="text-gray-800 font-bold text-lg drop-shadow-sm">
-                                R$ {ticket.price.toFixed(2).replace('.', ',')}
+                                R$ {(ticket.price_feminine || ticket.price).toFixed(2).replace('.', ',')}
                               </p>
                           </div>
                           

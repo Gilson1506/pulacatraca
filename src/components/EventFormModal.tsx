@@ -500,6 +500,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           event_id: event.id,
           name: ticket.title,
           price: ticket.price,
+          price_feminine: ticket.price_feminine || ticket.price,
+          area: ticket.area || 'Pista',
           quantity: ticket.quantity,
           description: ticket.description || null,
           sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
@@ -509,6 +511,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           max_quantity: ticket.max_quantity,
           availability: ticket.availability,
           has_half_price: ticket.has_half_price,
+          ticket_type: ticket.area || 'geral',
+          status: 'active',
           created_at: new Date().toISOString()
         }));
 
