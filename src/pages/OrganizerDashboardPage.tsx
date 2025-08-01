@@ -327,10 +327,10 @@ const OrganizerEvents = () => {
       console.log('🎫 Tipos de ingressos:', eventData.ticketTypes);
 
       if (selectedEvent) {
-        // Edição - usar função SQL avançada
-        const { error } = await supabase.rpc('update_event_with_advanced_ticket_types', {
-          event_id_param: eventData.id,
-          event_data: {
+        // Edição - atualizar evento e tipos de ingressos diretamente
+        const { error: eventError } = await supabase
+          .from('events')
+          .update({
             title: eventData.name,
             description: eventData.description,
             start_date: `${eventData.date}T${eventData.time}:00`,
@@ -340,31 +340,65 @@ const OrganizerEvents = () => {
             banner_url: eventData.image,
             price: eventData.price || 0,
             available_tickets: eventData.totalTickets,
-            total_tickets: eventData.totalTickets
-          },
-          ticket_types_data: eventData.ticketTypes.map(ticket => ({
-            title: ticket.name,
-            name: ticket.name,
-            description: ticket.description || '',
-            area: ticket.area || 'Pista',
-            price_masculine: ticket.price,
-            price_feminine: ticket.price_feminine || ticket.price * 0.9,
-            quantity: ticket.quantity,
-            min_quantity: ticket.min_quantity || 1,
-            max_quantity: ticket.max_quantity || 5,
-            has_half_price: ticket.has_half_price || false,
-            sale_period_type: ticket.sale_period_type || 'date',
-            availability: ticket.availability || 'public',
-            service_fee_type: 'buyer',
-            sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time || '00:00'}:00` : null,
-            sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time || '23:59'}:00` : null,
-            batches: ticket.batches || []
-          }))
-        });
+            total_tickets: eventData.totalTickets,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', eventData.id);
 
-        if (error) {
-          console.error('❌ Erro ao atualizar evento com tipos de ingressos:', error);
-          throw error;
+        if (eventError) {
+          console.error('❌ Erro ao atualizar evento:', eventError);
+          throw eventError;
+        }
+
+        // Remover tipos de ingressos existentes
+        const { error: deleteError } = await supabase
+          .from('event_ticket_types')
+          .delete()
+          .eq('event_id', eventData.id);
+
+        if (deleteError) {
+          console.warn('⚠️ Erro ao remover tipos de ingressos existentes:', deleteError);
+        }
+
+        // Criar novos tipos de ingressos
+        if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
+          for (const ticket of eventData.ticketTypes) {
+            console.log('🎫 Atualizando tipo de ingresso:', ticket);
+            
+            const { data: ticketType, error: ticketError } = await supabase
+              .from('event_ticket_types')
+              .insert({
+                event_id: eventData.id,
+                title: ticket.name,
+                name: ticket.name,
+                description: ticket.description || '',
+                area: ticket.area || 'Pista',
+                price: ticket.price,
+                price_masculine: ticket.price,
+                price_feminine: ticket.price_feminine || ticket.price * 0.9,
+                quantity: ticket.quantity,
+                available_quantity: ticket.quantity,
+                min_quantity: ticket.min_quantity || 1,
+                max_quantity: ticket.max_quantity || 5,
+                has_half_price: ticket.has_half_price || false,
+                sale_period_type: ticket.sale_period_type || 'date',
+                availability: ticket.availability || 'public',
+                service_fee_type: 'buyer',
+                ticket_type: 'paid',
+                status: 'active',
+                sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time || '00:00'}:00` : null,
+                sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time || '23:59'}:00` : null
+              })
+              .select()
+              .single();
+
+            if (ticketError) {
+              console.error('❌ Erro ao criar tipo de ingresso:', ticketError);
+              throw ticketError;
+            }
+
+            console.log('✅ Tipo de ingresso atualizado:', ticketType);
+          }
         }
       } else {
         // Criação - usar função SQL avançada
@@ -397,32 +431,38 @@ const OrganizerEvents = () => {
 
         console.log('✅ Evento criado:', event);
 
-        // Depois, criar os tipos de ingressos
+        // Depois, criar os tipos de ingressos diretamente na tabela
         if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
           for (const ticket of eventData.ticketTypes) {
             console.log('🎫 Criando tipo de ingresso:', ticket);
             
-            const { data: ticketType, error: ticketError } = await supabase.rpc('create_ticket_type_with_batches', {
-              ticket_data: {
+            // Inserir diretamente na tabela event_ticket_types
+            const { data: ticketType, error: ticketError } = await supabase
+              .from('event_ticket_types')
+              .insert({
                 event_id: event.id,
                 title: ticket.name,
                 name: ticket.name,
                 description: ticket.description || '',
                 area: ticket.area || 'Pista',
+                price: ticket.price,
                 price_masculine: ticket.price,
                 price_feminine: ticket.price_feminine || ticket.price * 0.9,
                 quantity: ticket.quantity,
+                available_quantity: ticket.quantity,
                 min_quantity: ticket.min_quantity || 1,
                 max_quantity: ticket.max_quantity || 5,
                 has_half_price: ticket.has_half_price || false,
                 sale_period_type: ticket.sale_period_type || 'date',
                 availability: ticket.availability || 'public',
                 service_fee_type: 'buyer',
+                ticket_type: 'paid',
+                status: 'active',
                 sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time || '00:00'}:00` : null,
                 sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time || '23:59'}:00` : null
-              },
-              batches_data: ticket.batches || []
-            });
+              })
+              .select()
+              .single();
 
             if (ticketError) {
               console.error('❌ Erro ao criar tipo de ingresso:', ticketError);
@@ -430,6 +470,32 @@ const OrganizerEvents = () => {
             }
 
             console.log('✅ Tipo de ingresso criado:', ticketType);
+
+            // Se há lotes, criar na tabela ticket_batches (se existir)
+            if (ticket.batches && ticket.batches.length > 0) {
+              for (const batch of ticket.batches) {
+                console.log('📦 Criando lote:', batch);
+                
+                const { error: batchError } = await supabase
+                  .from('ticket_batches')
+                  .insert({
+                    ticket_type_id: ticketType.id,
+                    batch_number: batch.batch_number,
+                    batch_name: batch.batch_name || `Lote ${batch.batch_number}`,
+                    price_masculine: batch.price_masculine,
+                    price_feminine: batch.price_feminine,
+                    quantity: batch.quantity,
+                    available_quantity: batch.quantity,
+                    sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
+                    sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
+                    status: 'active'
+                  });
+
+                if (batchError) {
+                  console.warn('⚠️ Erro ao criar lote (tabela pode não existir):', batchError);
+                }
+              }
+            }
           }
         }
 

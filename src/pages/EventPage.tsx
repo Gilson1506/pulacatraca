@@ -171,13 +171,13 @@ const EventPage = () => {
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
 
-      // 🎫 BUSCAR TIPOS DE INGRESSOS AVANÇADOS DO EVENTO
+      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from('ticket_types_with_batches')
+        .from('event_ticket_types')
         .select('*')
         .eq('event_id', eventId)
         .eq('status', 'active')
-        .order('price_masculine', { ascending: true });
+        .order('price', { ascending: true });
 
       if (error) {
         console.error('EventPage - Erro ao buscar evento:', error); // Log para debug
@@ -249,16 +249,16 @@ const EventPage = () => {
         tickets: ticketsData && ticketsData.length > 0 ? ticketsData.map(ticket => ({
           id: ticket.id,
           name: ticket.title || ticket.name,
-          price: ticket.price_masculine,
-          price_feminine: ticket.price_feminine,
+          price: ticket.price_masculine || ticket.price,
+          price_feminine: ticket.price_feminine || ticket.price * 0.9,
           available: ticket.available_quantity,
           area: ticket.area,
           description: ticket.description,
           has_half_price: ticket.has_half_price,
           min_quantity: ticket.min_quantity,
           max_quantity: ticket.max_quantity,
-          batches: ticket.batches || [],
-          current_batch: ticket.current_batch || null
+          batches: [],
+          current_batch: null
         })) : [
           {
             id: '1',
@@ -292,10 +292,12 @@ const EventPage = () => {
             details: ticketsData && ticketsData.length > 0 ? [
               `Tipos disponíveis: ${ticketsData.length}`,
               ...ticketsData.map(ticket => {
-                const priceText = ticket.price_masculine > 0 
-                  ? `Masc: R$ ${ticket.price_masculine.toFixed(2)} | Fem: R$ ${ticket.price_feminine.toFixed(2)}`
+                const priceMasc = ticket.price_masculine || ticket.price;
+                const priceFem = ticket.price_feminine || ticket.price * 0.9;
+                const priceText = priceMasc > 0 
+                  ? `Masc: R$ ${priceMasc.toFixed(2)} | Fem: R$ ${priceFem.toFixed(2)}`
                   : 'Gratuito';
-                return `${ticket.title || ticket.name} (${ticket.area}): ${ticket.available_quantity} disponíveis - ${priceText}`;
+                return `${ticket.title || ticket.name} (${ticket.area || 'Pista'}): ${ticket.available_quantity} disponíveis - ${priceText}`;
               })
             ] : [
               `Ingressos disponíveis: ${eventData.available_tickets || 0}`,
@@ -324,11 +326,11 @@ const EventPage = () => {
         const formattedTickets = ticketsData.map(ticket => ({
           id: ticket.id,
           name: ticket.title || ticket.name,
-          price: ticket.price_masculine,
-          price_feminine: ticket.price_feminine,
+          price: ticket.price_masculine || ticket.price,
+          price_feminine: ticket.price_feminine || ticket.price * 0.9,
           quantity: ticket.available_quantity,
           description: ticket.description,
-          area: ticket.area,
+          area: ticket.area || 'Pista',
           sector: ticket.sector,
           benefits: ticket.benefits || [],
           has_half_price: ticket.has_half_price,
@@ -336,10 +338,10 @@ const EventPage = () => {
           max_quantity: ticket.max_quantity || 5,
           ticket_type: ticket.ticket_type,
           status: ticket.status,
-          batches: ticket.batches || [],
-          current_batch: ticket.current_batch || null,
-          sale_period_type: ticket.sale_period_type,
-          availability: ticket.availability
+          batches: [],
+          current_batch: null,
+          sale_period_type: ticket.sale_period_type || 'date',
+          availability: ticket.availability || 'public'
         }));
         setAvailableTickets(formattedTickets);
         console.log('Tipos de ingressos carregados:', formattedTickets);
