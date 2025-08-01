@@ -64,8 +64,8 @@ const TicketPage = () => {
         console.log('🎫 Dados do ticket recebidos via busca direta:', ticketData);
       }
       
-      // Buscar dados reais do evento diretamente da tabela events
-      console.log('🎫 Buscando dados reais do evento para ID:', ticketData.event_id);
+      // Buscar dados do evento usando a mesma abordagem da EventPage
+      console.log('🎫 Buscando dados do evento para ID:', ticketData.event_id);
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select(`
@@ -75,11 +75,27 @@ const TicketPage = () => {
           start_date,
           end_date,
           location,
-          banner_url,
+          image,
+          subject,
+          subcategory,
           category,
           price,
           status,
-          organizer_id
+          organizer_id,
+          available_tickets,
+          total_tickets,
+          tags,
+          location_type,
+          location_name,
+          location_city,
+          location_state,
+          location_street,
+          location_number,
+          location_neighborhood,
+          location_cep,
+          ticket_type,
+          created_at,
+          updated_at
         `)
         .eq('id', ticketData.event_id)
         .single();
@@ -103,7 +119,7 @@ const TicketPage = () => {
             date: eventData.start_date?.split('T')[0] || '',
             time: eventData.start_date?.split('T')[1]?.slice(0, 5) || '',
             location: eventData.location,
-            banner_url: eventData.banner_url,
+            banner_url: eventData.image, // ✅ USAR CAMPO 'image' COMO NA EVENTPAGE
             category: eventData.category,
             price: eventData.price,
             status: eventData.status,
@@ -331,7 +347,7 @@ const TicketPage = () => {
         <div className="flex justify-center mb-6">
           <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-pink-200 shadow-lg">
             <img 
-              src={ticket.event?.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
+              src={ticket.event?.banner_url || ticket.event?.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
               alt={ticket.event?.name || 'Evento'} 
               className="w-full h-full object-cover"
             />
@@ -341,7 +357,7 @@ const TicketPage = () => {
         <header className="bg-white p-3 rounded-t-lg border-b">
           <div className="flex items-center gap-3">
             <img 
-              src={ticket.event?.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
+              src={ticket.event?.banner_url || ticket.event?.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGMzY4QTciLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0id2hpdGUiPgo8cGF0aCBkPSJNMTYgMEgwdjE2aDE2VjB6Ii8+CjxwYXRoIGQ9Ik0xNiAxNkgwdjE2aDE2VjE2eiIvPgo8cGF0aCBkPSJNMTYgMzJIMHYxNmgxNlYzMnoiLz4KPC9zdmc+Cjwvc3ZnPgo='} 
               alt={ticket.event?.name || 'Evento'} 
               className="w-12 h-12 rounded-lg object-cover"
             />
@@ -383,12 +399,12 @@ const TicketPage = () => {
 
             {/* Corpo do ingresso */}
             <div className="p-4">
-              {/* Logo do App Centralizada */}
+              {/* Logo do App Centralizada - Mesma do Header da EventPage */}
               <div className="flex justify-center mb-6">
                 <img 
                   src="/logo2.png" 
-                  alt="Logo"
-                  className="h-12 w-auto object-contain opacity-80"
+                  alt="Logo PULACATRACA"
+                  className="h-16 w-auto object-contain opacity-90"
                   onError={(e) => {
                     e.target.style.display = 'none';
                   }}
