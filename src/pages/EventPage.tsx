@@ -177,6 +177,8 @@ const EventPage = () => {
           id,
           name,
           price,
+          price_feminine,
+          area,
           quantity,
           description,
           availability,

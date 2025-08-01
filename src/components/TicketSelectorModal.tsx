@@ -179,7 +179,36 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
     if (area.toLowerCase().includes('front') || area.toLowerCase().includes('stage')) {
       return <Zap className="w-4 h-4 text-purple-500" />;
     }
+    if (area.toLowerCase().includes('camarote')) {
+      return <Star className="w-4 h-4 text-green-500" />;
+    }
+    if (area.toLowerCase().includes('backstage')) {
+      return <Zap className="w-4 h-4 text-red-500" />;
+    }
+    if (area.toLowerCase().includes('open bar')) {
+      return <Users className="w-4 h-4 text-orange-500" />;
+    }
     return <Users className="w-4 h-4 text-blue-500" />;
+  };
+
+  const getAreaColors = (area?: string) => {
+    if (!area) return 'from-gray-50 to-gray-100 border-gray-200';
+    if (area.toLowerCase().includes('premium') || area.toLowerCase().includes('vip')) {
+      return 'from-yellow-50 to-yellow-100 border-yellow-200';
+    }
+    if (area.toLowerCase().includes('front') || area.toLowerCase().includes('stage')) {
+      return 'from-purple-50 to-purple-100 border-purple-200';
+    }
+    if (area.toLowerCase().includes('camarote')) {
+      return 'from-green-50 to-green-100 border-green-200';
+    }
+    if (area.toLowerCase().includes('backstage')) {
+      return 'from-red-50 to-red-100 border-red-200';
+    }
+    if (area.toLowerCase().includes('open bar')) {
+      return 'from-orange-50 to-orange-100 border-orange-200';
+    }
+    return 'from-blue-50 to-blue-100 border-blue-200';
   };
 
   if (!isOpen) return null;
@@ -189,22 +218,22 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
       {/* Backdrop com blur */}
       <div 
         className={`absolute inset-0 bg-black transition-all duration-500 ${
-          showModal ? 'bg-opacity-60 backdrop-blur-sm' : 'bg-opacity-0'
+          showModal ? 'bg-opacity-40 backdrop-blur-md' : 'bg-opacity-0'
         }`}
         onClick={onClose}
       />
       
       {/* Modal Container */}
       <div 
-        className={`relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
+        className={`relative bg-white/95 backdrop-blur-lg border border-pink-200 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
           showModal 
             ? 'translate-y-0 scale-100 opacity-100' 
             : 'translate-y-8 scale-95 opacity-0'
         }`}
       >
         {/* Header com gradiente */}
-        <div className="relative bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 px-6 py-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-sm"></div>
+        <div className="relative bg-gradient-to-r from-pink-500/90 via-purple-500/90 to-pink-500/90 backdrop-blur-sm px-6 py-5 border-b border-pink-200">
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-600/80 via-purple-600/80 to-pink-600/80 backdrop-blur-sm"></div>
           
           <div className="relative flex items-center justify-between text-white">
             <div>
@@ -250,7 +279,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                     style={{ transitionDelay: `${index * 100}ms` }}
                   >
                     {/* Área/Setor Header */}
-                    <div className="bg-gradient-to-r from-gray-50 to-purple-50 rounded-2xl p-4 mb-4 border border-purple-100">
+                    <div className={`bg-gradient-to-r ${getAreaColors(ticket.area)} rounded-2xl p-4 mb-4 border`}>
                       <div className="flex items-start space-x-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
                           {getAreaIcon(ticket.area)}
@@ -258,7 +287,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                         
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 text-lg">
-                            {ticket.area || ticket.name}
+                            {ticket.area || ticket.name || 'Ingresso'}
                           </h3>
                           
                           {ticket.sector && (
@@ -376,7 +405,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
         {/* Footer Fixo */}
         {tickets.length > 0 && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-pink-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-2xl font-bold text-gray-900">

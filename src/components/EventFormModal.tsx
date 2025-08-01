@@ -1108,7 +1108,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   const renderStep5 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">🎫 Ingressos</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Ingressos</h3>
         <p className="text-sm text-gray-600 mb-4">Escolha o tipo de ingresso que deseja criar</p>
       </div>
 
@@ -1123,7 +1123,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
             className="mr-2"
           />
-          💳 Ingressos pagos
+                      Ingressos pagos
         </label>
         <label className="flex items-center">
           <input
@@ -1134,7 +1134,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
             className="mr-2"
           />
-          🆓 Ingressos gratuitos
+                      Ingressos gratuitos
         </label>
       </div>
 
@@ -1153,13 +1153,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             )}
 
             <h4 className="text-md font-medium text-gray-800 mb-4 flex items-center gap-2">
-              ➕ {formData.ticket_type === 'paid' ? 'Criar Ingresso Pago' : 'Criar Ingresso Gratuito'}
+              {formData.ticket_type === 'paid' ? 'Criar Ingresso Pago' : 'Criar Ingresso Gratuito'}
             </h4>
 
             {formData.ticket_type === 'paid' && (
               <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4">
                 <p className="text-sm text-blue-800 flex items-center gap-2">
-                  💡 A taxa de serviço é repassada ao comprador, sendo exibida junto com o valor do ingresso
+                  A taxa de serviço é repassada ao comprador, sendo exibida junto com o valor do ingresso
                 </p>
               </div>
             )}
@@ -1167,7 +1167,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {/* Título do Ingresso */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                🏷️ Título do Ingresso
+                Título do Ingresso
               </label>
               <input
                 type="text"
@@ -1185,7 +1185,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {/* Área do Ingresso */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                🗺️ Área do Ingresso
+                Área do Ingresso
               </label>
               <select
                 value={ticket.area}
@@ -1210,7 +1210,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 {/* Preços por Gênero */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    👥 Preços por Gênero
+                    Preços por Gênero
                   </label>
                   
                   {ticket.sale_period_type === 'batch' ? (
@@ -1300,7 +1300,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 {/* Período de vendas */}
                 <div className="mb-6">
                   <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    📅 Período das Vendas
+                    Período das Vendas
                   </h5>
                   <div className="flex gap-4 mb-4">
                     <label className="flex items-center">
@@ -1368,7 +1368,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
                   {ticket.sale_period_type === 'batch' && (
                     <div className="space-y-4">
-                      <h6 className="text-sm font-medium text-gray-700">📅 Datas dos Lotes</h6>
+                      <h6 className="text-sm font-medium text-gray-700">Datas dos Lotes</h6>
                       <div className="overflow-x-auto">
                         <table className="w-full border border-gray-300 rounded-lg">
                           <thead className="bg-gray-50">
@@ -1444,7 +1444,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {/* Configurações do Ingresso */}
             <div className="mb-6">
               <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                🎟️ Configurações do Ingresso
+                Configurações do Ingresso
               </h5>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1471,7 +1471,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                       onChange={(e) => updateTicket(ticket.id, { has_half_price: e.target.checked })}
                       className="mr-2"
                     />
-                    Criar meia-entrada? ☑️ Sim
+                    Criar meia-entrada?
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
                     <a href="#" className="text-blue-600 hover:underline">Saiba mais sobre as políticas de meia-entrada</a>
@@ -1483,7 +1483,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {/* Disponibilidade */}
             <div className="mb-6">
               <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                🧑‍🤝‍🧑 Disponibilidade
+                Disponibilidade
               </h5>
               <div className="space-y-2">
                 <label className="flex items-center">
@@ -1495,7 +1495,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                  🌐 Para todo o público
+                                      Para todo o público
                 </label>
                 <label className="flex items-center">
                   <input
@@ -1506,7 +1506,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                  🔒 Restrito a convidados
+                                      Restrito a convidados
                 </label>
                 <label className="flex items-center">
                   <input
@@ -1517,7 +1517,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                  ✋ Para ser adicionado manualmente
+                                      Para ser adicionado manualmente
                 </label>
               </div>
             </div>
@@ -1525,7 +1525,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {/* Limites por Compra */}
             <div className="mb-6">
               <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                ⚙️ Limites por Compra
+                Limites por Compra
               </h5>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1558,7 +1558,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {/* Descrição */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                📝 Descrição do Ingresso (opcional)
+                Descrição do Ingresso (opcional)
               </label>
               <textarea
                 value={ticket.description}

@@ -277,6 +277,18 @@ const TicketPage = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
+        {/* Logo do App */}
+        <div className="flex justify-center mb-6">
+          <img 
+            src="/logo.png" 
+            alt="Logo"
+            className="h-16 w-auto object-contain"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+        </div>
+
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-semibold">
           <ArrowLeft size={20} />
           VOLTAR AO DASHBOARD
@@ -312,7 +324,7 @@ const TicketPage = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold">R$ {(ticket.price || 0).toFixed(2)}</p>
-                                      <p className="text-pink-100 text-xs">INGRESSO GERAL</p>
+                  <p className="text-pink-100 text-xs">{ticket.name || ticket.ticket_type || 'INGRESSO GERAL'}</p>
                 </div>
               </div>
             </div>
