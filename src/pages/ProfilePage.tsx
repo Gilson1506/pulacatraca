@@ -299,86 +299,69 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Tentar buscar via ticket_users primeiro
-      console.log('🔄 Tentando buscar via ticket_users...');
-      const { data: ticketUsersData, error: ticketUsersError } = await supabase
-        .from('ticket_users')
-        .select(`
-          id,
-          status,
-          quantity,
-          unit_price,
-          total_price,
-          purchase_date,
-          created_at,
-          ticket:tickets(
-            id,
-            name,
-            code,
-            status,
-            area,
-            ticket_type
-          ),
-          event:events(
-            title,
-            description,
-            start_date,
-            location,
-            image,
-            price
-          )
-        `)
+      // 🚀 BUSCA OTIMIZADA: Usar a query melhorada com foreign key
+      console.log('🔄 Buscando ingressos com query otimizada...');
+      const { data: ticketsData, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('*, events!fk_tickets_primary_event_id(*)')
         .eq('user_id', user.id)
         .in('status', ['active', 'used'])
         .order('created_at', { ascending: false });
 
-      if (!ticketUsersError && ticketUsersData && ticketUsersData.length > 0) {
-        console.log('✅ Ingressos encontrados via ticket_users:', ticketUsersData.length);
-        setUserTickets(ticketUsersData);
-        return;
-      }
-
-      // Fallback: buscar diretamente da tabela tickets
-      let ticketsData = null;
-      let error = null;
-
-      console.log('🔄 Fallback: Tentando buscar ingressos com buyer_id...');
-      const { data: buyerTicketsData, error: buyerTicketsError } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          event:events(title, description, start_date, location, image, price)
-        `)
-        .eq('buyer_id', user.id)
-        .in('status', ['active', 'used'])
-        .order('created_at', { ascending: false });
-
-      if (buyerTicketsError) {
-        console.log('⚠️ buyer_id não existe, tentando com user_id...');
-        // Fallback: buscar por user_id se buyer_id não existir
-        const { data: userTicketsData, error: userTicketsError } = await supabase
-          .from('tickets')
+      if (ticketsError) {
+        console.error('❌ Erro ao buscar ingressos:', ticketsError);
+        
+        // Fallback: buscar via ticket_users se a query principal falhar
+        console.log('🔄 Fallback: Tentando buscar via ticket_users...');
+        const { data: ticketUsersData, error: ticketUsersError } = await supabase
+          .from('ticket_users')
           .select(`
-            *,
-            event:events(title, description, start_date, location, image, price)
+            id,
+            status,
+            quantity,
+            unit_price,
+            total_price,
+            purchase_date,
+            created_at,
+            ticket:tickets(
+              id,
+              name,
+              code,
+              status,
+              area,
+              ticket_type
+            ),
+            event:events(
+              title,
+              description,
+              start_date,
+              location,
+              image,
+              price
+            )
           `)
           .eq('user_id', user.id)
           .in('status', ['active', 'used'])
           .order('created_at', { ascending: false });
 
-        ticketsData = userTicketsData;
-        error = userTicketsError;
-      } else {
-        ticketsData = buyerTicketsData;
-      }
+        if (ticketUsersError) {
+          console.error('❌ Erro no fallback ticket_users:', ticketUsersError);
+          return;
+        }
 
-      if (error) {
-        console.error('❌ Erro ao buscar ingressos:', error);
+        console.log('✅ Ingressos encontrados via ticket_users (fallback):', ticketUsersData?.length || 0);
+        setUserTickets(ticketUsersData || []);
         return;
       }
 
-      console.log('✅ Ingressos encontrados:', ticketsData?.length || 0);
-      setUserTickets(ticketsData || []);
+      // Transformar os dados para o formato esperado pela interface
+      const transformedTickets = ticketsData?.map(ticket => ({
+        ...ticket,
+        event: ticket.events || ticket.event // Garantir compatibilidade com o nome da relação
+      })) || [];
+
+      console.log('✅ Ingressos encontrados com query otimizada:', transformedTickets.length);
+      setUserTickets(transformedTickets);
 
     } catch (error) {
       console.error('❌ Erro inesperado ao buscar ingressos:', error);
