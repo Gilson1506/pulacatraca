@@ -382,7 +382,7 @@ const TicketPage = () => {
                 <img 
                   src="/logo2.png" 
                   alt="Logo PULACATRACA"
-                  className="h-8 w-auto object-contain opacity-90"
+                  className="h-12 w-auto object-contain opacity-90"
                   onError={(e) => {
                     e.target.style.display = 'none';
                   }}
