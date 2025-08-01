@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
 import TicketSelectorModal from '../components/TicketSelectorModal';
+import TicketTypesDebug from '../components/TicketTypesDebug';
 import { supabase } from '../lib/supabase';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
@@ -170,11 +171,12 @@ const EventPage = () => {
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
 
-      // 🎫 BUSCAR INGRESSOS COM DADOS DO EVENTO VIA FOREIGN KEY
+      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from('tickets')
-        .select('*, events!tickets_events_fk(*)')
+        .from('event_ticket_types')
+        .select('*')
         .eq('event_id', eventId)
+        .eq('status', 'active')
         .order('price', { ascending: true });
 
       if (error) {
@@ -244,7 +246,12 @@ const EventPage = () => {
           year: 'numeric'
         }),
         image: eventData.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDgwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
-        tickets: [
+        tickets: ticketsData && ticketsData.length > 0 ? ticketsData.map(ticket => ({
+          id: ticket.id,
+          name: ticket.name,
+          price: ticket.price,
+          available: ticket.available_quantity
+        })) : [
           {
             id: '1',
             name: 'Ingresso Geral',
@@ -274,7 +281,12 @@ const EventPage = () => {
           },
           {
             name: 'Ingressos',
-            details: [
+            details: ticketsData && ticketsData.length > 0 ? [
+              `Tipos disponíveis: ${ticketsData.length}`,
+              ...ticketsData.map(ticket => 
+                `${ticket.name}: ${ticket.available_quantity} disponíveis - ${ticket.price > 0 ? `R$ ${ticket.price.toFixed(2)}` : 'Gratuito'}`
+              )
+            ] : [
               `Ingressos disponíveis: ${eventData.available_tickets || 0}`,
               `Total de ingressos: ${eventData.total_tickets || 0}`,
               `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2)}`}`
@@ -298,9 +310,26 @@ const EventPage = () => {
       
       // Processar tickets se existirem
       if (ticketsData && ticketsData.length > 0) {
-        setAvailableTickets(ticketsData);
+        const formattedTickets = ticketsData.map(ticket => ({
+          id: ticket.id,
+          name: ticket.name,
+          price: ticket.price,
+          quantity: ticket.available_quantity,
+          description: ticket.description,
+          area: ticket.area || ticket.name,
+          sector: ticket.sector,
+          benefits: ticket.benefits || [],
+          has_half_price: ticket.has_half_price,
+          min_quantity: ticket.min_quantity || 1,
+          max_quantity: ticket.max_quantity || 10,
+          ticket_type: ticket.ticket_type,
+          status: ticket.status
+        }));
+        setAvailableTickets(formattedTickets);
+        console.log('Tipos de ingressos carregados:', formattedTickets);
       } else {
         setAvailableTickets([]);
+        console.log('Nenhum tipo de ingresso encontrado para este evento');
       }
       
     } catch (error) {
@@ -828,6 +857,13 @@ const EventPage = () => {
             });
           }
         }}
+      />
+
+      {/* Debug Component - remover em produção */}
+      <TicketTypesDebug 
+        tickets={availableTickets}
+        eventId={eventId || ''}
+        isVisible={true}
       />
     </div>
   );
