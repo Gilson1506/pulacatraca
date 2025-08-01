@@ -43,6 +43,8 @@ interface TicketData {
   title: string;
   quantity: number;
   price: number;
+  price_feminine: number;
+  area: string;
   has_half_price: boolean;
   sale_period_type: 'date' | 'batch';
   sale_start_date: string;
@@ -53,6 +55,16 @@ interface TicketData {
   min_quantity: number;
   max_quantity: number;
   description: string;
+  // Campos para lotes
+  batches: {
+    batch_number: number;
+    price_masculine: number;
+    price_feminine: number;
+    sale_start_date: string;
+    sale_start_time: string;
+    sale_end_date: string;
+    sale_end_time: string;
+  }[];
 }
 
 interface EventFormModalProps {
@@ -350,6 +362,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       title: '',
       quantity: 100,
       price: 0,
+      price_feminine: 0,
+      area: 'Pista',
       has_half_price: false,
       sale_period_type: 'date',
       sale_start_date: '',
@@ -359,7 +373,36 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       availability: 'public',
       min_quantity: 1,
       max_quantity: 5,
-      description: ''
+      description: '',
+      batches: [
+        {
+          batch_number: 1,
+          price_masculine: 0,
+          price_feminine: 0,
+          sale_start_date: '',
+          sale_start_time: '',
+          sale_end_date: '',
+          sale_end_time: ''
+        },
+        {
+          batch_number: 2,
+          price_masculine: 0,
+          price_feminine: 0,
+          sale_start_date: '',
+          sale_start_time: '',
+          sale_end_date: '',
+          sale_end_time: ''
+        },
+        {
+          batch_number: 3,
+          price_masculine: 0,
+          price_feminine: 0,
+          sale_start_date: '',
+          sale_start_time: '',
+          sale_end_date: '',
+          sale_end_time: ''
+        }
+      ]
     };
     
     setFormData(prev => ({
@@ -1065,8 +1108,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   const renderStep5 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">5. Ingressos</h3>
-        <p className="text-sm text-gray-600 mb-4">Que tipo de ingresso você deseja criar?</p>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">🎫 Ingressos</h3>
+        <p className="text-sm text-gray-600 mb-4">Escolha o tipo de ingresso que deseja criar</p>
       </div>
 
       {/* Tipo de ingresso */}
@@ -1080,7 +1123,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
             className="mr-2"
           />
-          Ingressos pagos
+          💳 Ingressos pagos
         </label>
         <label className="flex items-center">
           <input
@@ -1091,194 +1134,357 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
             className="mr-2"
           />
-          Ingressos gratuitos
+          🆓 Ingressos gratuitos
         </label>
       </div>
 
       {/* Lista de ingressos */}
       <div className="space-y-6">
         {formData.tickets.map((ticket, index) => (
-          <div key={ticket.id} className="border border-gray-200 rounded-lg p-6 relative">
+          <div key={ticket.id} className="border border-gray-200 rounded-lg p-6 relative bg-gradient-to-r from-pink-50 to-purple-50">
             {formData.tickets.length > 1 && (
               <button
                 type="button"
                 onClick={() => removeTicket(ticket.id)}
-                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                className="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
 
-            <h4 className="text-md font-medium text-gray-800 mb-4">
-              {formData.ticket_type === 'paid' ? 'Criar ingresso pago' : 'Criar ingresso gratuito'}
+            <h4 className="text-md font-medium text-gray-800 mb-4 flex items-center gap-2">
+              ➕ {formData.ticket_type === 'paid' ? 'Criar Ingresso Pago' : 'Criar Ingresso Gratuito'}
             </h4>
 
             {formData.ticket_type === 'paid' && (
-              <p className="text-xs text-gray-500 mb-4">
-                A taxa de serviço é repassada ao comprador, sendo exibida junto com o valor do ingresso
-              </p>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Título do ingresso
-                </label>
-                <input
-                  type="text"
-                  value={ticket.title}
-                  onChange={(e) => updateTicket(ticket.id, { title: e.target.value })}
-                  placeholder="Ingresso único, Meia-Entrada, VIP, etc."
-                  maxLength={45}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {45 - ticket.title.length} caracteres restantes
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4">
+                <p className="text-sm text-blue-800 flex items-center gap-2">
+                  💡 A taxa de serviço é repassada ao comprador, sendo exibida junto com o valor do ingresso
                 </p>
               </div>
+            )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantidade
-                </label>
-                <input
-                  type="number"
-                  value={ticket.quantity}
-                  onChange={(e) => updateTicket(ticket.id, { quantity: parseInt(e.target.value) || 0 })}
-                  placeholder="Ex. 100"
-                  min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-              </div>
+            {/* Título do Ingresso */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                🏷️ Título do Ingresso
+              </label>
+              <input
+                type="text"
+                value={ticket.title}
+                onChange={(e) => updateTicket(ticket.id, { title: e.target.value })}
+                placeholder="Ex: VIP - Área Open Bar"
+                maxLength={45}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Exemplo: Ingresso Único, Meia-Entrada, VIP, Área Premium etc. ({45 - ticket.title.length} caracteres restantes)
+              </p>
+            </div>
+
+            {/* Área do Ingresso */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                🗺️ Área do Ingresso
+              </label>
+              <select
+                value={ticket.area}
+                onChange={(e) => updateTicket(ticket.id, { area: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="Pista">Pista</option>
+                <option value="Área VIP">Área VIP</option>
+                <option value="Camarote">Camarote</option>
+                <option value="Backstage">Backstage</option>
+                <option value="Área Premium">Área Premium</option>
+                <option value="Front Stage">Front Stage</option>
+                <option value="Open Bar">Open Bar</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Exemplo: Pista, Camarote, Área VIP, Backstage
+              </p>
             </div>
 
             {formData.ticket_type === 'paid' && (
+              <>
+                {/* Preços por Gênero */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    👥 Preços por Gênero
+                  </label>
+                  
+                  {ticket.sale_period_type === 'batch' ? (
+                    /* Tabela de Lotes */
+                    <div className="overflow-x-auto">
+                      <table className="w-full border border-gray-300 rounded-lg">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Tipo de Ingresso</th>
+                            <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Preço Masculino (R$)</th>
+                            <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Preço Feminino (R$)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ticket.batches.map((batch, batchIndex) => (
+                            <tr key={batch.batch_number} className={batchIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="border border-gray-300 px-3 py-2">
+                                <span className="font-medium">Lote {batch.batch_number}</span>
+                                {batch.batch_number === 3 && <span className="text-xs text-gray-500"> (opcional)</span>}
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2">
+                                <input
+                                  type="number"
+                                  value={batch.price_masculine}
+                                  onChange={(e) => {
+                                    const newBatches = [...ticket.batches];
+                                    newBatches[batchIndex].price_masculine = parseFloat(e.target.value) || 0;
+                                    updateTicket(ticket.id, { batches: newBatches });
+                                  }}
+                                  step="0.01"
+                                  min="0"
+                                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                                />
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2">
+                                <input
+                                  type="number"
+                                  value={batch.price_feminine}
+                                  onChange={(e) => {
+                                    const newBatches = [...ticket.batches];
+                                    newBatches[batchIndex].price_feminine = parseFloat(e.target.value) || 0;
+                                    updateTicket(ticket.id, { batches: newBatches });
+                                  }}
+                                  step="0.01"
+                                  min="0"
+                                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    /* Preços simples por data */
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Preço Masculino (R$)
+                        </label>
+                        <input
+                          type="number"
+                          value={ticket.price}
+                          onChange={(e) => updateTicket(ticket.id, { price: parseFloat(e.target.value) || 0 })}
+                          step="0.01"
+                          min="0"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Preço Feminino (R$)
+                        </label>
+                        <input
+                          type="number"
+                          value={ticket.price_feminine}
+                          onChange={(e) => updateTicket(ticket.id, { price_feminine: parseFloat(e.target.value) || 0 })}
+                          step="0.01"
+                          min="0"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Período de vendas */}
+                <div className="mb-6">
+                  <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    📅 Período das Vendas
+                  </h5>
+                  <div className="flex gap-4 mb-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name={`sale_period_${ticket.id}`}
+                        value="date"
+                        checked={ticket.sale_period_type === 'date'}
+                        onChange={(e) => updateTicket(ticket.id, { sale_period_type: e.target.value as any })}
+                        className="mr-2"
+                      />
+                      Por data
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name={`sale_period_${ticket.id}`}
+                        value="batch"
+                        checked={ticket.sale_period_type === 'batch'}
+                        onChange={(e) => updateTicket(ticket.id, { sale_period_type: e.target.value as any })}
+                        className="mr-2"
+                      />
+                      Por lote
+                    </label>
+                  </div>
+
+                  {ticket.sale_period_type === 'date' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Data de Início das Vendas *
+                        </label>
+                        <input
+                          type="date"
+                          value={ticket.sale_start_date}
+                          onChange={(e) => updateTicket(ticket.id, { sale_start_date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <input
+                          type="time"
+                          value={ticket.sale_start_time}
+                          onChange={(e) => updateTicket(ticket.id, { sale_start_time: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Data de Término das Vendas *
+                        </label>
+                        <input
+                          type="date"
+                          value={ticket.sale_end_date}
+                          onChange={(e) => updateTicket(ticket.id, { sale_end_date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <input
+                          type="time"
+                          value={ticket.sale_end_time}
+                          onChange={(e) => updateTicket(ticket.id, { sale_end_time: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {ticket.sale_period_type === 'batch' && (
+                    <div className="space-y-4">
+                      <h6 className="text-sm font-medium text-gray-700">📅 Datas dos Lotes</h6>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border border-gray-300 rounded-lg">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Lote</th>
+                              <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Início das Vendas</th>
+                              <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Fim das Vendas</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ticket.batches.map((batch, batchIndex) => (
+                              <tr key={batch.batch_number} className={batchIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="border border-gray-300 px-3 py-2 font-medium">{batch.batch_number}</td>
+                                <td className="border border-gray-300 px-3 py-2">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="date"
+                                      value={batch.sale_start_date}
+                                      onChange={(e) => {
+                                        const newBatches = [...ticket.batches];
+                                        newBatches[batchIndex].sale_start_date = e.target.value;
+                                        updateTicket(ticket.id, { batches: newBatches });
+                                      }}
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                                    />
+                                    <input
+                                      type="time"
+                                      value={batch.sale_start_time}
+                                      onChange={(e) => {
+                                        const newBatches = [...ticket.batches];
+                                        newBatches[batchIndex].sale_start_time = e.target.value;
+                                        updateTicket(ticket.id, { batches: newBatches });
+                                      }}
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="border border-gray-300 px-3 py-2">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="date"
+                                      value={batch.sale_end_date}
+                                      onChange={(e) => {
+                                        const newBatches = [...ticket.batches];
+                                        newBatches[batchIndex].sale_end_date = e.target.value;
+                                        updateTicket(ticket.id, { batches: newBatches });
+                                      }}
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                                    />
+                                    <input
+                                      type="time"
+                                      value={batch.sale_end_time}
+                                      onChange={(e) => {
+                                        const newBatches = [...ticket.batches];
+                                        newBatches[batchIndex].sale_end_time = e.target.value;
+                                        updateTicket(ticket.id, { batches: newBatches });
+                                      }}
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                                    />
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Configurações do Ingresso */}
+            <div className="mb-6">
+              <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                🎟️ Configurações do Ingresso
+              </h5>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor a receber
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantidade total disponível:
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
-                    <input
-                      type="number"
-                      value={ticket.price}
-                      onChange={(e) => updateTicket(ticket.id, { price: parseFloat(e.target.value) || 0 })}
-                      step="0.01"
-                      min="0"
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor do comprador
-                  </label>
-                  <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
-                    R$ {(ticket.price * 1.1).toFixed(2)}
-                  </div>
+                  <input
+                    type="number"
+                    value={ticket.quantity}
+                    onChange={(e) => updateTicket(ticket.id, { quantity: parseInt(e.target.value) || 0 })}
+                    min="1"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
                 </div>
               </div>
-            )}
 
-            {formData.ticket_type === 'paid' && (
-              <div className="mb-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={ticket.has_half_price}
-                    onChange={(e) => updateTicket(ticket.id, { has_half_price: e.target.checked })}
-                    className="mr-2"
-                  />
-                  Criar meia-entrada para este ingresso
-                </label>
-                <p className="text-xs text-gray-500 mt-1">
-                  Saiba mais sobre as políticas de meia-entrada
-                </p>
-              </div>
-            )}
-
-            {/* Período de vendas */}
-            <div className="mb-4">
-              <h5 className="text-sm font-medium text-gray-700 mb-2">Período das vendas deste ingresso:</h5>
-              <div className="flex gap-4 mb-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name={`sale_period_${ticket.id}`}
-                    value="date"
-                    checked={ticket.sale_period_type === 'date'}
-                    onChange={(e) => updateTicket(ticket.id, { sale_period_type: e.target.value as any })}
-                    className="mr-2"
-                  />
-                  Por data
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name={`sale_period_${ticket.id}`}
-                    value="batch"
-                    checked={ticket.sale_period_type === 'batch'}
-                    onChange={(e) => updateTicket(ticket.id, { sale_period_type: e.target.value as any })}
-                    className="mr-2"
-                  />
-                  Por lote
-                </label>
-              </div>
-
-              {ticket.sale_period_type === 'date' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Data de Início das Vendas *
-                    </label>
+              {formData.ticket_type === 'paid' && (
+                <div className="mb-4">
+                  <label className="flex items-center">
                     <input
-                      type="date"
-                      value={ticket.sale_start_date}
-                      onChange={(e) => updateTicket(ticket.id, { sale_start_date: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      type="checkbox"
+                      checked={ticket.has_half_price}
+                      onChange={(e) => updateTicket(ticket.id, { has_half_price: e.target.checked })}
+                      className="mr-2"
                     />
-                    <label className="block text-sm font-medium text-gray-700">
-                      Hora de Início *
-                    </label>
-                    <input
-                      type="time"
-                      value={ticket.sale_start_time}
-                      onChange={(e) => updateTicket(ticket.id, { sale_start_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                    <p className="text-xs text-gray-500">Horário de Brasília</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Data de Término das Vendas *
-                    </label>
-                    <input
-                      type="date"
-                      value={ticket.sale_end_date}
-                      onChange={(e) => updateTicket(ticket.id, { sale_end_date: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                    <label className="block text-sm font-medium text-gray-700">
-                      Hora de Término *
-                    </label>
-                    <input
-                      type="time"
-                      value={ticket.sale_end_time}
-                      onChange={(e) => updateTicket(ticket.id, { sale_end_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                    <p className="text-xs text-gray-500">Horário de Brasília</p>
-                  </div>
+                    Criar meia-entrada? ☑️ Sim
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    <a href="#" className="text-blue-600 hover:underline">Saiba mais sobre as políticas de meia-entrada</a>
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Disponibilidade */}
-            <div className="mb-4">
-              <h5 className="text-sm font-medium text-gray-700 mb-2">Disponibilidade do Ingresso:</h5>
+            <div className="mb-6">
+              <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                🧑‍🤝‍🧑 Disponibilidade
+              </h5>
               <div className="space-y-2">
                 <label className="flex items-center">
                   <input
@@ -1289,7 +1495,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                  Para todo o público
+                  🌐 Para todo o público
                 </label>
                 <label className="flex items-center">
                   <input
@@ -1300,7 +1506,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                  Restrito a convidados
+                  🔒 Restrito a convidados
                 </label>
                 <label className="flex items-center">
                   <input
@@ -1311,18 +1517,20 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                  Para ser adicionado manualmente
+                  ✋ Para ser adicionado manualmente
                 </label>
               </div>
             </div>
 
-            {/* Quantidade por compra */}
-            <div className="mb-4">
-              <h5 className="text-sm font-medium text-gray-700 mb-2">Quantidade permitida por compra</h5>
+            {/* Limites por Compra */}
+            <div className="mb-6">
+              <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                ⚙️ Limites por Compra
+              </h5>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mínima
+                    Mínima:
                   </label>
                   <input
                     type="number"
@@ -1334,7 +1542,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Máxima
+                    Máxima:
                   </label>
                   <input
                     type="number"
@@ -1348,14 +1556,14 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             </div>
 
             {/* Descrição */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição do Ingresso (opcional):
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                📝 Descrição do Ingresso (opcional)
               </label>
               <textarea
                 value={ticket.description}
                 onChange={(e) => updateTicket(ticket.id, { description: e.target.value })}
-                placeholder="Informações adicionais ao nome do ingresso. Ex.: Esse ingresso dá direito a um copo"
+                placeholder="Esse ingresso dá direito a 2 bebidas + copo personalizado."
                 maxLength={100}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
