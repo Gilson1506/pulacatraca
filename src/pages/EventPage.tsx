@@ -3,7 +3,7 @@ import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2,
 import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
-import TicketSelector from '../components/TicketSelector';
+import TicketSelectorModal from '../components/TicketSelectorModal';
 import { supabase } from '../lib/supabase';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
@@ -90,6 +90,7 @@ const EventPage = () => {
 
   const [showImageModal, setShowImageModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState('');
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -629,19 +630,7 @@ const EventPage = () => {
         </div>
       </HeroContainer>
 
-      {/* Seleção de Ingressos */}
-      {availableTickets.length > 0 && (
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <TicketSelector 
-            tickets={availableTickets}
-            onSelectionChange={(ticket, fullQty, halfQty) => {
-              setSelectedTicket(ticket);
-              setTicketQuantity(fullQty);
-              setHalfPriceQuantity(halfQty);
-            }}
-          />
-        </div>
-      )}
+
 
       {/* Botão de compra em desktop */}
       <div className="hidden lg:flex w-full justify-end px-4 lg:pr-16 mt-6 mb-12 relative z-30">
@@ -649,54 +638,13 @@ const EventPage = () => {
           className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
           onClick={() => {
             // Track purchase intent
-            if (event.tickets[0]) {
-              trackPurchaseFlow.purchaseIntent(
-                event.id,
-                event.tickets[0].name,
-                event.tickets[0].price
-              );
-            }
-
-            if (!user) {
-              // Track auth required
-              trackPurchaseFlow.authRequired(event.id, 'unknown');
-              
-              // Usar modal ou página baseado no A/B test
-              if (shouldUseAuthModal()) {
-                setShowLoginModal(true);
-                return;
-              } else {
-                navigate('/auth-required', {
-                  state: {
-                    event: {
-                      id: event.id,
-                      title: event.title,
-                      date: event.date,
-                      location: event.address,
-                      image: event.image,
-                    },
-                    ticket: event.tickets[0],
-                  },
-                });
-                return;
-              }
-            }
-            setLoading(true);
-            setTimeout(() => {
-              setLoading(false);
-              navigate('/checkout', {
-                state: {
-                  event: {
-                    id: event.id,
-                    title: event.title,
-                    date: event.date,
-                    location: event.address,
-                    image: event.image,
-                  },
-                  ticket: event.tickets[0],
-                },
-              });
-            }, 1400);
+            trackPurchaseFlow.purchaseIntent(
+              event.id,
+              'ticket_selection',
+              0
+            );
+            
+            setShowTicketModal(true);
           }}
           disabled={loading}
         >
@@ -747,54 +695,13 @@ const EventPage = () => {
                 className="w-full py-3 px-4 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-md flex items-center justify-center"
                 onClick={() => {
                   // Track purchase intent
-                  if (event.tickets[0]) {
-                    trackPurchaseFlow.purchaseIntent(
-                      event.id,
-                      event.tickets[0].name,
-                      event.tickets[0].price
-                    );
-                  }
-
-                  if (!user) {
-                    // Track auth required
-                    trackPurchaseFlow.authRequired(event.id, 'unknown');
-                    
-                    // Usar modal ou página baseado no A/B test
-                    if (shouldUseAuthModal()) {
-                      setShowLoginModal(true);
-                      return;
-                    } else {
-                      navigate('/auth-required', {
-                        state: {
-                          event: {
-                            id: event.id,
-                            title: event.title,
-                            date: event.date,
-                            location: event.address,
-                            image: event.image,
-                          },
-                          ticket: event.tickets[0],
-                        },
-                      });
-                      return;
-                    }
-                  }
-                  setLoading(true);
-                  setTimeout(() => {
-                    setLoading(false);
-                    navigate('/checkout', {
-                      state: {
-                        event: {
-                          id: event.id,
-                          title: event.title,
-                          date: event.date,
-                          location: event.address,
-                          image: event.image,
-                        },
-                        ticket: event.tickets[0],
-                      },
-                    });
-                  }, 1400);
+                  trackPurchaseFlow.purchaseIntent(
+                    event.id,
+                    'ticket_selection',
+                    0
+                  );
+                  
+                  setShowTicketModal(true);
                 }}
                 disabled={loading}
               >
@@ -899,6 +806,40 @@ const EventPage = () => {
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         eventTitle={event?.title}
+      />
+
+      {/* Ticket Selector Modal */}
+      <TicketSelectorModal
+        isOpen={showTicketModal}
+        onClose={() => setShowTicketModal(false)}
+        tickets={availableTickets}
+        event={{
+          id: event.id,
+          title: event.title,
+          date: event.date,
+          location: event.address,
+          image: event.image
+        }}
+        user={user}
+        onAuthRequired={() => {
+          setShowTicketModal(false);
+          if (shouldUseAuthModal()) {
+            setShowLoginModal(true);
+          } else {
+            navigate('/auth-required', {
+              state: {
+                event: {
+                  id: event.id,
+                  title: event.title,
+                  date: event.date,
+                  location: event.address,
+                  image: event.image,
+                },
+                redirectTo: `/event/${event.id}`
+              },
+            });
+          }
+        }}
       />
     </div>
   );
