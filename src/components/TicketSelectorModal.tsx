@@ -19,6 +19,7 @@ interface TicketData {
   sale_end_date?: string;
   ticket_type?: string;
   status?: string;
+  stripe_price_id?: string;
 }
 
 interface TicketSelectorModalProps {
@@ -52,6 +53,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const [selections, setSelections] = useState<TicketSelection[]>([]);
+  const [processedTickets, setProcessedTickets] = useState<TicketData[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -65,11 +67,19 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
     }
   }, [isOpen]);
 
-  // Inicializar seleções
+  // Inicializar seleções e processar preços
   useEffect(() => {
     if (tickets.length > 0) {
+      // Processar tickets para adicionar preço feminino se não existir
+      const processed = tickets.map(ticket => ({
+        ...ticket,
+        price_feminine: ticket.price_feminine || (ticket.price * 0.9), // 10% desconto feminino por padrão
+        area: ticket.area || ticket.name || 'Ingresso Geral' // Usar nome como área se não definido
+      }));
+      
+      setProcessedTickets(processed);
       setSelections(
-        tickets.map(ticket => ({
+        processed.map(ticket => ({
           ticketId: ticket.id,
           masculineQuantity: 0,
           feminineQuantity: 0
@@ -99,7 +109,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
   const calculateTotal = () => {
     return selections.reduce((total, selection) => {
-      const ticket = tickets.find(t => t.id === selection.ticketId);
+      const ticket = processedTickets.find(t => t.id === selection.ticketId);
       if (!ticket) return total;
       
       const masculineTotal = selection.masculineQuantity * ticket.price;
@@ -131,7 +141,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
       const selectedTickets = selections
         .filter(s => s.masculineQuantity > 0 || s.feminineQuantity > 0)
         .map(selection => {
-          const ticket = tickets.find(t => t.id === selection.ticketId);
+          const ticket = processedTickets.find(t => t.id === selection.ticketId);
           return {
             ticketId: ticket?.id,
             ticketName: ticket?.name,
@@ -139,7 +149,8 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             masculineQuantity: selection.masculineQuantity,
             feminineQuantity: selection.feminineQuantity,
             area: ticket?.area,
-            sector: ticket?.sector
+            sector: ticket?.sector,
+            stripe_price_id: ticket?.stripe_price_id
           };
         });
 
@@ -255,7 +266,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
         {/* Conteúdo Scrollável */}
         <div className="flex-1 overflow-y-auto">
-          {tickets.length === 0 ? (
+          {processedTickets.length === 0 ? (
             <div className="p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <MapPin className="w-8 h-8 text-gray-400" />
@@ -269,7 +280,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             </div>
           ) : (
             <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {tickets.map((ticket, index) => {
+              {processedTickets.map((ticket, index) => {
                 const selection = getSelection(ticket.id);
                 const isAvailable = isTicketAvailable(ticket);
                 
@@ -407,7 +418,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
         </div>
 
         {/* Footer Fixo */}
-        {tickets.length > 0 && (
+        {processedTickets.length > 0 && (
           <div className="sticky bottom-0 bg-gray-200/80 backdrop-blur-md border-t border-gray-300/60 p-3 sm:p-4">
                                         <div className="text-center mb-2 sm:mb-3">
                 <p className="text-lg sm:text-xl font-bold text-gray-900">

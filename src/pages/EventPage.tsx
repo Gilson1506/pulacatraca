@@ -170,23 +170,16 @@ const EventPage = () => {
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
 
-      // Buscar tickets do evento
+      // 🎫 BUSCAR TIPOS DE INGRESSOS DA TABELA EVENTS
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from('tickets')
+        .from('event_ticket_types')
         .select(`
           id,
-          name,
+          ticket_type as name,
           price,
-          price_feminine,
-          area,
-          quantity,
           description,
-          availability,
-          has_half_price,
-          sale_start_date,
-          sale_end_date,
-          min_quantity,
-          max_quantity
+          quantity_available as quantity,
+          stripe_price_id
         `)
         .eq('event_id', eventId)
         .order('price', { ascending: true });
