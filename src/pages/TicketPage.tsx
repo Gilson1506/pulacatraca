@@ -150,7 +150,7 @@ const TicketPage = () => {
       } else if (error.message?.includes('Ingresso não encontrado')) {
         console.log('🎫 Ingresso não existe no banco de dados');
         alert('Este ingresso não foi encontrado. Verifique o link e tente novamente.');
-        navigate('/dashboard');
+        navigate('/profile/tickets');
       } else if (error.message?.includes('não autenticado')) {
         console.log('🔐 Usuário não autenticado');
         alert('Você precisa estar logado para visualizar este ingresso.');
@@ -158,7 +158,7 @@ const TicketPage = () => {
       } else {
         console.log('❓ Erro genérico:', error.message);
         alert(`Erro ao carregar ingresso: ${error.message || 'Erro desconhecido'}`);
-        navigate('/dashboard');
+        navigate('/profile/tickets');
       }
     } finally {
       setIsLoading(false);
@@ -309,10 +309,10 @@ const TicketPage = () => {
             {!ticket ? 'Ingresso não encontrado.' : 'Dados do evento não encontrados.'}
           </p>
           <button 
-            onClick={() => navigate('/dashboard')} 
+            onClick={() => navigate('/profile/tickets')} 
             className="bg-pink-600 text-white px-6 py-2 rounded-lg"
           >
-            Voltar ao Dashboard
+            Voltar para Meus Ingressos
           </button>
         </div>
       </div>
@@ -338,9 +338,9 @@ const TicketPage = () => {
           />
         </div>
 
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-semibold">
+        <button onClick={() => navigate('/profile/tickets')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-semibold">
           <ArrowLeft size={20} />
-          VOLTAR AO DASHBOARD
+          VOLTAR PARA MEUS INGRESSOS
         </button>
 
         {/* Imagem do Evento em Círculo */}
