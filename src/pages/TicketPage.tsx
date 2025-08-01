@@ -324,7 +324,15 @@ const TicketPage = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold">R$ {(ticket.price || 0).toFixed(2)}</p>
-                  <p className="text-pink-100 text-xs">{ticket.name || ticket.ticket_type || 'INGRESSO GERAL'}</p>
+                  <p className="text-pink-100 text-xs">
+                    {ticket.ticket_type_name || ticket.name || ticket.ticket_type || 'INGRESSO GERAL'}
+                    {ticket.ticket_area && ticket.ticket_area !== 'Geral' && ` - ${ticket.ticket_area}`}
+                  </p>
+                  {ticket.gender && ticket.gender !== 'unisex' && (
+                    <p className="text-pink-200 text-xs">
+                      {ticket.gender === 'masculine' ? 'Masculino' : 'Feminino'}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -353,6 +361,51 @@ const TicketPage = () => {
                         <span className="text-gray-600 text-sm">Valor Pago:</span>
                         <span className="font-bold text-green-600 text-sm">R$ {(ticket.price || 0).toFixed(2)}</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Detalhes do Tipo de Ingresso */}
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <h3 className="text-sm font-semibold text-blue-700 mb-2">TIPO DE INGRESSO</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 text-sm">Tipo:</span>
+                        <span className="font-semibold text-sm">
+                          {ticket.ticket_type_name || ticket.name || 'Geral'}
+                        </span>
+                      </div>
+                      {ticket.ticket_area && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 text-sm">Área:</span>
+                          <span className="font-semibold text-sm">{ticket.ticket_area}</span>
+                        </div>
+                      )}
+                      {ticket.ticket_sector && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 text-sm">Setor:</span>
+                          <span className="font-semibold text-sm">{ticket.ticket_sector}</span>
+                        </div>
+                      )}
+                      {ticket.gender && ticket.gender !== 'unisex' && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 text-sm">Gênero:</span>
+                          <span className="font-semibold text-sm">
+                            {ticket.gender === 'masculine' ? 'Masculino' : 'Feminino'}
+                          </span>
+                        </div>
+                      )}
+                      {ticket.has_half_price && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 text-sm">Desconto:</span>
+                          <span className="font-semibold text-sm text-green-600">Meia-entrada</span>
+                        </div>
+                      )}
+                      {ticket.batch_name && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 text-sm">Lote:</span>
+                          <span className="font-semibold text-sm">{ticket.batch_name}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

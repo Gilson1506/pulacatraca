@@ -324,14 +324,14 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
         onClick={onClose}
       />
       
-      {/* Modal Container */}
-      <div 
-        className={`relative bg-gray-100/90 backdrop-blur-sm border border-gray-300/60 rounded-lg shadow-2xl w-full max-w-sm sm:max-w-md max-h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
-          showModal 
-            ? 'translate-y-0 scale-100 opacity-100' 
-            : 'translate-y-8 scale-95 opacity-0'
-        }`}
-      >
+              {/* Modal Container */}
+        <div 
+          className={`relative bg-gray-100/90 backdrop-blur-sm border border-gray-300/60 rounded-lg shadow-2xl w-full max-w-sm sm:max-w-md max-h-[85vh] flex flex-col transform transition-all duration-500 ease-out ${
+            showModal 
+              ? 'translate-y-0 scale-100 opacity-100' 
+              : 'translate-y-8 scale-95 opacity-0'
+          }`}
+        >
         {/* Header */}
         <div className="relative bg-gray-200/80 backdrop-blur-md px-3 sm:px-4 py-3 sm:py-4 border-b border-gray-300/60">
           <div className="absolute inset-0 bg-gray-200/80"></div>
@@ -352,7 +352,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
         </div>
 
         {/* Conteúdo Scrollável */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {processedTickets.length === 0 ? (
             <div className="p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">

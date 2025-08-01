@@ -310,8 +310,14 @@ const CheckoutPage = () => {
                 buyer_id: user.id,
                 user_id: user.id,
                 price: Math.round(selectedTicket.price * 100), // Preço em centavos
+                original_price: Math.round(selectedTicket.price * 100),
                 qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 ticket_type: selectedTicket.ticketName || 'Padrão',
+                ticket_type_name: selectedTicket.ticketName || 'Padrão',
+                ticket_area: selectedTicket.area || 'Geral',
+                ticket_sector: selectedTicket.sector || null,
+                gender: selectedTicket.gender || 'unisex',
+                has_half_price: false,
                 status: 'active',
                 created_at: new Date().toISOString()
               };
@@ -363,8 +369,14 @@ const CheckoutPage = () => {
                   event_id: event.id,
                   user_id: user.id,
                   price: Math.round(selectedTicket.price * 100),
+                  original_price: Math.round(selectedTicket.price * 100),
                   qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   ticket_type: selectedTicket.ticketName || 'Padrão',
+                  ticket_type_name: selectedTicket.ticketName || 'Padrão',
+                  ticket_area: selectedTicket.area || 'Geral',
+                  ticket_sector: selectedTicket.sector || null,
+                  gender: selectedTicket.gender || 'unisex',
+                  has_half_price: false,
                   status: 'active',
                   created_at: new Date().toISOString()
                 };
@@ -406,31 +418,39 @@ const CheckoutPage = () => {
           try {
             const ticketsMinimal = [];
             
-            if (selectedTickets && selectedTickets.length > 0) {
-              selectedTickets.forEach(selectedTicket => {
-                for (let i = 0; i < selectedTicket.quantity; i++) {
-                  const ticketData = {
-                    event_id: event.id,
-                    user_id: user.id,
-                    price: Math.round(selectedTicket.price * 100),
-                    qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    status: 'active'
-                  };
-                  ticketsMinimal.push(ticketData);
-                }
-              });
-            } else if (ticket) {
-              for (let i = 0; i < quantity; i++) {
-                const ticketData = {
-                  event_id: event.id,
-                  user_id: user.id,
-                  price: Math.round((ticket.price || 0) * 100),
-                  qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                  status: 'active'
-                };
-                ticketsMinimal.push(ticketData);
-              }
-            }
+                         if (selectedTickets && selectedTickets.length > 0) {
+               selectedTickets.forEach(selectedTicket => {
+                 for (let i = 0; i < selectedTicket.quantity; i++) {
+                   const ticketData = {
+                     event_id: event.id,
+                     user_id: user.id,
+                     price: Math.round(selectedTicket.price * 100),
+                     original_price: Math.round(selectedTicket.price * 100),
+                     qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                     ticket_type_name: selectedTicket.ticketName || 'Padrão',
+                     ticket_area: selectedTicket.area || 'Geral',
+                     gender: selectedTicket.gender || 'unisex',
+                     status: 'active'
+                   };
+                   ticketsMinimal.push(ticketData);
+                 }
+               });
+             } else if (ticket) {
+               for (let i = 0; i < quantity; i++) {
+                 const ticketData = {
+                   event_id: event.id,
+                   user_id: user.id,
+                   price: Math.round((ticket.price || 0) * 100),
+                   original_price: Math.round((ticket.price || 0) * 100),
+                   qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                   ticket_type_name: ticket.name || 'Padrão',
+                   ticket_area: 'Geral',
+                   gender: 'unisex',
+                   status: 'active'
+                 };
+                 ticketsMinimal.push(ticketData);
+               }
+             }
 
             console.log('🔄 NÍVEL 3: Tentando estrutura mínima...', ticketsMinimal);
 
@@ -452,31 +472,39 @@ const CheckoutPage = () => {
             try {
               const ticketsCore = [];
               
-              if (selectedTickets && selectedTickets.length > 0) {
-                selectedTickets.forEach(selectedTicket => {
-                  for (let i = 0; i < selectedTicket.quantity; i++) {
-                    const ticketData = {
-                      event_id: event.id,
-                      user_id: user.id,
-                      price: Math.round(selectedTicket.price * 100),
-                      qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                      status: 'active'
-                    };
-                    ticketsCore.push(ticketData);
-                  }
-                });
-              } else if (ticket) {
-                for (let i = 0; i < quantity; i++) {
-                  const ticketData = {
-                    event_id: event.id,
-                    user_id: user.id,
-                    price: Math.round((ticket.price || 0) * 100),
-                    qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    status: 'active'
-                  };
-                  ticketsCore.push(ticketData);
-                }
-              }
+                             if (selectedTickets && selectedTickets.length > 0) {
+                 selectedTickets.forEach(selectedTicket => {
+                   for (let i = 0; i < selectedTicket.quantity; i++) {
+                     const ticketData = {
+                       event_id: event.id,
+                       user_id: user.id,
+                       price: Math.round(selectedTicket.price * 100),
+                       original_price: Math.round(selectedTicket.price * 100),
+                       qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                       ticket_type_name: selectedTicket.ticketName || 'Padrão',
+                       ticket_area: selectedTicket.area || 'Geral',
+                       gender: selectedTicket.gender || 'unisex',
+                       status: 'active'
+                     };
+                     ticketsCore.push(ticketData);
+                   }
+                 });
+               } else if (ticket) {
+                 for (let i = 0; i < quantity; i++) {
+                   const ticketData = {
+                     event_id: event.id,
+                     user_id: user.id,
+                     price: Math.round((ticket.price || 0) * 100),
+                     original_price: Math.round((ticket.price || 0) * 100),
+                     qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                     ticket_type_name: ticket.name || 'Padrão',
+                     ticket_area: 'Geral',
+                     gender: 'unisex',
+                     status: 'active'
+                   };
+                   ticketsCore.push(ticketData);
+                 }
+               }
 
               console.log('🔄 NÍVEL 4: Tentando apenas core...', ticketsCore);
 
@@ -508,17 +536,23 @@ const CheckoutPage = () => {
               for (const selectedTicket of selectedTickets) {
                 for (let i = 0; i < selectedTicket.quantity; i++) {
                   ticketIndex++;
-                  const { data: singleTicket, error: singleError } = await supabase
-                    .from('tickets')
-                    .insert({
-                      event_id: event.id,
-                      user_id: user.id,
-                      price: Math.round(selectedTicket.price * 100),
-                      qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                      ticket_type: selectedTicket.ticketName || 'Padrão'
-                    })
-                    .select()
-                    .single();
+                                     const { data: singleTicket, error: singleError } = await supabase
+                     .from('tickets')
+                     .insert({
+                       event_id: event.id,
+                       user_id: user.id,
+                       price: Math.round(selectedTicket.price * 100),
+                       original_price: Math.round(selectedTicket.price * 100),
+                       qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                       ticket_type: selectedTicket.ticketName || 'Padrão',
+                       ticket_type_name: selectedTicket.ticketName || 'Padrão',
+                       ticket_area: selectedTicket.area || 'Geral',
+                       ticket_sector: selectedTicket.sector || null,
+                       gender: selectedTicket.gender || 'unisex',
+                       has_half_price: false
+                     })
+                     .select()
+                     .single();
 
                   if (!singleError && singleTicket) {
                     ticketsForce.push(singleTicket);
@@ -531,17 +565,22 @@ const CheckoutPage = () => {
             } else if (ticket) {
               totalTicketsToCreate = quantity;
               for (let i = 0; i < quantity; i++) {
-                const { data: singleTicket, error: singleError } = await supabase
-                  .from('tickets')
-                  .insert({
-                    event_id: event.id,
-                    user_id: user.id,
-                    price: Math.round((ticket.price || 0) * 100),
-                    qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    ticket_type: ticket.name || 'Padrão'
-                  })
-                  .select()
-                  .single();
+                                 const { data: singleTicket, error: singleError } = await supabase
+                   .from('tickets')
+                   .insert({
+                     event_id: event.id,
+                     user_id: user.id,
+                     price: Math.round((ticket.price || 0) * 100),
+                     original_price: Math.round((ticket.price || 0) * 100),
+                     qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                     ticket_type: ticket.name || 'Padrão',
+                     ticket_type_name: ticket.name || 'Padrão',
+                     ticket_area: 'Geral',
+                     gender: 'unisex',
+                     has_half_price: false
+                   })
+                   .select()
+                   .single();
 
                 if (!singleError && singleTicket) {
                   ticketsForce.push(singleTicket);
