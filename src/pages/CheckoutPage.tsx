@@ -16,7 +16,7 @@ const CheckoutPage = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [eventData, setEventData] = useState(null);
 
-  const { event, ticket } = state || {};
+  const { event, selectedTickets, totalAmount, ticket } = state || {};
 
   useEffect(() => {
     // Verificar autenticação
@@ -32,9 +32,9 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Se não houver dados do evento/ticket, redireciona para a home
-    if (!event || !ticket) {
-      console.warn('Dados do evento ou do ingresso não encontrados. Redirecionando...');
+    // Se não houver dados do evento/tickets, redireciona para a home
+    if (!event || (!selectedTickets && !ticket)) {
+      console.warn('Dados do evento ou dos ingressos não encontrados. Redirecionando...');
       navigate('/');
       return;
     }
@@ -42,7 +42,7 @@ const CheckoutPage = () => {
     // Carregar dados do usuário e evento
     loadUserData();
     loadEventData();
-  }, [event, ticket, navigate, user]);
+  }, [event, selectedTickets, ticket, navigate, user]);
 
   const loadUserData = async () => {
     try {
@@ -102,7 +102,11 @@ const CheckoutPage = () => {
   // delete serviceFee;
   // delete totalServiceFee;
   // Ajustar cálculo do total:
-  const subtotal = ticket ? ticket.price * quantity : 0;
+  // Calcular subtotal baseado nos tickets selecionados
+  const subtotal = selectedTickets && selectedTickets.length > 0 
+    ? selectedTickets.reduce((sum, ticket) => sum + (ticket.price * ticket.quantity), 0)
+    : (ticket ? ticket.price * quantity : 0);
+    
   let taxaCompra = 0;
   if (subtotal < 30) {
     taxaCompra = 3;
@@ -296,19 +300,39 @@ const CheckoutPage = () => {
       // NÍVEL 1: tentar com buyer_id + todas as colunas
       try {
         const ticketsBuyer = [];
-        for (let i = 0; i < quantity; i++) {
-                  const ticketData = {
-          event_id: event.id,
-          buyer_id: user.id,
-          user_id: user.id, // Usar user.id como fallback para constraint NOT NULL
-          price: Math.round((event.price || 0) * 100), // Preço em centavos, obrigatório
-          qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // QR code único
-          ticket_type: ticket.name || 'Padrão',
-          status: 'active', // Tentar com 'active' em vez de 'pending'
-          created_at: new Date().toISOString()
-          // code será gerado automaticamente pelo trigger
-        };
-          ticketsBuyer.push(ticketData);
+        
+        // Usar selectedTickets se disponível, senão fallback para ticket único
+        if (selectedTickets && selectedTickets.length > 0) {
+          selectedTickets.forEach(selectedTicket => {
+            for (let i = 0; i < selectedTicket.quantity; i++) {
+              const ticketData = {
+                event_id: event.id,
+                buyer_id: user.id,
+                user_id: user.id,
+                price: Math.round(selectedTicket.price * 100), // Preço em centavos
+                qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                ticket_type: selectedTicket.ticketName || 'Padrão',
+                status: 'active',
+                created_at: new Date().toISOString()
+              };
+              ticketsBuyer.push(ticketData);
+            }
+          });
+        } else if (ticket) {
+          // Fallback para formato antigo
+          for (let i = 0; i < quantity; i++) {
+            const ticketData = {
+              event_id: event.id,
+              buyer_id: user.id,
+              user_id: user.id,
+              price: Math.round((ticket.price || 0) * 100),
+              qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              ticket_type: ticket.name || 'Padrão',
+              status: 'active',
+              created_at: new Date().toISOString()
+            };
+            ticketsBuyer.push(ticketData);
+          }
         }
 
         console.log('🔄 NÍVEL 1: Tentando criar ingressos com buyer_id...', ticketsBuyer);
@@ -330,17 +354,36 @@ const CheckoutPage = () => {
         // NÍVEL 2: tentar com user_id apenas
         try {
           const ticketsUser = [];
-          for (let i = 0; i < quantity; i++) {
-                      const ticketData = {
-            event_id: event.id,
-            user_id: user.id,
-            price: Math.round((event.price || 0) * 100), // Preço obrigatório
-            qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // QR code único
-            ticket_type: ticket.name || 'Padrão',
-            status: 'active',
-            created_at: new Date().toISOString()
-          };
-            ticketsUser.push(ticketData);
+          
+          // Usar selectedTickets se disponível, senão fallback para ticket único
+          if (selectedTickets && selectedTickets.length > 0) {
+            selectedTickets.forEach(selectedTicket => {
+              for (let i = 0; i < selectedTicket.quantity; i++) {
+                const ticketData = {
+                  event_id: event.id,
+                  user_id: user.id,
+                  price: Math.round(selectedTicket.price * 100),
+                  qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  ticket_type: selectedTicket.ticketName || 'Padrão',
+                  status: 'active',
+                  created_at: new Date().toISOString()
+                };
+                ticketsUser.push(ticketData);
+              }
+            });
+          } else if (ticket) {
+            for (let i = 0; i < quantity; i++) {
+              const ticketData = {
+                event_id: event.id,
+                user_id: user.id,
+                price: Math.round((ticket.price || 0) * 100),
+                qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                ticket_type: ticket.name || 'Padrão',
+                status: 'active',
+                created_at: new Date().toISOString()
+              };
+              ticketsUser.push(ticketData);
+            }
           }
 
           console.log('🔄 NÍVEL 2: Tentando criar ingressos com user_id...', ticketsUser);
@@ -361,17 +404,33 @@ const CheckoutPage = () => {
           
           // NÍVEL 3: apenas colunas obrigatórias
           try {
-                      const ticketsMinimal = [];
-          for (let i = 0; i < quantity; i++) {
-                      const ticketData = {
-            event_id: event.id,
-            user_id: user.id, // Obrigatório
-            price: Math.round((event.price || 0) * 100), // Obrigatório
-            qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Obrigatório
-                         status: 'active'
-          };
-            ticketsMinimal.push(ticketData);
-          }
+            const ticketsMinimal = [];
+            
+            if (selectedTickets && selectedTickets.length > 0) {
+              selectedTickets.forEach(selectedTicket => {
+                for (let i = 0; i < selectedTicket.quantity; i++) {
+                  const ticketData = {
+                    event_id: event.id,
+                    user_id: user.id,
+                    price: Math.round(selectedTicket.price * 100),
+                    qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    status: 'active'
+                  };
+                  ticketsMinimal.push(ticketData);
+                }
+              });
+            } else if (ticket) {
+              for (let i = 0; i < quantity; i++) {
+                const ticketData = {
+                  event_id: event.id,
+                  user_id: user.id,
+                  price: Math.round((ticket.price || 0) * 100),
+                  qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  status: 'active'
+                };
+                ticketsMinimal.push(ticketData);
+              }
+            }
 
             console.log('🔄 NÍVEL 3: Tentando estrutura mínima...', ticketsMinimal);
 
@@ -391,17 +450,33 @@ const CheckoutPage = () => {
             
             // NÍVEL 4: somente event_id
             try {
-                          const ticketsCore = [];
-            for (let i = 0; i < quantity; i++) {
-                          const ticketData = {
-              event_id: event.id,
-              user_id: user.id, // Obrigatório
-              price: Math.round((event.price || 0) * 100), // Obrigatório
-              qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Obrigatório
-              status: 'active' // Obrigatório - estava faltando!
-            };
-              ticketsCore.push(ticketData);
-            }
+              const ticketsCore = [];
+              
+              if (selectedTickets && selectedTickets.length > 0) {
+                selectedTickets.forEach(selectedTicket => {
+                  for (let i = 0; i < selectedTicket.quantity; i++) {
+                    const ticketData = {
+                      event_id: event.id,
+                      user_id: user.id,
+                      price: Math.round(selectedTicket.price * 100),
+                      qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      status: 'active'
+                    };
+                    ticketsCore.push(ticketData);
+                  }
+                });
+              } else if (ticket) {
+                for (let i = 0; i < quantity; i++) {
+                  const ticketData = {
+                    event_id: event.id,
+                    user_id: user.id,
+                    price: Math.round((ticket.price || 0) * 100),
+                    qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    status: 'active'
+                  };
+                  ticketsCore.push(ticketData);
+                }
+              }
 
               console.log('🔄 NÍVEL 4: Tentando apenas core...', ticketsCore);
 
@@ -424,24 +499,56 @@ const CheckoutPage = () => {
             console.log('🔄 NÍVEL 5: FORÇA BRUTA - inserindo um por vez com event_id...');
             
             const ticketsForce = [];
-            for (let i = 0; i < quantity; i++) {
-              // Tentar inserir cada ingresso individualmente COM event_id obrigatório
-              const { data: singleTicket, error: singleError } = await supabase
-                .from('tickets')
-                .insert({
-                  event_id: event.id,  // Obrigatório
-                  user_id: user.id,    // Obrigatório
-                  price: Math.round((event.price || 0) * 100), // Obrigatório
-                  qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` // Obrigatório
-                })
-                .select()
-                .single();
+            let totalTicketsToCreate = 0;
+            
+            if (selectedTickets && selectedTickets.length > 0) {
+              totalTicketsToCreate = selectedTickets.reduce((sum, ticket) => sum + ticket.quantity, 0);
+              let ticketIndex = 0;
+              
+              for (const selectedTicket of selectedTickets) {
+                for (let i = 0; i < selectedTicket.quantity; i++) {
+                  ticketIndex++;
+                  const { data: singleTicket, error: singleError } = await supabase
+                    .from('tickets')
+                    .insert({
+                      event_id: event.id,
+                      user_id: user.id,
+                      price: Math.round(selectedTicket.price * 100),
+                      qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      ticket_type: selectedTicket.ticketName || 'Padrão'
+                    })
+                    .select()
+                    .single();
 
-              if (!singleError && singleTicket) {
-                ticketsForce.push(singleTicket);
-                console.log(`✅ Ingresso ${i + 1}/${quantity} criado`);
-              } else {
-                console.log(`❌ Erro no ingresso ${i + 1}:`, singleError);
+                  if (!singleError && singleTicket) {
+                    ticketsForce.push(singleTicket);
+                    console.log(`✅ Ingresso ${ticketIndex}/${totalTicketsToCreate} criado (${selectedTicket.ticketName})`);
+                  } else {
+                    console.log(`❌ Erro no ingresso ${ticketIndex}:`, singleError);
+                  }
+                }
+              }
+            } else if (ticket) {
+              totalTicketsToCreate = quantity;
+              for (let i = 0; i < quantity; i++) {
+                const { data: singleTicket, error: singleError } = await supabase
+                  .from('tickets')
+                  .insert({
+                    event_id: event.id,
+                    user_id: user.id,
+                    price: Math.round((ticket.price || 0) * 100),
+                    qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    ticket_type: ticket.name || 'Padrão'
+                  })
+                  .select()
+                  .single();
+
+                if (!singleError && singleTicket) {
+                  ticketsForce.push(singleTicket);
+                  console.log(`✅ Ingresso ${i + 1}/${quantity} criado`);
+                } else {
+                  console.log(`❌ Erro no ingresso ${i + 1}:`, singleError);
+                }
               }
             }
 
@@ -573,23 +680,66 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
                 </div>
               </div>
 
-              {/* Ticket Details & Quantity */}
+              {/* Selected Tickets Details */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-gray-700 drop-shadow-sm">{ticket.name}</h3>
-                    <p className="text-lg font-bold text-pink-600 drop-shadow-sm">R$ {ticket.price.toFixed(2)}</p>
+                <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Ingressos Selecionados</h2>
+                
+                {selectedTickets && selectedTickets.length > 0 ? (
+                  <div className="space-y-4">
+                    {selectedTickets.map((selectedTicket, index) => (
+                      <div key={index} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-700">{selectedTicket.ticketName}</h3>
+                          <p className="text-sm text-gray-600">
+                            {selectedTicket.area && `📍 ${selectedTicket.area}`}
+                            {selectedTicket.sector && ` • ${selectedTicket.sector}`}
+                          </p>
+                          <p className="text-lg font-bold text-pink-600">
+                            R$ {selectedTicket.price.toFixed(2)}
+                            {selectedTicket.gender === 'feminine' && ' (Feminino)'}
+                            {selectedTicket.gender === 'masculine' && ' (Masculino)'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm text-gray-600">Quantidade:</span>
+                          <div className="text-lg font-bold text-gray-800">{selectedTicket.quantity}</div>
+                          <div className="text-sm text-gray-600">
+                            Subtotal: R$ {(selectedTicket.price * selectedTicket.quantity).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-700">Total:</span>
+                        <span className="text-2xl font-bold text-pink-600">
+                          R$ {totalAmount ? totalAmount.toFixed(2) : 
+                              selectedTickets.reduce((sum, ticket) => sum + (ticket.price * ticket.quantity), 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 bg-gray-100 rounded-full p-1">
-                    <button onClick={() => handleQuantityChange(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="font-bold text-lg w-8 text-center">{quantity}</span>
-                    <button onClick={() => handleQuantityChange(1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                      <Plus className="h-4 w-4" />
-                    </button>
+                ) : ticket ? (
+                  // Fallback para o formato antigo
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold text-gray-700 drop-shadow-sm">{ticket.name}</h3>
+                      <p className="text-lg font-bold text-pink-600 drop-shadow-sm">R$ {ticket.price.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center gap-3 bg-gray-100 rounded-full p-1">
+                      <button onClick={() => handleQuantityChange(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="font-bold text-lg w-8 text-center">{quantity}</span>
+                      <button onClick={() => handleQuantityChange(1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-gray-500">Nenhum ingresso selecionado</p>
+                )}
               </div>
 
               {/* Payment Method */}

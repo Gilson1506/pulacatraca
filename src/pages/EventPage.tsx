@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
 import TicketSelectorModal from '../components/TicketSelectorModal';
-import TicketTypesDebug from '../components/TicketTypesDebug';
+
 import { supabase } from '../lib/supabase';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
@@ -877,12 +877,6 @@ const EventPage = () => {
         }}
       />
 
-      {/* Debug Component - remover em produção */}
-      <TicketTypesDebug 
-        tickets={availableTickets}
-        eventId={eventId || ''}
-        isVisible={true}
-      />
     </div>
   );
 };
