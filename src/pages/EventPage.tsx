@@ -171,13 +171,13 @@ const EventPage = () => {
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .single();
 
-      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
+      // 🎫 BUSCAR TIPOS DE INGRESSOS AVANÇADOS DO EVENTO
       const { data: ticketsData, error: ticketsError } = await supabase
-        .from('event_ticket_types')
+        .from('ticket_types_with_batches')
         .select('*')
         .eq('event_id', eventId)
         .eq('status', 'active')
-        .order('price', { ascending: true });
+        .order('price_masculine', { ascending: true });
 
       if (error) {
         console.error('EventPage - Erro ao buscar evento:', error); // Log para debug
@@ -248,9 +248,17 @@ const EventPage = () => {
         image: eventData.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDgwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
         tickets: ticketsData && ticketsData.length > 0 ? ticketsData.map(ticket => ({
           id: ticket.id,
-          name: ticket.name,
-          price: ticket.price,
-          available: ticket.available_quantity
+          name: ticket.title || ticket.name,
+          price: ticket.price_masculine,
+          price_feminine: ticket.price_feminine,
+          available: ticket.available_quantity,
+          area: ticket.area,
+          description: ticket.description,
+          has_half_price: ticket.has_half_price,
+          min_quantity: ticket.min_quantity,
+          max_quantity: ticket.max_quantity,
+          batches: ticket.batches || [],
+          current_batch: ticket.current_batch || null
         })) : [
           {
             id: '1',
@@ -283,9 +291,12 @@ const EventPage = () => {
             name: 'Ingressos',
             details: ticketsData && ticketsData.length > 0 ? [
               `Tipos disponíveis: ${ticketsData.length}`,
-              ...ticketsData.map(ticket => 
-                `${ticket.name}: ${ticket.available_quantity} disponíveis - ${ticket.price > 0 ? `R$ ${ticket.price.toFixed(2)}` : 'Gratuito'}`
-              )
+              ...ticketsData.map(ticket => {
+                const priceText = ticket.price_masculine > 0 
+                  ? `Masc: R$ ${ticket.price_masculine.toFixed(2)} | Fem: R$ ${ticket.price_feminine.toFixed(2)}`
+                  : 'Gratuito';
+                return `${ticket.title || ticket.name} (${ticket.area}): ${ticket.available_quantity} disponíveis - ${priceText}`;
+              })
             ] : [
               `Ingressos disponíveis: ${eventData.available_tickets || 0}`,
               `Total de ingressos: ${eventData.total_tickets || 0}`,
@@ -312,18 +323,23 @@ const EventPage = () => {
       if (ticketsData && ticketsData.length > 0) {
         const formattedTickets = ticketsData.map(ticket => ({
           id: ticket.id,
-          name: ticket.name,
-          price: ticket.price,
+          name: ticket.title || ticket.name,
+          price: ticket.price_masculine,
+          price_feminine: ticket.price_feminine,
           quantity: ticket.available_quantity,
           description: ticket.description,
-          area: ticket.area || ticket.name,
+          area: ticket.area,
           sector: ticket.sector,
           benefits: ticket.benefits || [],
           has_half_price: ticket.has_half_price,
           min_quantity: ticket.min_quantity || 1,
-          max_quantity: ticket.max_quantity || 10,
+          max_quantity: ticket.max_quantity || 5,
           ticket_type: ticket.ticket_type,
-          status: ticket.status
+          status: ticket.status,
+          batches: ticket.batches || [],
+          current_batch: ticket.current_batch || null,
+          sale_period_type: ticket.sale_period_type,
+          availability: ticket.availability
         }));
         setAvailableTickets(formattedTickets);
         console.log('Tipos de ingressos carregados:', formattedTickets);

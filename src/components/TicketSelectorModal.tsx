@@ -20,6 +20,23 @@ interface TicketData {
   ticket_type?: string;
   status?: string;
   stripe_price_id?: string;
+  batches?: BatchData[];
+  current_batch?: BatchData | null;
+  sale_period_type?: 'date' | 'batch';
+  availability?: 'public' | 'restricted' | 'manual';
+}
+
+interface BatchData {
+  id: string;
+  batch_number: number;
+  batch_name?: string;
+  price_masculine: number;
+  price_feminine: number;
+  quantity: number;
+  available_quantity: number;
+  sale_start_date?: string;
+  sale_end_date?: string;
+  status: string;
 }
 
 interface TicketSelectorModalProps {
@@ -71,11 +88,23 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
   useEffect(() => {
     if (tickets.length > 0) {
       // Processar tickets para adicionar preço feminino se não existir
-      const processed = tickets.map(ticket => ({
-        ...ticket,
-        price_feminine: ticket.price_feminine || (ticket.price * 0.9), // 10% desconto feminino por padrão
-        area: ticket.area || ticket.name || 'Ingresso Geral' // Usar nome como área se não definido
-      }));
+      const processed = tickets.map(ticket => {
+        let currentPrice = ticket.price;
+        let currentPriceFeminine = ticket.price_feminine || (ticket.price * 0.9);
+        
+        // Se há lotes, usar preço do lote atual
+        if (ticket.sale_period_type === 'batch' && ticket.current_batch) {
+          currentPrice = ticket.current_batch.price_masculine;
+          currentPriceFeminine = ticket.current_batch.price_feminine;
+        }
+        
+        return {
+          ...ticket,
+          price: currentPrice,
+          price_feminine: currentPriceFeminine,
+          area: ticket.area || ticket.name || 'Ingresso Geral'
+        };
+      });
       
       setProcessedTickets(processed);
       setSelections(
@@ -326,6 +355,21 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                                   {benefit}
                                 </span>
                               ))}
+                            </div>
+                          )}
+                          
+                          {/* Informações sobre lotes */}
+                          {ticket.sale_period_type === 'batch' && ticket.current_batch && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <span className="text-blue-700 text-xs font-medium">
+                                  {ticket.current_batch.batch_name || `Lote ${ticket.current_batch.batch_number}`}
+                                </span>
+                              </div>
+                              <p className="text-blue-600 text-xs mt-1">
+                                {ticket.current_batch.available_quantity} de {ticket.current_batch.quantity} disponíveis
+                              </p>
                             </div>
                           )}
                         </div>

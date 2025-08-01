@@ -323,9 +323,12 @@ const OrganizerEvents = () => {
 
   const handleSubmitEvent = async (eventData: Event) => {
     try {
+      console.log('🎫 Dados do evento recebidos:', eventData);
+      console.log('🎫 Tipos de ingressos:', eventData.ticketTypes);
+
       if (selectedEvent) {
-        // Edição - usar função SQL personalizada
-        const { error } = await supabase.rpc('update_event_with_ticket_types', {
+        // Edição - usar função SQL avançada
+        const { error } = await supabase.rpc('update_event_with_advanced_ticket_types', {
           event_id_param: eventData.id,
           event_data: {
             title: eventData.name,
@@ -340,25 +343,37 @@ const OrganizerEvents = () => {
             total_tickets: eventData.totalTickets
           },
           ticket_types_data: eventData.ticketTypes.map(ticket => ({
+            title: ticket.name,
             name: ticket.name,
             description: ticket.description || '',
-            price: ticket.price,
+            area: ticket.area || 'Pista',
+            price_masculine: ticket.price,
+            price_feminine: ticket.price_feminine || ticket.price * 0.9,
             quantity: ticket.quantity,
-            min_quantity: 1,
-            max_quantity: 10,
-            has_half_price: false
+            min_quantity: ticket.min_quantity || 1,
+            max_quantity: ticket.max_quantity || 5,
+            has_half_price: ticket.has_half_price || false,
+            sale_period_type: ticket.sale_period_type || 'date',
+            availability: ticket.availability || 'public',
+            service_fee_type: 'buyer',
+            sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time || '00:00'}:00` : null,
+            sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time || '23:59'}:00` : null,
+            batches: ticket.batches || []
           }))
         });
 
         if (error) {
-          console.error('Erro ao atualizar evento com tipos de ingressos:', error);
+          console.error('❌ Erro ao atualizar evento com tipos de ingressos:', error);
           throw error;
         }
       } else {
-        // Criação - usar função SQL personalizada
+        // Criação - usar função SQL avançada
         const { data: userData } = await supabase.auth.getUser();
-        const { data: eventId, error } = await supabase.rpc('insert_event_with_ticket_types', {
-          event_data: {
+        
+        // Primeiro, criar o evento básico
+        const { data: event, error: eventError } = await supabase
+          .from('events')
+          .insert({
             title: eventData.name,
             description: eventData.description,
             start_date: `${eventData.date}T${eventData.time}:00`,
@@ -371,31 +386,62 @@ const OrganizerEvents = () => {
             available_tickets: eventData.totalTickets,
             total_tickets: eventData.totalTickets,
             status: 'pending'
-          },
-          ticket_types_data: eventData.ticketTypes.map(ticket => ({
-            name: ticket.name,
-            description: ticket.description || '',
-            price: ticket.price,
-            quantity: ticket.quantity,
-            min_quantity: 1,
-            max_quantity: 10,
-            has_half_price: false
-          }))
-        });
+          })
+          .select()
+          .single();
 
-        if (error) {
-          console.error('Erro ao criar evento com tipos de ingressos:', error);
-          throw error;
+        if (eventError) {
+          console.error('❌ Erro ao criar evento:', eventError);
+          throw eventError;
         }
 
-        console.log('Evento criado com sucesso. ID:', eventId);
+        console.log('✅ Evento criado:', event);
+
+        // Depois, criar os tipos de ingressos
+        if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
+          for (const ticket of eventData.ticketTypes) {
+            console.log('🎫 Criando tipo de ingresso:', ticket);
+            
+            const { data: ticketType, error: ticketError } = await supabase.rpc('create_ticket_type_with_batches', {
+              ticket_data: {
+                event_id: event.id,
+                title: ticket.name,
+                name: ticket.name,
+                description: ticket.description || '',
+                area: ticket.area || 'Pista',
+                price_masculine: ticket.price,
+                price_feminine: ticket.price_feminine || ticket.price * 0.9,
+                quantity: ticket.quantity,
+                min_quantity: ticket.min_quantity || 1,
+                max_quantity: ticket.max_quantity || 5,
+                has_half_price: ticket.has_half_price || false,
+                sale_period_type: ticket.sale_period_type || 'date',
+                availability: ticket.availability || 'public',
+                service_fee_type: 'buyer',
+                sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time || '00:00'}:00` : null,
+                sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time || '23:59'}:00` : null
+              },
+              batches_data: ticket.batches || []
+            });
+
+            if (ticketError) {
+              console.error('❌ Erro ao criar tipo de ingresso:', ticketError);
+              throw ticketError;
+            }
+
+            console.log('✅ Tipo de ingresso criado:', ticketType);
+          }
+        }
+
+        console.log('✅ Evento criado com sucesso. ID:', event.id);
       }
 
       await fetchEvents();
       setSelectedEvent(undefined);
       setShowEventFormModal(false);
+      alert('Evento salvo com sucesso!');
     } catch (error) {
-      console.error('Erro ao salvar evento:', error);
+      console.error('❌ Erro ao salvar evento:', error);
       alert('Erro ao salvar evento. Verifique os dados e tente novamente.');
     }
   };
