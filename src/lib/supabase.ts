@@ -448,6 +448,7 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
       
       console.log('🔍 createTicketUser - Dados a inserir:', insertData);
       
+      // Remover geração manual de QR Code - deixar o trigger cuidar
       const { data: newTicketUser, error: userError } = await supabase
         .from('ticket_users')
         .insert([insertData])
@@ -467,14 +468,12 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
       throw error;
     }
 
-    // Atualizar o ingresso com o ticket_user_id e QR code profissional
-    const professionalCode = generateTicketCode();
-    const qrCode = `TKT-${professionalCode}-${ticketUser.id.substring(0, 8).toUpperCase()}`;
+    // Atualizar o ingresso com o ticket_user_id (sem QR code manual)
     const { data: updatedTicket, error: updateError } = await supabase
       .from('tickets')
       .update({ 
-        ticket_user_id: ticketUser.id,
-        qr_code: qrCode
+        ticket_user_id: ticketUser.id
+        // Remover qr_code daqui, será gerado pelo trigger se necessário
       })
       .eq('id', ticketId)
       .eq('user_id', user.id)
