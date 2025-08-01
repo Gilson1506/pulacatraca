@@ -377,6 +377,18 @@ const TicketPage = () => {
           <div ref={ticketRef} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             {/* Header com gradiente */}
             <div className="bg-gradient-to-r from-pink-600 to-rose-700 text-white p-4">
+              {/* Logo centralizada no topo */}
+              <div className="flex justify-center mb-3">
+                <img 
+                  src="/logo2.png" 
+                  alt="Logo PULACATRACA"
+                  className="h-8 w-auto object-contain opacity-90"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+              
               <div className="flex justify-between items-center">
                 <div>
                   <h1 className="text-xl font-bold">{ticket.event?.name || 'EVENTO'}</h1>
@@ -399,18 +411,6 @@ const TicketPage = () => {
 
             {/* Corpo do ingresso */}
             <div className="p-4">
-              {/* Logo do App Centralizada - Mesma do Header da EventPage */}
-              <div className="flex justify-center mb-6">
-                <img 
-                  src="/logo2.png" 
-                  alt="Logo PULACATRACA"
-                  className="h-16 w-auto object-contain opacity-90"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Detalhes do Evento */}
                 <div className="space-y-3">
