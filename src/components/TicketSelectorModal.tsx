@@ -195,23 +195,23 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
   };
 
   const getAreaColors = (area?: string) => {
-    if (!area) return 'bg-white/5 border-gray-300/50';
+    if (!area) return 'bg-gray-50/80 border-gray-300/60';
     if (area.toLowerCase().includes('premium') || area.toLowerCase().includes('vip')) {
-      return 'bg-yellow-500/10 border-yellow-400/60';
+      return 'bg-yellow-50/80 border-yellow-400/60';
     }
     if (area.toLowerCase().includes('front') || area.toLowerCase().includes('stage')) {
-      return 'bg-purple-500/10 border-purple-400/60';
+      return 'bg-purple-50/80 border-purple-400/60';
     }
     if (area.toLowerCase().includes('camarote')) {
-      return 'bg-green-500/10 border-green-400/60';
+      return 'bg-green-50/80 border-green-400/60';
     }
     if (area.toLowerCase().includes('backstage')) {
-      return 'bg-red-500/10 border-red-400/60';
+      return 'bg-red-50/80 border-red-400/60';
     }
     if (area.toLowerCase().includes('open bar')) {
-      return 'bg-orange-500/10 border-orange-400/60';
+      return 'bg-orange-50/80 border-orange-400/60';
     }
-    return 'bg-blue-500/10 border-blue-400/60';
+    return 'bg-blue-50/80 border-blue-400/60';
   };
 
   if (!isOpen) return null;
@@ -228,27 +228,27 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
       
       {/* Modal Container */}
       <div 
-        className={`relative bg-pink-500/15 backdrop-blur-sm border border-pink-400/40 rounded-lg shadow-2xl w-full max-w-md h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
+        className={`relative bg-gray-100/90 backdrop-blur-sm border border-gray-300/60 rounded-lg shadow-2xl w-full max-w-sm sm:max-w-md h-[80vh] sm:h-[85vh] overflow-hidden transform transition-all duration-500 ease-out ${
           showModal 
             ? 'translate-y-0 scale-100 opacity-100' 
             : 'translate-y-8 scale-95 opacity-0'
         }`}
       >
-        {/* Header transparente */}
-        <div className="relative bg-pink-600/25 backdrop-blur-md px-4 py-4 border-b border-pink-400/40">
-          <div className="absolute inset-0 bg-pink-600/25"></div>
+        {/* Header */}
+        <div className="relative bg-gray-200/80 backdrop-blur-md px-3 sm:px-4 py-3 sm:py-4 border-b border-gray-300/60">
+          <div className="absolute inset-0 bg-gray-200/80"></div>
           
-                      <div className="relative flex items-center justify-between text-white">
+                                  <div className="relative flex items-center justify-between text-gray-800">
               <div>
-                <h2 className="text-lg font-bold text-white drop-shadow-lg">Selecione o ingresso</h2>
-                <p className="text-pink-100 text-xs mt-1 drop-shadow-md">{event.title}</p>
+                <h2 className="text-base sm:text-lg font-bold text-gray-800">Selecione o ingresso</h2>
+                <p className="text-gray-600 text-xs mt-1">{event.title}</p>
               </div>
-            
-                          <button
+              
+              <button
                 onClick={onClose}
-                className="p-2 hover:bg-pink-500/20 rounded-sm transition-colors backdrop-blur-sm"
+                className="p-1.5 sm:p-2 hover:bg-gray-300/50 rounded-sm transition-colors"
               >
-                <X className="w-6 h-6 text-white drop-shadow-lg" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
               </button>
           </div>
         </div>
@@ -268,7 +268,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
               </p>
             </div>
           ) : (
-            <div className="p-4 space-y-4">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               {tickets.map((ticket, index) => {
                 const selection = getSelection(ticket.id);
                 const isAvailable = isTicketAvailable(ticket);
@@ -282,25 +282,25 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                     style={{ transitionDelay: `${index * 100}ms` }}
                   >
                     {/* Área/Setor Header */}
-                    <div className={`${getAreaColors(ticket.area)} backdrop-blur-md rounded-sm p-3 mb-3 border`}>
+                    <div className={`${getAreaColors(ticket.area)} backdrop-blur-md rounded-sm p-2 sm:p-3 mb-2 sm:mb-3 border`}>
                       <div className="flex items-start space-x-3">
-                                                  <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
+                                                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
                             {getAreaIcon(ticket.area)}
                           </div>
                         
                         <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-lg drop-shadow-sm">
+                          <h3 className="font-bold text-gray-900 text-sm sm:text-lg">
                             {ticket.area || ticket.name || 'Ingresso'}
                           </h3>
                           
                           {ticket.sector && (
-                            <p className="text-purple-600 font-medium drop-shadow-sm">
+                            <p className="text-purple-600 font-medium text-xs sm:text-sm">
                               {ticket.sector}
                             </p>
                           )}
                           
                           {ticket.description && (
-                            <p className="text-gray-700 text-sm mt-1 drop-shadow-sm">
+                            <p className="text-gray-700 text-xs sm:text-sm mt-1">
                               {ticket.description}
                             </p>
                           )}
@@ -329,14 +329,14 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
                     {/* Opções de Ingressos */}
                     {isAvailable && (
-                      <div className="space-y-3 pl-2">
-                                                  {/* Feminino */}
-                          <div className="flex items-center justify-between p-3 bg-pink-500/10 backdrop-blur-sm border border-pink-300/50 rounded-sm hover:border-pink-400/70 transition-colors">
+                      <div className="space-y-2 sm:space-y-3 pl-1 sm:pl-2">
+                                                                            {/* Feminino */}
+                           <div className="flex items-center justify-between p-2 sm:p-3 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-sm hover:border-gray-400/70 transition-colors">
                           <div className="flex-1">
-                                                          <h4 className="font-semibold text-gray-900 drop-shadow-sm">
+                                                          <h4 className="font-semibold text-gray-900 text-xs sm:text-sm">
                                 Feminino - {ticket.area || ticket.name}
                               </h4>
-                              <p className="text-gray-800 font-bold text-lg drop-shadow-sm">
+                              <p className="text-gray-800 font-bold text-sm sm:text-lg">
                                 R$ {(ticket.price_feminine || ticket.price).toFixed(2).replace('.', ',')}
                               </p>
                           </div>
@@ -364,13 +364,13 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                           </div>
                         </div>
 
-                                                  {/* Masculino */}
-                          <div className="flex items-center justify-between p-3 bg-pink-500/10 backdrop-blur-sm border border-pink-300/50 rounded-sm hover:border-pink-400/70 transition-colors">
+                                                                            {/* Masculino */}
+                           <div className="flex items-center justify-between p-2 sm:p-3 bg-white/50 backdrop-blur-sm border border-gray-300/50 rounded-sm hover:border-gray-400/70 transition-colors">
                           <div className="flex-1">
-                                                          <h4 className="font-semibold text-gray-900 drop-shadow-sm">
+                                                          <h4 className="font-semibold text-gray-900 text-xs sm:text-sm">
                                 Masculino - {ticket.area || ticket.name}
                               </h4>
-                              <p className="text-gray-800 font-bold text-lg drop-shadow-sm">
+                              <p className="text-gray-800 font-bold text-sm sm:text-lg">
                                 R$ {ticket.price.toFixed(2).replace('.', ',')}
                               </p>
                           </div>
@@ -408,16 +408,16 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
 
         {/* Footer Fixo */}
         {tickets.length > 0 && (
-          <div className="sticky bottom-0 bg-pink-500/15 backdrop-blur-md border-t border-pink-400/40 p-4">
-                                        <div className="text-center mb-3">
-                <p className="text-xl font-bold text-gray-900 drop-shadow-md">
+          <div className="sticky bottom-0 bg-gray-200/80 backdrop-blur-md border-t border-gray-300/60 p-3 sm:p-4">
+                                        <div className="text-center mb-2 sm:mb-3">
+                <p className="text-lg sm:text-xl font-bold text-gray-900">
                   Total: R$ {calculateTotal().toFixed(2).replace('.', ',')}
                 </p>
-                <p className="text-xs text-gray-700 drop-shadow-sm">
+                <p className="text-xs text-gray-700">
                   + Taxa Adm.
                 </p>
                 {getTotalQuantity() > 0 && (
-                  <p className="text-xs text-gray-700 drop-shadow-sm mt-1">
+                  <p className="text-xs text-gray-700 mt-1">
                     {getTotalQuantity()} ingresso{getTotalQuantity() > 1 ? 's' : ''} selecionado{getTotalQuantity() > 1 ? 's' : ''}
                   </p>
                 )}
@@ -426,7 +426,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             <button
               onClick={handleFinalize}
               disabled={loading || getTotalQuantity() === 0}
-              className="w-full bg-pink-600/80 backdrop-blur-sm text-white py-3 px-4 rounded-sm font-bold text-base hover:bg-pink-700/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center drop-shadow-lg"
+              className="w-full bg-gray-800 text-white py-3 px-3 sm:px-4 rounded-sm font-bold text-sm sm:text-base hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
                 <div className="flex items-center space-x-2">
