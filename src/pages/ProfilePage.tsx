@@ -111,13 +111,13 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
           payment_method,
           payment_status,
           created_at,
-          ticket:tickets!ticket_users_ticket_id_fkey(
+          ticket:tickets(
             id,
             name,
             area,
             ticket_type
           ),
-          event:events!ticket_users_event_id_fkey(
+          event:events(
             title,
             description,
             start_date,
@@ -144,7 +144,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         .from('tickets')
         .select(`
           *,
-          event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
+          event:events(title, description, start_date, location, image, price)
         `)
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false });
@@ -156,7 +156,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
           .from('tickets')
           .select(`
             *,
-            event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
+            event:events(title, description, start_date, location, image, price)
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
@@ -168,7 +168,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
             .from('transactions')
             .select(`
               *,
-              event:events!transactions_event_id_fkey(title, description, start_date, location, image, price)
+              event:events(title, description, start_date, location, image, price)
             `)
             .eq('buyer_id', user.id)
             .order('created_at', { ascending: false });
@@ -311,7 +311,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
           total_price,
           purchase_date,
           created_at,
-          ticket:tickets!ticket_users_ticket_id_fkey(
+          ticket:tickets(
             id,
             name,
             code,
@@ -319,7 +319,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
             area,
             ticket_type
           ),
-          event:events!ticket_users_event_id_fkey(
+          event:events(
             title,
             description,
             start_date,
@@ -347,7 +347,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
         .from('tickets')
         .select(`
           *,
-          event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
+          event:events(title, description, start_date, location, image, price)
         `)
         .eq('buyer_id', user.id)
         .in('status', ['active', 'used'])
@@ -360,7 +360,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
           .from('tickets')
           .select(`
             *,
-            event:events!tickets_event_id_fkey(title, description, start_date, location, image, price)
+            event:events(title, description, start_date, location, image, price)
           `)
           .eq('user_id', user.id)
           .in('status', ['active', 'used'])
