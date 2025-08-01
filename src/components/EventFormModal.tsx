@@ -111,7 +111,27 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     
     // Seção 5
     ticket_type: 'paid',
-    tickets: []
+    tickets: [
+      {
+        id: 'ticket_default',
+        title: 'Ingresso Geral',
+        quantity: 100,
+        price: 0,
+        price_feminine: 0,
+        area: 'Pista',
+        has_half_price: false,
+        sale_period_type: 'date',
+        sale_start_date: '',
+        sale_start_time: '',
+        sale_end_date: '',
+        sale_end_time: '',
+        availability: 'public',
+        min_quantity: 1,
+        max_quantity: 5,
+        description: '',
+        batches: []
+      }
+    ]
   });
 
   const [imagePreview, setImagePreview] = useState<string>('');
@@ -435,6 +455,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
     try {
       setIsSubmitting(true);
+      console.log('🎫 EventFormModal - handleSubmit iniciado');
+      console.log('🎫 EventFormModal - formData completo:', formData);
 
       // Validações básicas
       if (!formData.title.trim()) {
@@ -495,34 +517,43 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       if (eventError) throw eventError;
 
       // Criar ingressos
+      console.log('🎫 EventFormModal - Tickets no formData:', formData.tickets);
+      
       if (formData.tickets.length > 0) {
         const ticketsData = formData.tickets.map(ticket => ({
           event_id: event.id,
+          title: ticket.title,
           name: ticket.title,
           price: ticket.price,
-          price_feminine: ticket.price_feminine || ticket.price,
+          price_masculine: ticket.price,
+          price_feminine: ticket.price_feminine || ticket.price * 0.9,
           area: ticket.area || 'Pista',
           quantity: ticket.quantity,
+          available_quantity: ticket.quantity,
           description: ticket.description || null,
           sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
           sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time}:00` : null,
-          sale_period_type: ticket.sale_period_type,
-          min_quantity: ticket.min_quantity,
-          max_quantity: ticket.max_quantity,
-          availability: ticket.availability,
-          has_half_price: ticket.has_half_price,
-          ticket_type: ticket.area || 'geral',
-          status: 'active',
-          created_at: new Date().toISOString()
+          sale_period_type: ticket.sale_period_type || 'date',
+          min_quantity: ticket.min_quantity || 1,
+          max_quantity: ticket.max_quantity || 5,
+          availability: ticket.availability || 'public',
+          has_half_price: ticket.has_half_price || false,
+          ticket_type: 'paid',
+          status: 'active'
         }));
 
-        const { error: ticketsError } = await supabase
-          .from('tickets')
-          .insert(ticketsData);
+        console.log('🎫 EventFormModal - Dados dos tickets para inserir:', ticketsData);
+        
+        const { data: insertedTickets, error: ticketsError } = await supabase
+          .from('event_ticket_types')
+          .insert(ticketsData)
+          .select();
 
         if (ticketsError) {
-          console.error('Erro ao criar ingressos:', ticketsError);
+          console.error('❌ EventFormModal - Erro ao criar ingressos:', ticketsError);
           // Não falhar se ingressos não foram criados
+        } else {
+          console.log('✅ EventFormModal - Ingressos criados com sucesso:', insertedTickets);
         }
       }
 
