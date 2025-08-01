@@ -51,302 +51,199 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
 
   if (!isVisible) return null;
 
-  const getModalConfig = () => {
+  const getModalStyles = () => {
     switch (type) {
       case 'success':
         return {
-          gradient: 'from-green-400 via-green-500 to-green-600',
-          bgGradient: 'from-green-50 to-green-100',
-          borderColor: 'border-green-300',
-          icon: <CheckCircle className="h-20 w-20 text-white drop-shadow-lg" />,
-          iconBg: 'bg-gradient-to-br from-green-400 to-green-600',
-          title: '🎉 Check-in Realizado!',
-          titleColor: 'text-green-800',
-          messageColor: 'text-green-700',
-          buttonGradient: 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700',
-          animation: 'animate-bounce-slow',
-          particles: true,
-          sound: '🔔'
+          background: 'bg-gradient-to-br from-green-400 via-green-500 to-green-600',
+          border: 'border-green-300',
+          text: 'text-white',
+          icon: CheckCircle,
+          iconColor: 'text-white',
+          animation: 'animate-pulse'
         };
       case 'already_checked':
         return {
-          gradient: 'from-yellow-400 via-yellow-500 to-orange-500',
-          bgGradient: 'from-yellow-50 to-orange-100',
-          borderColor: 'border-yellow-300',
-          icon: <AlertTriangle className="h-20 w-20 text-white drop-shadow-lg" />,
-          iconBg: 'bg-gradient-to-br from-yellow-400 to-orange-500',
-          title: '⚠️ Check-in Já Realizado',
-          titleColor: 'text-yellow-800',
-          messageColor: 'text-yellow-700',
-          buttonGradient: 'from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600',
-          animation: 'animate-pulse-slow',
-          particles: false,
-          sound: '⚠️'
+          background: 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600',
+          border: 'border-yellow-300',
+          text: 'text-white',
+          icon: AlertTriangle,
+          iconColor: 'text-white',
+          animation: ''
         };
       case 'error':
         return {
-          gradient: 'from-red-400 via-red-500 to-red-600',
-          bgGradient: 'from-red-50 to-red-100',
-          borderColor: 'border-red-300',
-          icon: <XCircle className="h-20 w-20 text-white drop-shadow-lg" />,
-          iconBg: 'bg-gradient-to-br from-red-400 to-red-600',
-          title: '❌ Erro no Check-in',
-          titleColor: 'text-red-800',
-          messageColor: 'text-red-700',
-          buttonGradient: 'from-red-500 to-red-600 hover:from-red-600 hover:to-red-700',
-          animation: 'animate-shake',
-          particles: false,
-          sound: '🚫'
+          background: 'bg-gradient-to-br from-red-400 via-red-500 to-red-600',
+          border: 'border-red-300',
+          text: 'text-white',
+          icon: XCircle,
+          iconColor: 'text-white',
+          animation: ''
         };
       default:
         return {
-          gradient: 'from-gray-400 via-gray-500 to-gray-600',
-          bgGradient: 'from-gray-50 to-gray-100',
-          borderColor: 'border-gray-300',
-          icon: <XCircle className="h-20 w-20 text-white drop-shadow-lg" />,
-          iconBg: 'bg-gradient-to-br from-gray-400 to-gray-600',
-          title: 'ℹ️ Resultado',
-          titleColor: 'text-gray-800',
-          messageColor: 'text-gray-700',
-          buttonGradient: 'from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700',
-          animation: '',
-          particles: false,
-          sound: 'ℹ️'
+          background: 'bg-white',
+          border: 'border-gray-300',
+          text: 'text-gray-900',
+          icon: CheckCircle,
+          iconColor: 'text-green-500',
+          animation: ''
         };
     }
   };
 
-  const config = getModalConfig();
+  const styles = getModalStyles();
+  const IconComponent = styles.icon;
 
   return (
-    <>
-      {/* Overlay com animação */}
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300 ${
+        isAnimating ? 'opacity-100' : 'opacity-0'
+      }`}
+      onClick={handleOverlayClick}
+    >
       <div 
-        className={`fixed inset-0 z-50 transition-all duration-300 ${
-          isAnimating ? 'opacity-100' : 'opacity-0'
-        }`}
-        onClick={handleOverlayClick}
+        className={`relative w-full max-w-md ${styles.background} ${styles.border} border-2 rounded-2xl shadow-2xl transform transition-all duration-300 ${
+          isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
+        } ${styles.animation}`}
       >
-        <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" />
-        
-        {/* Particles de sucesso */}
-        {config.particles && isAnimating && (
-          <div className="absolute inset-0 pointer-events-none">
-            {[...Array(12)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute animate-float"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 2}s`,
-                  animationDuration: `${3 + Math.random() * 2}s`
-                }}
-              >
-                <Sparkles className="h-4 w-4 text-green-400 opacity-70" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Modal Container */}
-        <div className="flex items-center justify-center min-h-screen p-4">
-          <div 
-            className={`relative w-full max-w-lg transform transition-all duration-300 ${
-              isAnimating 
-                ? 'scale-100 translate-y-0 opacity-100' 
-                : 'scale-95 translate-y-4 opacity-0'
-            }`}
+        {/* Header */}
+        <div className="relative p-6 pb-4">
+          <button
+            onClick={handleClose}
+            className={`absolute top-4 right-4 p-1 rounded-full hover:bg-black hover:bg-opacity-20 transition-colors ${styles.text}`}
           >
-            {/* Modal Background com gradiente */}
-            <div className={`bg-gradient-to-br ${config.bgGradient} rounded-3xl shadow-2xl border-2 ${config.borderColor} overflow-hidden`}>
+            <X className="w-5 h-5" />
+          </button>
+
+          {/* Ícone principal com animação */}
+          <div className="flex justify-center mb-4">
+            <div className={`p-4 rounded-full bg-white bg-opacity-20 ${type === 'success' ? 'animate-pulse' : ''}`}>
+              <IconComponent className={`w-12 h-12 ${styles.iconColor}`} />
+            </div>
+          </div>
+
+          {/* Título */}
+          <h2 className={`text-2xl font-bold text-center mb-2 ${styles.text}`}>
+            {type === 'success' && '🎉 Check-in Realizado!'}
+            {type === 'already_checked' && '⚠️ Já Registrado'}
+            {type === 'error' && '❌ Erro no Check-in'}
+          </h2>
+
+          {/* Mensagem */}
+          <p className={`text-center text-lg ${styles.text} opacity-90`}>
+            {message}
+          </p>
+        </div>
+
+        {/* Detalhes do participante */}
+        {data && (
+          <div className="px-6 pb-6">
+            <div className="bg-white bg-opacity-20 rounded-xl p-4 space-y-3">
+              <h3 className={`font-bold text-lg ${styles.text} mb-3 flex items-center`}>
+                <User className="w-5 h-5 mr-2" />
+                Detalhes do Ingresso
+              </h3>
               
-              {/* Header com ícone animado */}
-              <div className="relative px-8 pt-8 pb-6">
-                {/* Botão fechar */}
-                <button
-                  onClick={handleClose}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200 group"
-                >
-                  <X className="h-5 w-5 text-gray-600 group-hover:text-gray-800" />
-                </button>
-
-                {/* Ícone principal */}
-                <div className="flex justify-center mb-6">
-                  <div className={`p-4 rounded-full ${config.iconBg} shadow-lg ${config.animation} relative`}>
-                    {config.icon}
-                    
-                    {/* Círculos de animação */}
-                    <div className={`absolute inset-0 rounded-full ${config.iconBg} opacity-30 animate-ping`} />
-                    <div className={`absolute inset-2 rounded-full ${config.iconBg} opacity-20 animate-ping`} style={{ animationDelay: '0.5s' }} />
-                  </div>
-                </div>
-
-                {/* Título */}
-                <h2 className={`text-3xl font-bold text-center mb-3 ${config.titleColor}`}>
-                  {config.title}
-                </h2>
-
-                {/* Mensagem principal */}
-                <p className={`text-lg text-center ${config.messageColor} font-medium`}>
-                  {message}
-                </p>
-              </div>
-
-              {/* Detalhes do participante */}
-              {data && (
-                <div className="px-8 pb-6">
-                  <div className="bg-white bg-opacity-70 rounded-2xl p-6 shadow-inner backdrop-blur-sm">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <User className="h-5 w-5 mr-2" />
-                      Detalhes do Check-in
-                    </h3>
-                    
-                    <div className="grid gap-4">
-                      {data.participant_name && (
-                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
-                          <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                            <User className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Participante</p>
-                            <p className="font-semibold text-gray-900">{data.participant_name}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {data.participant_email && (
-                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
-                          <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                            <Mail className="h-4 w-4 text-purple-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">E-mail</p>
-                            <p className="font-semibold text-gray-900">{data.participant_email}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {data.participant_document && (
-                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
-                          <div className="p-2 bg-indigo-100 rounded-lg mr-3">
-                            <FileText className="h-4 w-4 text-indigo-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Documento</p>
-                            <p className="font-semibold text-gray-900">{data.participant_document}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {data.ticket_type && (
-                          <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
-                            <div className="p-2 bg-green-100 rounded-lg mr-3">
-                              <Ticket className="h-4 w-4 text-green-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Ingresso</p>
-                              <p className="font-semibold text-gray-900">{data.ticket_type}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {data.checkin_date && (
-                          <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
-                            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                              <Clock className="h-4 w-4 text-orange-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Data</p>
-                              <p className="font-semibold text-gray-900 text-sm">
-                                {new Date(data.checkin_date).toLocaleString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {data.event_title && (
-                        <div className="flex items-center p-3 bg-white bg-opacity-50 rounded-xl">
-                          <div className="p-2 bg-pink-100 rounded-lg mr-3">
-                            <Calendar className="h-4 w-4 text-pink-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Evento</p>
-                            <p className="font-semibold text-gray-900">{data.event_title}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+              {/* Nome do participante */}
+              {data.participant_name && (
+                <div className="flex items-center space-x-3">
+                  <User className={`w-4 h-4 ${styles.text} opacity-70`} />
+                  <div>
+                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Nome</p>
+                    <p className={`font-semibold ${styles.text}`}>{data.participant_name}</p>
                   </div>
                 </div>
               )}
 
-              {/* Footer com botão melhorado */}
-              <div className="px-8 pb-8">
-                <button
-                  onClick={handleClose}
-                  className={`w-full py-4 px-6 bg-gradient-to-r ${config.buttonGradient} text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-opacity-50`}
-                >
-                  <span className="flex items-center justify-center">
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    Entendido
-                  </span>
-                </button>
-              </div>
+              {/* Email */}
+              {data.participant_email && (
+                <div className="flex items-center space-x-3">
+                  <Mail className={`w-4 h-4 ${styles.text} opacity-70`} />
+                  <div>
+                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Email</p>
+                    <p className={`font-semibold ${styles.text}`}>{data.participant_email}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Documento */}
+              {data.participant_document && (
+                <div className="flex items-center space-x-3">
+                  <FileText className={`w-4 h-4 ${styles.text} opacity-70`} />
+                  <div>
+                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Documento</p>
+                    <p className={`font-semibold ${styles.text}`}>{data.participant_document}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Tipo de ingresso */}
+              {data.ticket_type && (
+                <div className="flex items-center space-x-3">
+                  <Ticket className={`w-4 h-4 ${styles.text} opacity-70`} />
+                  <div>
+                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Tipo de Ingresso</p>
+                    <p className={`font-semibold ${styles.text}`}>{data.ticket_type}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nome do evento */}
+              {data.event_title && (
+                <div className="flex items-center space-x-3">
+                  <MapPin className={`w-4 h-4 ${styles.text} opacity-70`} />
+                  <div>
+                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Evento</p>
+                    <p className={`font-semibold ${styles.text}`}>{data.event_title}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Data do check-in */}
+              {data.checkin_date && (
+                <div className="flex items-center space-x-3">
+                  <Clock className={`w-4 h-4 ${styles.text} opacity-70`} />
+                  <div>
+                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>
+                      {type === 'success' ? 'Check-in Realizado' : 'Check-in Anterior'}
+                    </p>
+                    <p className={`font-semibold ${styles.text}`}>
+                      {new Date(data.checkin_date).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Status do check-in */}
+              {type === 'success' && (
+                <div className="flex items-center justify-center mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
+                  <Sparkles className={`w-5 h-5 ${styles.text} mr-2 animate-pulse`} />
+                  <p className={`font-bold ${styles.text} text-lg`}>✅ CHECK-IN CONFIRMADO</p>
+                </div>
+              )}
+
+              {type === 'already_checked' && (
+                <div className="flex items-center justify-center mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
+                  <AlertTriangle className={`w-5 h-5 ${styles.text} mr-2`} />
+                  <p className={`font-bold ${styles.text} text-lg`}>⚠️ JÁ REGISTRADO</p>
+                </div>
+              )}
             </div>
           </div>
+        )}
+
+        {/* Botão de fechar */}
+        <div className="px-6 pb-6">
+          <button
+            onClick={handleClose}
+            className={`w-full py-3 px-4 bg-white bg-opacity-20 hover:bg-opacity-30 ${styles.text} font-semibold rounded-xl transition-all duration-200 border border-white border-opacity-30`}
+          >
+            Fechar
+          </button>
         </div>
       </div>
-
-      {/* Estilos customizados */}
-      <style jsx>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-          20%, 40%, 60%, 80% { transform: translateX(8px); }
-        }
-        
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-        
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-10px) rotate(120deg); }
-          66% { transform: translateY(5px) rotate(240deg); }
-        }
-        
-        .animate-shake {
-          animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        
-        .animate-bounce-slow {
-          animation: bounce-slow 2s infinite;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 2s infinite;
-        }
-        
-        .animate-float {
-          animation: float 4s ease-in-out infinite;
-        }
-      `}</style>
-    </>
+    </div>
   );
 };
 
