@@ -4,8 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
-import QrScannerLib from 'qr-scanner';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import ScannerModal from '../components/ScannerModal';
 
 interface Event {
   id: string;
@@ -37,9 +36,8 @@ const CheckInPage = () => {
   const [participants, setParticipants] = useState<ParticipantSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
-  const [scannerActive, setScannerActive] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
   const [checkinStats, setCheckinStats] = useState({
@@ -51,7 +49,6 @@ const CheckInPage = () => {
     recent_checkins: [] as any[]
   });
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [scannerType, setScannerType] = useState<'qr-scanner' | 'zxing'>('qr-scanner');
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -66,9 +63,6 @@ const CheckInPage = () => {
     data: null
   });
   
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<QrScannerLib | null>(null);
-  const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
     useEffect(() => {
@@ -577,394 +571,14 @@ const CheckInPage = () => {
     }
   };
 
-  const startZXingScanner = async () => {
-    // Aguardar o elemento de vídeo estar disponível
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    while (!videoRef.current && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
-    
-    if (!videoRef.current) {
-      console.error('❌ Elemento de vídeo não encontrado após aguardar');
-      showModal('error', 'Erro: elemento de vídeo não disponível. Tente ativar o scanner novamente.');
-      setScannerActive(false);
-      setIsScanning(false);
-      return;
-    }
 
-    try {
-      console.log('📱 Iniciando scanner ZXING...');
-      setScannerActive(true);
-      setIsScanning(true);
 
-      // Parar scanner anterior se existir
-      if (zxingReaderRef.current) {
-        try {
-          zxingReaderRef.current.reset();
-        } catch (e) {}
-        zxingReaderRef.current = null;
-      }
 
-      const codeReader = new BrowserMultiFormatReader();
-      zxingReaderRef.current = codeReader;
 
-      // Iniciar decodificação
-      await codeReader.decodeFromVideoDevice(
-        undefined,
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            const qrData = result.getText();
-            console.log('📸 QR Code detectado (ZXING):', qrData);
-            handleQRCodeScan(qrData);
-            stopZXingScanner();
-          }
-          if (err && !result) {
-            console.log('⚠️ Erro de decodificação ZXING:', err);
-          }
-        }
-      );
 
-      setIsScanning(false);
-      console.log('✅ Scanner ZXING iniciado com sucesso');
+  // Todas as funções de scanner foram movidas para o ScannerModal
 
-    } catch (error: any) {
-      console.error('❌ Erro ao iniciar scanner ZXING:', error);
-      let errorMessage = 'Erro ao acessar a câmera';
 
-      if (error.name === 'NotAllowedError') {
-        errorMessage = 'Permissão de câmera negada. Permita o acesso e tente novamente.';
-      } else if (error.name === 'NotFoundError') {
-        errorMessage = 'Nenhuma câmera encontrada neste dispositivo.';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Câmera está sendo usada por outro aplicativo.';
-      } else {
-        errorMessage = `Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}`;
-      }
-
-      showModal('error', errorMessage, {
-        error_details: `${error.name}: ${error.message}`,
-        camera_error: true
-      });
-      setScannerActive(false);
-      setIsScanning(false);
-    }
-  };
-
-  // Scanner Simplificado - Mais confiável
-  const startSimpleScanner = async () => {
-    try {
-      setScannerActive(true);
-      setIsScanning(true);
-      
-      console.log('🎥 Iniciando scanner simplificado...');
-      
-      // Aguardar elemento de vídeo estar disponível
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      if (!videoRef.current) {
-        throw new Error('Elemento de vídeo não encontrado');
-      }
-
-      // Solicitar acesso à câmera
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment', // Câmera traseira preferencialmente
-          width: { ideal: 640 },
-          height: { ideal: 640 }
-        }
-      });
-
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-      
-      // Scanner otimizado para velocidade
-      const qrScanner = new QrScannerLib(
-        videoRef.current, 
-        (result) => {
-          console.log('📸 QR:', result.data);
-          // Parar scanner imediatamente
-          qrScanner.stop();
-          // Processar QR rapidamente
-          handleQRCodeScan(result.data);
-          // Fechar scanner
-          stopSimpleScanner();
-        },
-        {
-          preferredCamera: 'environment',
-          highlightScanRegion: false, // Desabilitado para melhor performance
-          highlightCodeOutline: false, // Desabilitado para melhor performance
-          maxScansPerSecond: 10, // Máxima velocidade
-          returnDetailedScanResult: false, // Mais rápido
-          // Área de scan otimizada
-          calculateScanRegion: (video) => {
-            const size = Math.min(video.videoWidth, video.videoHeight) * 0.6;
-            return {
-              x: (video.videoWidth - size) / 2,
-              y: (video.videoHeight - size) / 2,
-              width: size,
-              height: size,
-            };
-          }
-        }
-      );
-
-      qrScannerRef.current = qrScanner;
-      await qrScanner.start();
-      
-      setIsScanning(false);
-      console.log('✅ Scanner iniciado com sucesso');
-      
-    } catch (error: any) {
-      console.error('❌ Erro ao iniciar scanner:', error);
-      let errorMessage = 'Erro ao acessar a câmera';
-      
-      if (error.name === 'NotAllowedError') {
-        errorMessage = 'Permissão negada. Permita o acesso à câmera.';
-      } else if (error.name === 'NotFoundError') {
-        errorMessage = 'Câmera não encontrada.';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Câmera em uso por outro aplicativo.';
-      }
-      
-      showModal('error', errorMessage);
-      stopSimpleScanner();
-    }
-  };
-
-  const stopSimpleScanner = () => {
-    try {
-      setScannerActive(false);
-      setIsScanning(false);
-      
-      // Parar QR Scanner
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop();
-        qrScannerRef.current.destroy();
-        qrScannerRef.current = null;
-      }
-      
-      // Parar stream de vídeo
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
-      
-      console.log('⏹️ Scanner parado');
-    } catch (error) {
-      console.error('Erro ao parar scanner:', error);
-    }
-  };
-
-  const stopZXingScanner = () => {
-    console.log('⏹️ Parando scanner ZXING...');
-    
-    try {
-      if (zxingReaderRef.current) {
-        zxingReaderRef.current.reset();
-        zxingReaderRef.current = null;
-        console.log('✅ Scanner ZXING parado');
-      }
-      
-      // Garantir que o vídeo pare
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => {
-            track.stop();
-            console.log('📹 Track ZXING parado:', track.label);
-          });
-        }
-        videoRef.current.srcObject = null;
-      }
-    } catch (error) {
-      console.error('Erro ao parar scanner ZXING:', error);
-    } finally {
-      setScannerActive(false);
-      setIsScanning(false);
-    }
-  };
-
-  const startQRScanner = async () => {
-    // Aguardar o elemento de vídeo estar disponível
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    while (!videoRef.current && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
-    
-    if (!videoRef.current) {
-      console.error('❌ Elemento de vídeo não encontrado após aguardar');
-      showModal('error', 'Erro: elemento de vídeo não disponível. Tente ativar o scanner novamente.');
-      setScannerActive(false);
-      setIsScanning(false);
-      return;
-    }
-
-    try {
-      console.log('📱 Iniciando scanner QR...');
-      setScannerActive(true);
-      setIsScanning(true);
-
-      // Verificar se já existe um scanner ativo
-      if (qrScannerRef.current) {
-        qrScannerRef.current.destroy();
-        qrScannerRef.current = null;
-      }
-
-      // Verificar se dispositivo suporta câmera
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Este dispositivo ou navegador não suporta acesso à câmera.');
-      }
-
-      // Verificar dispositivos de vídeo disponíveis
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      
-      if (videoDevices.length === 0) {
-        throw new Error('Nenhuma câmera encontrada neste dispositivo.');
-      }
-
-      console.log(`📷 ${videoDevices.length} câmera(s) encontrada(s)`);
-
-      // Solicitar permissões de câmera com diferentes tentativas
-      let stream = null;
-      const constraints = [
-        // Primeira tentativa: Câmera traseira (preferida para QR)
-        { 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 640, min: 320 },
-            height: { ideal: 480, min: 240 }
-          } 
-        },
-        // Segunda tentativa: Câmera frontal
-        { 
-          video: { 
-            facingMode: 'user',
-            width: { ideal: 640, min: 320 },
-            height: { ideal: 480, min: 240 }
-          } 
-        },
-        // Terceira tentativa: Qualquer câmera
-        { 
-          video: { 
-            width: { ideal: 640, min: 320 },
-            height: { ideal: 480, min: 240 }
-          } 
-        }
-      ];
-
-      for (const constraint of constraints) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraint);
-          console.log('✅ Permissões de câmera concedidas');
-          break;
-        } catch (err) {
-          console.log('⚠️ Tentativa com constraint falhou:', constraint);
-        }
-      }
-
-      if (!stream) {
-        throw new Error('Não foi possível acessar nenhuma câmera. Verifique as permissões.');
-      }
-
-      // Parar o stream temporário (o QrScanner vai gerenciar)
-      stream.getTracks().forEach(track => track.stop());
-      
-      qrScannerRef.current = new QrScannerLib(
-        videoRef.current,
-        result => {
-          console.log('📸 QR Code detectado:', result.data);
-          handleQRCodeScan(result.data);
-          stopQRScanner();
-        },
-        {
-          onDecodeError: (error) => {
-            // Silenciar erros de decodificação normais
-          },
-          preferredCamera: 'environment',
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          maxScansPerSecond: 5,
-          returnDetailedScanResult: true,
-        }
-      );
-
-      await qrScannerRef.current.start();
-      setIsScanning(false);
-      console.log('✅ Scanner QR iniciado com sucesso');
-      
-    } catch (error: any) {
-      console.error('❌ Erro ao iniciar scanner:', error);
-      let errorMessage = 'Erro ao acessar a câmera';
-      
-      if (error.name === 'NotAllowedError' || error.message?.includes('Permission')) {
-        errorMessage = 'Permissão de câmera negada. Clique no ícone de câmera na barra de endereços e permita o acesso.';
-      } else if (error.name === 'NotFoundError' || error.message?.includes('NotFoundError')) {
-        errorMessage = 'Nenhuma câmera encontrada. Verifique se seu dispositivo possui câmera.';
-      } else if (error.name === 'NotReadableError' || error.message?.includes('NotReadableError')) {
-        errorMessage = 'Câmera está sendo usada por outro aplicativo. Feche outros apps que usam câmera.';
-      } else if (error.name === 'OverconstrainedError') {
-        errorMessage = 'Configuração de câmera não suportada. Tentando configuração alternativa...';
-      } else if (error.message?.includes('suporta')) {
-        errorMessage = error.message;
-      } else {
-        errorMessage = `Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}`;
-      }
-      
-      showModal('error', errorMessage, {
-        error_details: `${error.name}: ${error.message}`,
-        camera_error: true
-      });
-      setScannerActive(false);
-      setIsScanning(false);
-    }
-  };
-
-  const stopQRScanner = () => {
-    console.log('⏹️ Parando todos os scanners...');
-    
-    try {
-      // Parar QR Scanner (qr-scanner lib)
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop();
-        qrScannerRef.current.destroy();
-        qrScannerRef.current = null;
-        console.log('✅ QR Scanner parado');
-      }
-      
-      // Parar ZXING Scanner
-      if (zxingReaderRef.current) {
-        zxingReaderRef.current.reset();
-        zxingReaderRef.current = null;
-        console.log('✅ ZXING Scanner parado');
-      }
-      
-      // Garantir que o vídeo pare completamente
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        if (stream) {
-          stream.getTracks().forEach(track => {
-            track.stop();
-            console.log('📹 Track de vídeo parado:', track.label);
-          });
-        }
-        videoRef.current.srcObject = null;
-      }
-    } catch (error) {
-      console.error('Erro ao parar scanner:', error);
-    } finally {
-      setScannerActive(false);
-      setIsScanning(false);
-    }
-  };
 
   const handleSearch = (searchTerm: string) => {
     setSearchQuery(searchTerm);
@@ -1072,52 +686,7 @@ const CheckInPage = () => {
                   )}
                 </div>
 
-                {/* Scanner QR Integrado */}
-                {scannerActive && (
-                  <div className="mt-4 p-3 bg-pink-50 border border-pink-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Camera className="h-4 w-4 text-pink-600" />
-                        <span className="text-sm font-medium text-pink-900">Scanner QR Ativo</span>
-                      </div>
-                      <button
-                        onClick={stopSimpleScanner}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                        title="Fechar Scanner"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    
-                    <div className="relative mx-auto max-w-xs">
-                      <video 
-                        ref={videoRef}
-                        className="w-full aspect-square rounded-lg shadow-lg border-2 border-pink-300 object-cover"
-                        playsInline
-                        muted
-                      />
-                      
-                      {/* Overlay de scanning */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute inset-4 border-2 border-white rounded-lg shadow-lg">
-                          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pink-500 rounded-tl-lg"></div>
-                          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-pink-500 rounded-tr-lg"></div>
-                          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-pink-500 rounded-bl-lg"></div>
-                          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pink-500 rounded-br-lg"></div>
-                        </div>
-                      </div>
-                      
-                      {/* Status simples */}
-                      <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                        📷 Escaneando QR
-                      </div>
-                    </div>
-                    
-                    <p className="text-xs text-pink-700 text-center mt-2">
-                      Aponte a câmera para o QR code do ingresso
-                    </p>
-                  </div>
-                )}
+
               </div>
             </div>
           </div>
@@ -1132,33 +701,14 @@ const CheckInPage = () => {
                   <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Busca Manual</h2>
                 </div>
                 
-                {/* Botão Scanner QR - Mobile Otimizado */}
+                {/* Botão Scanner QR - Modal Otimizado */}
                 <button
-                  onClick={scannerActive ? stopSimpleScanner : startSimpleScanner}
-                  disabled={isScanning}
-                  className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                    scannerActive 
-                      ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                      : 'bg-pink-100 text-pink-600 hover:bg-pink-200'
-                  } disabled:opacity-50 text-xs sm:text-sm`}
-                  title={scannerActive ? 'Parar Scanner' : 'Ativar Scanner QR'}
+                  onClick={() => setShowScannerModal(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-pink-100 text-pink-600 hover:bg-pink-200 text-xs sm:text-sm"
+                  title="Abrir Scanner QR"
                 >
-                  {isScanning ? (
-                    <>
-                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                      <span className="hidden sm:inline">Iniciando...</span>
-                    </>
-                  ) : scannerActive ? (
-                    <>
-                      <CameraOff className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Parar</span>
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span>Scanner QR</span>
-                    </>
-                  )}
+                  <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Scanner QR</span>
                 </button>
               </div>
               
@@ -1337,6 +887,14 @@ const CheckInPage = () => {
         type={modalState.type}
         message={modalState.message}
         data={modalState.data}
+      />
+
+      {/* Modal do Scanner QR */}
+      <ScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        onScan={handleQRCodeScan}
+        title="Scanner QR - Check-in"
       />
     </div>
   );
