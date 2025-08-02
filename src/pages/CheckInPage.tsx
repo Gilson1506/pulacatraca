@@ -263,7 +263,11 @@ const CheckInPage = () => {
         
         // Se for erro de coluna, mostrar erro específico
         if (error.message?.includes('column') && error.message?.includes('does not exist')) {
-          showModal('error', 'Erro na estrutura do banco de dados. Execute o script SQL fix_search_participants_column.sql para corrigir.');
+          if (error.message?.includes('organizer_id')) {
+            showModal('error', 'Erro: coluna organizer_id não existe na tabela checkins. Execute o script SQL fix_checkins_organizer_id.sql para corrigir.');
+          } else {
+            showModal('error', 'Erro na estrutura do banco de dados. Execute o script SQL fix_search_participants_column.sql para corrigir.');
+          }
           setIsLoading(false);
           setIsSearching(false);
           return;
@@ -413,55 +417,76 @@ const CheckInPage = () => {
   };
 
   const handleQRCodeScan = async (qrData: string) => {
-    if (!user || !currentEvent) return;
+    // Validação rápida
+    const trimmedQR = qrData?.trim();
+    if (!trimmedQR || !user || !currentEvent) {
+      showModal('error', 'QR inválido ou dados ausentes');
+      return;
+    }
+
+    console.log('🎯 QR:', trimmedQR);
 
     try {
-      setIsScanning(true);
-      console.log('🔍 Escaneando QR Code:', qrData);
-      
+      // Chamada RPC otimizada (sem setIsScanning para ser mais rápido)
       const { data, error } = await supabase.rpc('checkin_by_qr_code', {
-        p_qr_code: qrData.trim(),
+        p_qr_code: trimmedQR,
         p_event_id: currentEvent.id,
         p_organizer_id: user.id
       });
 
       if (error) {
-        console.error('Erro na função RPC:', error);
+        console.error('❌ RPC Error:', error.message);
+        
+        // Tratamento específico de erros de banco
+        if (error.message?.includes('organizer_id') && error.message?.includes('does not exist')) {
+          showModal('error', 'Execute fix_checkins_organizer_id.sql no Supabase para corrigir a tabela checkins', {
+            qr_code: trimmedQR,
+            error_details: 'Coluna organizer_id ausente na tabela checkins'
+          });
+          return;
+        }
+        
+        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+          showModal('error', 'Execute fix_checkin_qr_code_search.sql no Supabase para criar funções', {
+            qr_code: trimmedQR,
+            error_details: 'Função checkin_by_qr_code não encontrada'
+          });
+          return;
+        }
+        
         throw error;
       }
 
-      console.log('📊 Resultado da busca:', data);
-
-      if (!data || data.length === 0) {
-        showModal('error', 'Nenhum resultado retornado do banco de dados', {
-          qr_code: qrData,
-          event_id: currentEvent.id
+      const result = data?.[0];
+      if (!result) {
+        showModal('error', 'Resposta inválida do servidor', { 
+          qr_code: trimmedQR,
+          error_details: 'Nenhum resultado retornado'
         });
         return;
       }
 
-      const result = data[0];
-      
+      // Processamento imediato com feedback sonoro
       if (result.success) {
+        console.log('✅ Check-in OK');
+        soundEnabled && playSound('success');
         showModal('success', result.message, result.participant_info);
-        await fetchParticipants(searchQuery);
+        fetchParticipants(searchQuery); // Atualizar sem aguardar
       } else {
-        if (result.message.includes('já foi realizado') || result.message.includes('anteriormente')) {
-          showModal('already_checked', result.message, result.participant_info);
-        } else {
-          showModal('error', result.message, result.participant_info);
-        }
+        const isAlreadyChecked = result.message?.includes('já foi realizado') || result.message?.includes('anteriormente');
+        soundEnabled && playSound(isAlreadyChecked ? 'already_checked' : 'error');
+        showModal(isAlreadyChecked ? 'already_checked' : 'error', result.message, {
+          ...result.participant_info,
+          qr_code: trimmedQR
+        });
       }
-      
+
     } catch (error: any) {
-      console.error('Erro ao processar QR code:', error);
-      const errorMessage = error?.message || 'Erro desconhecido ao processar QR code';
-      showModal('error', errorMessage, {
-        qr_code: qrData,
-        error_details: error?.details || 'Nenhum detalhe disponível'
+      console.error('❌ Check-in error:', error.message);
+      showModal('error', `Erro: ${error.message}`, {
+        qr_code: trimmedQR,
+        error_details: error.message || 'Erro desconhecido'
       });
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -569,34 +594,32 @@ const CheckInPage = () => {
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
       
-      // Usar qr-scanner com configuração otimizada
+      // Scanner otimizado para velocidade
       const qrScanner = new QrScannerLib(
         videoRef.current, 
         (result) => {
-          console.log('📸 QR detectado:', result.data);
-          // Parar o scanner imediatamente para evitar leituras múltiplas
+          console.log('📸 QR:', result.data);
+          // Parar scanner imediatamente
           qrScanner.stop();
-          // Processar o QR code
+          // Processar QR rapidamente
           handleQRCodeScan(result.data);
-          // Parar o scanner completamente
+          // Fechar scanner
           stopSimpleScanner();
         },
         {
-          // Configurações otimizadas para melhor detecção
           preferredCamera: 'environment',
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          maxScansPerSecond: 5, // Aumentar tentativas por segundo
-          returnDetailedScanResult: true,
-          // Permitir detecção em qualquer orientação
+          highlightScanRegion: false, // Desabilitado para melhor performance
+          highlightCodeOutline: false, // Desabilitado para melhor performance
+          maxScansPerSecond: 10, // Máxima velocidade
+          returnDetailedScanResult: false, // Mais rápido
+          // Área de scan otimizada
           calculateScanRegion: (video) => {
-            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
-            const scanRegionSize = Math.round(0.7 * smallerDimension);
+            const size = Math.min(video.videoWidth, video.videoHeight) * 0.6;
             return {
-              x: Math.round((video.videoWidth - scanRegionSize) / 2),
-              y: Math.round((video.videoHeight - scanRegionSize) / 2),
-              width: scanRegionSize,
-              height: scanRegionSize,
+              x: (video.videoWidth - size) / 2,
+              y: (video.videoHeight - size) / 2,
+              width: size,
+              height: size,
             };
           }
         }
@@ -920,7 +943,7 @@ const CheckInPage = () => {
                     <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
                   
-                  {/* Botão de som - Mais discreto */}
+                  {/* Botão de som - Compacto */}
                   <button
                     onClick={toggleSound}
                     className={`mt-2 sm:mt-0 p-2 rounded-lg transition-all duration-200 ${
@@ -931,9 +954,9 @@ const CheckInPage = () => {
                     title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
                   >
                     {soundEnabled ? (
-                      <Volume2 className="h-4 w-4" />
+                      <Volume2 className="h-3 w-3 sm:h-4 sm:w-4" />
                     ) : (
-                      <VolumeX className="h-4 w-4" />
+                      <VolumeX className="h-3 w-3 sm:h-4 sm:w-4" />
                     )}
                   </button>
                 </div>
