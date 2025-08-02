@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle, Volume2, VolumeX, X, Mail, FileText } from 'lucide-react';
+import { QrCode, Search, Calendar, MapPin, User, Loader2, Camera, CameraOff, Users, CheckCircle, Volume2, VolumeX, X, Mail, FileText, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
@@ -42,6 +42,14 @@ const CheckInPage = () => {
   const [scannerActive, setScannerActive] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
+  const [checkinStats, setCheckinStats] = useState({
+    total_participants: 0,
+    checked_in: 0,
+    pending: 0,
+    percentage: 0,
+    last_checkin: null as string | null,
+    recent_checkins: [] as any[]
+  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [scannerType, setScannerType] = useState<'qr-scanner' | 'zxing'>('qr-scanner');
   
@@ -228,6 +236,75 @@ const CheckInPage = () => {
     }
   };
 
+  // Função para buscar estatísticas reais de check-in
+  const fetchCheckinStats = async () => {
+    if (!currentEvent || !user) return;
+
+    try {
+      console.log('📊 Buscando estatísticas de check-in...');
+      
+      // Buscar check-ins do evento diretamente
+      const { data: checkinData, error: checkinError } = await supabase
+        .from('checkin')
+        .select(`
+          id,
+          created_at,
+          ticket_users (
+            name,
+            email
+          )
+        `)
+        .eq('event_id', currentEvent.id)
+        .order('created_at', { ascending: false });
+
+      // Buscar total de participantes
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('tickets')
+        .select('id, ticket_user_id')
+        .eq('event_id', currentEvent.id)
+        .not('ticket_user_id', 'is', null);
+
+      if (checkinError && !checkinError.message?.includes('does not exist')) {
+        console.error('❌ Erro ao buscar check-ins:', checkinError);
+      }
+
+      if (participantsError) {
+        console.error('❌ Erro ao buscar participantes:', participantsError);
+      }
+
+      // Calcular estatísticas
+      const totalParticipants = participantsData?.length || 0;
+      const checkedInCount = checkinData?.length || 0;
+      const pending = totalParticipants - checkedInCount;
+      const percentage = totalParticipants > 0 ? Math.round((checkedInCount / totalParticipants) * 100) : 0;
+      const lastCheckin = checkinData && checkinData.length > 0 ? checkinData[0].created_at : null;
+      const recentCheckins = checkinData?.slice(0, 5) || [];
+
+      setCheckinStats({
+        total_participants: totalParticipants,
+        checked_in: checkedInCount,
+        pending,
+        percentage,
+        last_checkin: lastCheckin,
+        recent_checkins: recentCheckins
+      });
+
+      setTotalParticipants(totalParticipants);
+      setCheckedInCount(checkedInCount);
+
+      console.log('📊 Estatísticas atualizadas:', {
+        total: totalParticipants,
+        checkedIn: checkedInCount,
+        pending,
+        percentage
+      });
+
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar estatísticas:', error);
+      // Fallback silencioso para não interromper a aplicação
+    }
+  };
+
   const fetchParticipants = async (searchTerm?: string) => {
     if (!user || !currentEvent) {
       console.log('❌ fetchParticipants: Usuário ou evento não encontrado', { user: !!user, currentEvent: !!currentEvent });
@@ -297,18 +374,21 @@ const CheckInPage = () => {
       const participantsList = data as ParticipantSearchResult[];
       setParticipants(participantsList);
       
-      // Calcular estatísticas
+      // Calcular estatísticas locais
       const total = participantsList.length;
       const checkedIn = participantsList.filter(p => p.is_checked_in).length;
       
       setTotalParticipants(total);
       setCheckedInCount(checkedIn);
       
-      console.log('📊 Estatísticas atualizadas:', {
+      console.log('📊 Estatísticas locais:', {
         total: total,
         checkedIn: checkedIn,
         pending: total - checkedIn
       });
+
+      // Buscar estatísticas reais do banco
+      await fetchCheckinStats();
 
       // Se não há participantes, mostrar mensagem informativa
       if (total === 0) {
@@ -1000,68 +1080,91 @@ const CheckInPage = () => {
                   </div>
                 </div>
                 
-                {/* Estatísticas em Grid Responsivo */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-blue-600" />
-                      <div>
+                {/* Estatísticas em Grid Responsivo - Dados Reais */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                  {/* Data do Evento */}
+                  <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-xs text-blue-600 font-medium">Data</p>
-                        <p className="text-sm font-semibold text-blue-900">
-                          {new Date(currentEvent.start_date).toLocaleDateString('pt-BR')}
+                        <p className="text-xs sm:text-sm font-semibold text-blue-900 truncate">
+                          {new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: '2-digit' 
+                          })}
                         </p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <div>
+                  {/* Check-ins Realizados */}
+                  <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-xs text-green-600 font-medium">Check-ins</p>
-                        <p className="text-sm font-semibold text-green-900">
-                          {checkedInCount} / {totalParticipants}
+                        <p className="text-xs sm:text-sm font-semibold text-green-900">
+                          {checkinStats.checked_in} / {checkinStats.total_participants}
                         </p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4 text-purple-600" />
-                      <div>
+                  {/* Pendentes */}
+                  <div className="bg-purple-50 p-2 sm:p-3 rounded-lg border border-purple-200">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 flex-shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-xs text-purple-600 font-medium">Pendentes</p>
-                        <p className="text-sm font-semibold text-purple-900">
-                          {totalParticipants - checkedInCount}
+                        <p className="text-xs sm:text-sm font-semibold text-purple-900">
+                          {checkinStats.pending}
                         </p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-orange-600" />
-                      <div>
-                        <p className="text-xs text-orange-600 font-medium">Local</p>
-                        <p className="text-sm font-semibold text-orange-900 truncate">
-                          {currentEvent.location || 'Não informado'}
+                  {/* Percentual */}
+                  <div className="bg-orange-50 p-2 sm:p-3 rounded-lg border border-orange-200">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-orange-600 font-medium">Conclusão</p>
+                        <p className="text-xs sm:text-sm font-semibold text-orange-900">
+                          {checkinStats.percentage}%
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Barra de progresso */}
-                <div className="mt-4">
-                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span>Progresso do Check-in</span>
-                    <span>{totalParticipants > 0 ? Math.round((checkedInCount / totalParticipants) * 100) : 0}%</span>
+                {/* Barra de progresso com dados reais */}
+                <div className="mt-3 sm:mt-4">
+                  <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
+                    <span className="font-medium">Progresso do Check-in</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-green-600">{checkinStats.percentage}%</span>
+                      {checkinStats.last_checkin && (
+                        <span className="text-gray-400">
+                          • Último: {new Date(checkinStats.last_checkin).toLocaleTimeString('pt-BR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                     <div 
-                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${totalParticipants > 0 ? (checkedInCount / totalParticipants) * 100 : 0}%` }}
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${checkinStats.percentage}%` }}
                     ></div>
+                  </div>
+                  
+                  {/* Informações adicionais para mobile */}
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>{checkinStats.checked_in} confirmados</span>
+                    <span>{checkinStats.pending} pendentes</span>
                   </div>
                 </div>
 
@@ -1115,103 +1218,8 @@ const CheckInPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
-            {/* QR Code Scanner - Melhorado */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border-l-4 border-pink-500">
-              <div className="flex items-center space-x-2 mb-4">
-                <QrCode className="h-6 w-6 text-pink-600" />
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Scanner QR Code</h2>
-              </div>
-              
-              <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg p-3 sm:p-6 text-center mb-4 border border-pink-200">
-                {scannerActive ? (
-                  <div className="space-y-4">
-                    <div className="relative mx-auto max-w-xs sm:max-w-sm">
-                      <video 
-                        ref={videoRef}
-                        className="w-full aspect-square rounded-lg shadow-lg border-2 border-pink-300 object-cover"
-                        playsInline
-                        muted
-                      />
-                      
-                      {/* Overlay de scanning */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute inset-4 border-2 border-white rounded-lg shadow-lg">
-                          <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-pink-500 rounded-tl-lg"></div>
-                          <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-pink-500 rounded-tr-lg"></div>
-                          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-pink-500 rounded-bl-lg"></div>
-                          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-pink-500 rounded-br-lg"></div>
-                        </div>
-                      </div>
-                      
-                      {/* Status simples */}
-                      <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                        📷 Escaneando QR
-                      </div>
-                      
-                      {/* Processing indicator */}
-                      {isScanning && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                          <div className="bg-white px-4 py-2 rounded-lg flex items-center space-x-2">
-                            <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-sm font-medium text-gray-700">Processando...</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-600">Aponte a câmera para o QR code do ingresso</p>
-                      <button
-                        onClick={stopSimpleScanner}
-                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors font-medium"
-                      >
-                        ❌ Parar Scanner
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Ícone Scanner Simples */}
-                    <div className="mx-auto w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center">
-                      <QrCode className="h-10 w-10 text-pink-600" />
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Scanner QR Code</h3>
-                      <p className="text-sm text-gray-600">
-                        {isScanning ? 'Iniciando câmera...' : 'Clique para ativar a câmera e escanear ingressos'}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <button
-                        onClick={startSimpleScanner}
-                        disabled={isScanning}
-                        className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center space-x-2 mx-auto"
-                      >
-                        {isScanning ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-semibold">Carregando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Camera className="h-5 w-5 sm:h-6 sm:w-6" />
-                            <span className="font-semibold">Ativar Scanner QR</span>
-                          </>
-                        )}
-                      </button>
-                      
-
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-
-            </div>
-
+          {/* Busca Manual - Container Principal */}
+          <div className="max-w-4xl mx-auto">
             {/* Manual Search - Mobile Optimized */}
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-4 border-blue-500">
               <div className="flex items-center space-x-2 mb-3 sm:mb-4">
@@ -1362,6 +1370,7 @@ const CheckInPage = () => {
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
