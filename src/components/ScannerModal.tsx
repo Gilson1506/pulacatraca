@@ -56,21 +56,83 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error('Elemento de vídeo não encontrado após aguardar');
       }
 
-      // Solicitar acesso à câmera primeiro
-      console.log('📷 Solicitando acesso à câmera...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 640 },
-          height: { ideal: 640 }
-        }
-      });
+      // Verificar suporte à câmera
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Seu navegador não suporta acesso à câmera');
+      }
 
-      // Configurar o vídeo
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+      // Verificar dispositivos disponíveis
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
       
-      console.log('📹 Vídeo configurado, iniciando scanner...');
+      if (videoDevices.length === 0) {
+        throw new Error('Nenhuma câmera encontrada no dispositivo');
+      }
+
+      console.log(`📷 ${videoDevices.length} câmera(s) encontrada(s)`);
+
+      // Tentar diferentes configurações de câmera
+      let stream = null;
+      const cameraConfigs = [
+        // Configuração 1: Câmera traseira (ideal para QR)
+        { 
+          video: { 
+            facingMode: { exact: 'environment' },
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          } 
+        },
+        // Configuração 2: Câmera traseira (fallback)
+        { 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          } 
+        },
+        // Configuração 3: Qualquer câmera
+        { 
+          video: { 
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          } 
+        },
+        // Configuração 4: Configuração mínima
+        { video: true }
+      ];
+
+      for (let i = 0; i < cameraConfigs.length; i++) {
+        try {
+          console.log(`📷 Tentando configuração ${i + 1}...`);
+          stream = await navigator.mediaDevices.getUserMedia(cameraConfigs[i]);
+          console.log(`✅ Câmera iniciada com configuração ${i + 1}`);
+          break;
+        } catch (err) {
+          console.log(`⚠️ Configuração ${i + 1} falhou:`, err.message);
+          if (i === cameraConfigs.length - 1) {
+            throw err;
+          }
+        }
+      }
+
+      if (!stream) {
+        throw new Error('Não foi possível acessar nenhuma câmera');
+      }
+
+      // Configurar o vídeo com stream
+      videoRef.current.srcObject = stream;
+      
+      // Aguardar vídeo carregar
+      await new Promise((resolve, reject) => {
+        videoRef.current!.onloadedmetadata = () => {
+          videoRef.current!.play()
+            .then(resolve)
+            .catch(reject);
+        };
+        videoRef.current!.onerror = reject;
+      });
+      
+      console.log('📹 Vídeo configurado e reproduzindo');
 
       // Configuração otimizada para máxima velocidade
       const qrScanner = new QrScannerLib(
@@ -122,7 +184,26 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
     } catch (error: any) {
       console.error('❌ Erro ao iniciar scanner:', error);
-      setError(error.message || 'Erro ao acessar a câmera');
+      
+      let userFriendlyMessage = 'Erro ao acessar a câmera';
+      
+      if (error.name === 'NotAllowedError') {
+        userFriendlyMessage = 'Permissão de câmera negada. Permita o acesso e tente novamente.';
+      } else if (error.name === 'NotFoundError') {
+        userFriendlyMessage = 'Nenhuma câmera encontrada no dispositivo.';
+      } else if (error.name === 'NotReadableError') {
+        userFriendlyMessage = 'Câmera está sendo usada por outro aplicativo.';
+      } else if (error.name === 'OverconstrainedError') {
+        userFriendlyMessage = 'Configuração de câmera não suportada neste dispositivo.';
+      } else if (error.message?.includes('suporta')) {
+        userFriendlyMessage = error.message;
+      } else if (error.message?.includes('encontrada')) {
+        userFriendlyMessage = error.message;
+      } else {
+        userFriendlyMessage = `${error.message || 'Erro desconhecido'}`;
+      }
+      
+      setError(userFriendlyMessage);
       setIsInitializing(false);
     }
   };

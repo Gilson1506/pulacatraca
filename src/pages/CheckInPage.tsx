@@ -644,10 +644,10 @@ const CheckInPage = () => {
                     <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
                   
-                  {/* Botão de som apenas */}
+                  {/* Botão de som compacto */}
                   <button
                     onClick={toggleSound}
-                    className={`mt-2 sm:mt-0 p-2 rounded-lg transition-all duration-200 ${
+                    className={`mt-2 sm:mt-0 p-1.5 sm:p-2 rounded-lg transition-all duration-200 ${
                       soundEnabled 
                         ? 'bg-green-100 text-green-600 hover:bg-green-200' 
                         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -655,18 +655,18 @@ const CheckInPage = () => {
                     title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
                   >
                     {soundEnabled ? (
-                      <Volume2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <Volume2 className="h-3 w-3" />
                     ) : (
-                      <VolumeX className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <VolumeX className="h-3 w-3" />
                     )}
                   </button>
                 </div>
                 
                 {/* Detalhes completos do evento */}
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {/* Imagem do evento se disponível */}
                   {currentEvent.image_url && (
-                    <div className="w-full h-32 sm:h-40 rounded-lg overflow-hidden border border-gray-200">
+                    <div className="w-full h-24 sm:h-32 rounded-lg overflow-hidden border border-gray-200">
                       <img 
                         src={currentEvent.image_url} 
                         alt={currentEvent.title}
@@ -678,15 +678,15 @@ const CheckInPage = () => {
                     </div>
                   )}
 
-                  {/* Grid de informações */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Grid de informações compacto */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                     {/* Data e Horário */}
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-900">Data & Horário</span>
+                    <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200">
+                      <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-blue-900">Data & Horário</span>
                       </div>
-                      <div className="text-sm text-blue-800">
+                      <div className="text-xs sm:text-sm text-blue-800">
                         <div>{new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
                           weekday: 'long', 
                           day: '2-digit', 
@@ -707,12 +707,12 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Check-ins */}
-                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-900">Check-ins</span>
+                    <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200">
+                      <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
+                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-green-900">Check-ins</span>
                       </div>
-                      <div className="text-sm text-green-800">
+                      <div className="text-xs sm:text-sm text-green-800">
                         <div className="flex items-center justify-between">
                           <span>Realizados:</span>
                           <span className="font-bold text-green-600">{checkinStats.checked_in}</span>
@@ -734,14 +734,14 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Localização ou Status */}
-                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 sm:col-span-2 lg:col-span-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <MapPin className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm font-medium text-purple-900">
+                    <div className="bg-purple-50 p-2 sm:p-3 rounded-lg border border-purple-200 sm:col-span-2 lg:col-span-1">
+                      <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-purple-900">
                           {currentEvent.location ? 'Localização' : 'Status'}
                         </span>
                       </div>
-                      <div className="text-sm text-purple-800">
+                      <div className="text-xs sm:text-sm text-purple-800">
                         {currentEvent.location ? (
                           <>
                             <div className="font-medium">{currentEvent.location}</div>
@@ -766,8 +766,8 @@ const CheckInPage = () => {
 
                   {/* Último check-in */}
                   {checkinStats.last_checkin && (
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <div className="flex items-center justify-between text-sm">
+                    <div className="bg-gray-50 p-2 sm:p-3 rounded-lg border border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs sm:text-sm">
                         <span className="text-gray-600">
                           <strong>Último check-in:</strong> {new Date(checkinStats.last_checkin).toLocaleString('pt-BR', { 
                             day: '2-digit',
