@@ -32,6 +32,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [scanResult, setScanResult] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   
   // Refs DOM seguros
   const readerRef = useRef<HTMLDivElement>(null);
@@ -40,10 +41,20 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const readerId = "qr-reader-element";
 
   /**
+   * Debug info helper
+   */
+  const addDebugInfo = (info: string) => {
+    console.log(`[FinalQRScanner] ${info}`);
+    setDebugInfo(prev => prev + `\n${new Date().toLocaleTimeString()}: ${info}`);
+  };
+
+  /**
    * Busca dados do ticket
    */
   const fetchTicketData = async (qrCode: string): Promise<TicketData | null> => {
     try {
+      addDebugInfo(`Buscando ticket com QR: ${qrCode}`);
+      
       const { data, error } = await supabase
         .from('ticket_users')
         .select(`
@@ -61,9 +72,17 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         .eq('qr_code', qrCode)
         .maybeSingle();
 
-      if (error) throw new Error('Erro ao consultar banco de dados');
-      if (!data) return null;
+      if (error) {
+        addDebugInfo(`Erro no banco: ${error.message}`);
+        throw new Error('Erro ao consultar banco de dados');
+      }
+      
+      if (!data) {
+        addDebugInfo('Ticket não encontrado no banco');
+        return null;
+      }
 
+      addDebugInfo('Ticket encontrado com sucesso');
       return {
         id: data.id,
         name: data.name,
@@ -73,6 +92,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         qr_code: data.qr_code
       };
     } catch (error) {
+      addDebugInfo(`Erro fetchTicketData: ${error}`);
       throw error;
     }
   };
@@ -81,16 +101,23 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    * Processa resultado do QR
    */
   const handleQRResult = useCallback(async (decodedText: string) => {
-    if (scanned || !isMountedRef.current) return;
+    if (scanned || !isMountedRef.current) {
+      addDebugInfo('QR ignorado - já processado ou component desmontado');
+      return;
+    }
     
     try {
+      addDebugInfo(`QR detectado: ${decodedText}`);
       setScanned(true);
       
       // Para o scanner
       if (scannerRef.current) {
         try {
+          addDebugInfo('Parando scanner...');
           await scannerRef.current.stop();
-        } catch {}
+        } catch (e) {
+          addDebugInfo(`Erro ao parar scanner: ${e}`);
+        }
       }
       
       // Feedback tátil
@@ -104,6 +131,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       if (ticketData) {
         setScanResult(ticketData);
         setError(null);
+        addDebugInfo('Sucesso - ticket processado');
         
         if (onSuccess) {
           onSuccess(decodedText, ticketData);
@@ -111,6 +139,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       } else {
         setError('Código QR inválido ou ticket não encontrado');
         setScanResult(null);
+        addDebugInfo('Erro - ticket não encontrado');
         
         // Retoma após erro
         setTimeout(() => {
@@ -121,6 +150,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         }, 3000);
       }
     } catch (error) {
+      addDebugInfo(`Erro handleQRResult: ${error}`);
       setError('Erro ao processar código QR. Tente novamente.');
       setScanResult(null);
       
@@ -134,17 +164,28 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   }, [scanned, isOpen, onSuccess]);
 
   /**
-   * Inicia o scanner - ABORDAGEM DOM SEGURA + FORÇADA
+   * Inicia o scanner - VERSÃO ULTRA ROBUSTA
    */
   const startScanner = useCallback(async () => {
-    if (!readerRef.current || !isMountedRef.current) return;
+    if (!isMountedRef.current) {
+      addDebugInfo('Componente desmontado - abortando');
+      return;
+    }
+
+    addDebugInfo('=== INICIANDO SCANNER ===');
     
     try {
       setIsLoading(true);
       setError(null);
       setScanned(false);
       
-      // Verifica ambiente seguro
+      // 1. Verifica se o elemento DOM existe
+      if (!readerRef.current) {
+        throw new Error('Elemento DOM não encontrado');
+      }
+      addDebugInfo('✅ Elemento DOM encontrado');
+      
+      // 2. Verifica ambiente seguro
       const isSecure = window.location.protocol === 'https:' || 
                       window.location.hostname === 'localhost' ||
                       window.location.hostname === '127.0.0.1';
@@ -152,41 +193,81 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       if (!isSecure) {
         throw new Error('Scanner requer HTTPS ou localhost');
       }
+      addDebugInfo('✅ Ambiente seguro verificado');
 
-      // Para scanner anterior se existir
+      // 3. Para scanner anterior se existir
       if (scannerRef.current) {
         try {
+          addDebugInfo('Limpando scanner anterior...');
           await scannerRef.current.stop();
           await scannerRef.current.clear();
-        } catch {}
+        } catch (e) {
+          addDebugInfo(`Aviso ao limpar scanner: ${e}`);
+        }
         scannerRef.current = null;
       }
 
-      // Aguarda um pouco para garantir DOM estável
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 4. Aguarda DOM estável
+      addDebugInfo('Aguardando DOM estável...');
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Cria novo Html5Qrcode usando ID do elemento
-      scannerRef.current = new Html5Qrcode(readerId);
+      // 5. Verifica novamente se ainda está montado
+      if (!isMountedRef.current) {
+        addDebugInfo('Componente desmontado durante delay');
+        return;
+      }
+
+      // 6. Verifica suporte a getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia não suportado pelo navegador');
+      }
+      addDebugInfo('✅ getUserMedia suportado');
+
+      // 7. Testa acesso à câmera
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" } 
+        });
+        testStream.getTracks().forEach(track => track.stop());
+        addDebugInfo('✅ Acesso à câmera confirmado');
+      } catch (e) {
+        addDebugInfo(`Erro de acesso à câmera: ${e}`);
+        throw new Error('Erro ao acessar câmera. Verifique as permissões.');
+      }
+
+      // 8. Cria novo Html5Qrcode
+      addDebugInfo('Criando instância Html5Qrcode...');
+      try {
+        scannerRef.current = new Html5Qrcode(readerId);
+        addDebugInfo('✅ Html5Qrcode criado');
+      } catch (e) {
+        addDebugInfo(`Erro ao criar Html5Qrcode: ${e}`);
+        throw new Error('Erro ao criar scanner QR');
+      }
       
-      // Configuração mais robusta para máxima compatibilidade
+      // 9. Configuração robusta
       const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
+        fps: 5, // Mais conservador
+        qrbox: { width: 200, height: 200 }, // Menor para melhor performance
         aspectRatio: 1.0,
         disableFlip: false,
-        // Configurações extras para compatibilidade
+        rememberLastUsedCamera: true,
+        // Configurações conservadoras
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: false
         }
       };
 
-      // Inicia scanner com configuração robusta
+      addDebugInfo('Iniciando scanner com configuração...');
+
+      // 10. Inicia scanner
       await scannerRef.current.start(
         { 
           facingMode: "environment" // Câmera traseira
         },
         config,
         (decodedText) => {
+          addDebugInfo(`QR lido: ${decodedText.substring(0, 20)}...`);
           // Sucesso na leitura - evita múltiplas leituras
           if (!scanned && isMountedRef.current) {
             handleQRResult(decodedText);
@@ -194,15 +275,17 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         },
         (error) => {
           // Erro na leitura (normal durante tentativas)
-          // Silencioso para evitar spam no console
+          // Silencioso para evitar spam
         }
       );
       
       if (isMountedRef.current) {
         setIsScanning(true);
+        addDebugInfo('✅ Scanner iniciado com sucesso');
       }
 
     } catch (error) {
+      addDebugInfo(`❌ Erro startScanner: ${error}`);
       if (isMountedRef.current) {
         const errorMessage = error instanceof Error ? error.message : 'Erro ao inicializar scanner';
         setError(errorMessage);
@@ -218,14 +301,16 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    * Para e limpa o scanner
    */
   const stopScanner = useCallback(async () => {
+    addDebugInfo('=== PARANDO SCANNER ===');
     isMountedRef.current = false;
     
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
+        addDebugInfo('Scanner parado e limpo');
       } catch (err) {
-        // Ignora erros de cleanup
+        addDebugInfo(`Erro ao parar scanner: ${err}`);
       }
       scannerRef.current = null;
     }
@@ -240,6 +325,8 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    * Reinicia completamente
    */
   const restartScanner = useCallback(() => {
+    addDebugInfo('=== REINICIANDO SCANNER ===');
+    setDebugInfo(''); // Limpa debug info
     stopScanner();
     setTimeout(() => {
       isMountedRef.current = true;
@@ -251,6 +338,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    * Retoma scan
    */
   const restartScan = useCallback(() => {
+    addDebugInfo('=== RETOMANDO SCAN ===');
     setScanned(false);
     setScanResult(null);
     setError(null);
@@ -262,13 +350,15 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     isMountedRef.current = true;
     
     if (isOpen) {
+      addDebugInfo('Modal aberto - iniciando scanner');
       // Pequeno delay para garantir que DOM está pronto
       const timer = setTimeout(() => {
         startScanner();
-      }, 500);
+      }, 300); // Delay maior para maior segurança
       
       return () => clearTimeout(timer);
     } else {
+      addDebugInfo('Modal fechado - parando scanner');
       stopScanner();
     }
   }, [isOpen, startScanner, stopScanner]);
@@ -276,6 +366,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      addDebugInfo('Componente desmontando');
       stopScanner();
     };
   }, [stopScanner]);
@@ -301,7 +392,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold">Scanner QR</h2>
-              <p className="text-green-100 text-sm">HTML5 QR Code Scanner</p>
+              <p className="text-green-100 text-sm">HTML5 Ultra-Robusto</p>
             </div>
           </div>
         </div>
@@ -314,6 +405,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             <div className="text-center py-8">
               <ProfessionalLoader size="lg" className="mb-4" />
               <p className="text-gray-600">Inicializando scanner...</p>
+              <p className="text-xs text-gray-500 mt-2">Verificando câmera e permissões</p>
             </div>
           )}
 
@@ -325,6 +417,15 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro do Scanner</h3>
               <p className="text-red-600 text-sm mb-4">{error}</p>
+              
+              {/* Debug Info */}
+              {debugInfo && (
+                <div className="bg-gray-100 rounded p-2 mb-4 text-left">
+                  <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                    {debugInfo}
+                  </p>
+                </div>
+              )}
               
               <button
                 onClick={restartScanner}
@@ -420,9 +521,18 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                   Aponte a câmera para o código QR
                 </p>
                 <p className="text-xs text-gray-500">
-                  Scanner HTML5 nativo para máxima compatibilidade
+                  Scanner HTML5 ultra-robusto com diagnóstico
                 </p>
               </div>
+              
+              {/* Debug Info in Scanner Mode */}
+              {debugInfo && (
+                <div className="bg-gray-100 rounded p-2">
+                  <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
+                    {debugInfo.split('\n').slice(-8).join('\n')}
+                  </p>
+                </div>
+              )}
               
               {/* Manual Controls */}
               <div className="flex space-x-3">
