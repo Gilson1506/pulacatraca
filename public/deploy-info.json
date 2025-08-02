@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "timestamp": "2024-08-01T22:05:00.000Z",
+  "branch": "main",
+  "commit": "latest",
+  "status": "deployed",
+  "improvements": [
+    "Scanner QR responsivo",
+    "Gradiente rosa-roxo nos botões",
+    "Melhor tratamento de permissões de câmera",
+    "Overlay visual para scanning",
+    "Interface mobile otimizada"
+  ],
+  "urls": {
+    "checkin": "/checkin",
+    "debug": "/deploy-info.json"
+  }
+}
