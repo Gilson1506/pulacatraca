@@ -224,19 +224,44 @@ const CheckInPage = () => {
     try {
       console.log('📊 Buscando estatísticas de check-in...');
       
-      // Buscar check-ins do evento diretamente
+      // Buscar check-ins do evento diretamente (sem JOIN complexo)
       const { data: checkinData, error: checkinError } = await supabase
         .from('checkin')
         .select(`
           id,
           created_at,
-          ticket_users (
-            name,
-            email
-          )
+          ticket_user_id,
+          user_id,
+          event_id
         `)
         .eq('event_id', currentEvent.id)
         .order('created_at', { ascending: false });
+
+      // Se encontrou check-ins, buscar dados dos usuários separadamente
+      let enrichedCheckins = [];
+      if (checkinData && checkinData.length > 0) {
+        const ticketUserIds = checkinData
+          .filter(c => c.ticket_user_id)
+          .map(c => c.ticket_user_id);
+        
+        let ticketUsersData = [];
+        if (ticketUserIds.length > 0) {
+          const { data: users } = await supabase
+            .from('ticket_users')
+            .select('id, name, email')
+            .in('id', ticketUserIds);
+          ticketUsersData = users || [];
+        }
+
+        // Combinar dados
+        enrichedCheckins = checkinData.map(checkin => ({
+          ...checkin,
+          ticket_users: ticketUsersData.find(u => u.id === checkin.ticket_user_id) || {
+            name: 'Participante',
+            email: 'Não informado'
+          }
+        }));
+      }
 
       // Buscar total de participantes
       const { data: participantsData, error: participantsError } = await supabase
@@ -255,11 +280,11 @@ const CheckInPage = () => {
 
       // Calcular estatísticas
       const totalParticipants = participantsData?.length || 0;
-      const checkedInCount = checkinData?.length || 0;
+      const checkedInCount = enrichedCheckins?.length || 0;
       const pending = totalParticipants - checkedInCount;
       const percentage = totalParticipants > 0 ? Math.round((checkedInCount / totalParticipants) * 100) : 0;
-      const lastCheckin = checkinData && checkinData.length > 0 ? checkinData[0].created_at : null;
-      const recentCheckins = checkinData?.slice(0, 5) || [];
+      const lastCheckin = enrichedCheckins && enrichedCheckins.length > 0 ? enrichedCheckins[0].created_at : null;
+      const recentCheckins = enrichedCheckins?.slice(0, 5) || [];
 
       setCheckinStats({
         total_participants: totalParticipants,

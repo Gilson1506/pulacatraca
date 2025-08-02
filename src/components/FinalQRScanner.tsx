@@ -72,7 +72,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     try {
       addDebugInfo(`🔍 Buscando ticket com QR: ${qrCode}`);
       
-      // 1. Tentar buscar em ticket_users primeiro
+      // 1. Tentar buscar em ticket_users primeiro (sem relacionamentos múltiplos)
       addDebugInfo('🔄 1. Buscando em ticket_users...');
       const { data: ticketUserData, error: ticketUserError } = await supabase
         .from('ticket_users')
@@ -81,21 +81,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           name,
           email,
           qr_code,
-          created_at,
-          tickets!inner (
-            id,
-            qr_code,
-            price,
-            ticket_type,
-            event_id,
-            events!inner (
-              id,
-              title,
-              start_date,
-              location,
-              user_id
-            )
-          )
+          created_at
         `)
         .eq('qr_code', qrCode)
         .maybeSingle();
@@ -104,28 +90,61 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       let isFromTicketUsers = false;
 
       if (!ticketUserError && ticketUserData) {
-        addDebugInfo(`✅ Encontrado em ticket_users: ${ticketUserData.name}`);
-        foundData = {
-          id: ticketUserData.id,
-          name: ticketUserData.name,
-          email: ticketUserData.email,
-          event_title: ticketUserData.tickets.events.title,
-          event_date: ticketUserData.tickets.events.start_date,
-          event_location: ticketUserData.tickets.events.location,
-          ticket_type: ticketUserData.tickets.ticket_type || 'Padrão',
-          ticket_price: ticketUserData.tickets.price || 0,
-          qr_code: ticketUserData.qr_code,
-          purchased_at: ticketUserData.created_at,
-          ticket_id: ticketUserData.tickets.id,
-          event_id: ticketUserData.tickets.events.id,
-          organizer_id: ticketUserData.tickets.events.user_id,
-          ticket_user_id: ticketUserData.id
-        };
-        isFromTicketUsers = true;
-      } else {
+        addDebugInfo(`✅ ticket_users encontrado: ${ticketUserData.name}`);
+        
+        // Buscar dados do ticket separadamente
+        const { data: ticketData } = await supabase
+          .from('tickets')
+          .select(`
+            id,
+            price,
+            ticket_type,
+            event_id
+          `)
+          .eq('qr_code', qrCode)
+          .maybeSingle();
+
+        if (ticketData) {
+          // Buscar dados do evento separadamente
+          const { data: eventData } = await supabase
+            .from('events')
+            .select(`
+              id,
+              title,
+              start_date,
+              location,
+              user_id
+            `)
+            .eq('id', ticketData.event_id)
+            .maybeSingle();
+
+          if (eventData) {
+            foundData = {
+              id: ticketUserData.id,
+              name: ticketUserData.name,
+              email: ticketUserData.email,
+              event_title: eventData.title,
+              event_date: eventData.start_date,
+              event_location: eventData.location,
+              ticket_type: ticketData.ticket_type || 'Padrão',
+              ticket_price: ticketData.price || 0,
+              qr_code: ticketUserData.qr_code,
+              purchased_at: ticketUserData.created_at,
+              ticket_id: ticketData.id,
+              event_id: eventData.id,
+              organizer_id: eventData.user_id,
+              ticket_user_id: ticketUserData.id
+            };
+            isFromTicketUsers = true;
+            addDebugInfo('✅ Dados completos carregados via ticket_users');
+          }
+        }
+             }
+
+      if (!foundData) {
         addDebugInfo(`⚠️ Não encontrado em ticket_users: ${ticketUserError?.message || 'Sem dados'}`);
         
-        // 2. Fallback: buscar diretamente em tickets
+        // 2. Fallback: buscar diretamente em tickets (sem relacionamento múltiplo)
         addDebugInfo('🔄 2. Buscando em tickets...');
         const { data: ticketData, error: ticketError } = await supabase
           .from('tickets')
@@ -136,38 +155,51 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             ticket_type,
             created_at,
             event_id,
-            user_id,
-            events!inner (
-              id,
-              title,
-              start_date,
-              location,
-              user_id
-            )
+            user_id
           `)
           .eq('qr_code', qrCode)
           .maybeSingle();
 
         if (!ticketError && ticketData) {
-          addDebugInfo(`✅ Encontrado em tickets: ID ${ticketData.id}`);
-          foundData = {
-            id: `ticket_${ticketData.id}`, // ID artificial para tickets diretos
-            name: 'Usuário do Ticket',
-            email: 'nao-informado@ticket.com',
-            event_title: ticketData.events.title,
-            event_date: ticketData.events.start_date,
-            event_location: ticketData.events.location,
-            ticket_type: ticketData.ticket_type || 'Padrão',
-            ticket_price: ticketData.price || 0,
-            qr_code: ticketData.qr_code,
-            purchased_at: ticketData.created_at,
-            ticket_id: ticketData.id,
-            event_id: ticketData.events.id,
-            organizer_id: ticketData.events.user_id,
-            ticket_user_id: null, // Não tem ticket_user associado
-            user_id: ticketData.user_id
-          };
-          isFromTicketUsers = false;
+          addDebugInfo(`✅ ticket encontrado: ID ${ticketData.id}`);
+          
+          // Buscar dados do evento separadamente
+          const { data: eventData } = await supabase
+            .from('events')
+            .select(`
+              id,
+              title,
+              start_date,
+              location,
+              user_id
+            `)
+            .eq('id', ticketData.event_id)
+            .maybeSingle();
+
+          if (eventData) {
+            foundData = {
+              id: `ticket_${ticketData.id}`, // ID artificial para tickets diretos
+              name: 'Usuário do Ticket',
+              email: 'nao-informado@ticket.com',
+              event_title: eventData.title,
+              event_date: eventData.start_date,
+              event_location: eventData.location,
+              ticket_type: ticketData.ticket_type || 'Padrão',
+              ticket_price: ticketData.price || 0,
+              qr_code: ticketData.qr_code,
+              purchased_at: ticketData.created_at,
+              ticket_id: ticketData.id,
+              event_id: eventData.id,
+              organizer_id: eventData.user_id,
+              ticket_user_id: null, // Não tem ticket_user associado
+              user_id: ticketData.user_id
+            };
+            isFromTicketUsers = false;
+            addDebugInfo('✅ Dados completos carregados via tickets');
+          } else {
+            addDebugInfo('❌ Evento não encontrado para o ticket');
+            return null;
+          }
         } else {
           addDebugInfo(`❌ Não encontrado em tickets: ${ticketError?.message || 'Sem dados'}`);
           addDebugInfo('❌ QR Code não encontrado em nenhuma tabela');
@@ -352,27 +384,16 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       } else {
         setError('Código QR inválido ou ticket não encontrado');
         setScanResult(null);
-        addDebugInfo('Erro - ticket não encontrado');
+        addDebugInfo('❌ Ticket não encontrado - parando scanner');
         
-        // Retoma após erro
-        setTimeout(() => {
-          if (isMountedRef.current && isOpen) {
-            setScanned(false);
-            startScanner();
-          }
-        }, 3000);
+        // NÃO reinicia automaticamente após erro - usuário deve clicar em "Tentar Novamente"
       }
     } catch (error) {
-      addDebugInfo(`Erro handleQRResult: ${error}`);
+      addDebugInfo(`❌ Erro handleQRResult: ${error}`);
       setError('Erro ao processar código QR. Tente novamente.');
       setScanResult(null);
       
-      setTimeout(() => {
-        if (isMountedRef.current && isOpen) {
-          setScanned(false);
-          startScanner();
-        }
-      }, 3000);
+      // NÃO reinicia automaticamente - usuário deve clicar em "Tentar Novamente"
     }
   }, [scanned, isOpen, onSuccess]);
 
@@ -552,12 +573,19 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    * Retoma scan
    */
   const restartScan = useCallback(() => {
-    addDebugInfo('=== RETOMANDO SCAN ===');
+    addDebugInfo('🔄 Reiniciando scanner...');
     setScanned(false);
     setScanResult(null);
     setError(null);
-    startScanner();
-  }, [startScanner]);
+    setIsLoading(true);
+    
+    // Aguarda um pouco antes de reiniciar para evitar conflitos
+    setTimeout(() => {
+      if (isMountedRef.current && isOpen) {
+        startScanner();
+      }
+    }, 500);
+  }, [startScanner, isOpen]);
 
   /**
    * Callback do ref para detectar DOM pronto
