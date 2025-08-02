@@ -588,7 +588,7 @@ const CheckInPage = () => {
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm p-6 text-center">
               <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Nenhum Evento Ativo</h1>
+              <h1 className="text-2xl font-bold text-gray-700 mb-2">Nenhum Evento Ativo</h1>
               <p className="text-gray-600">Você precisa ter um evento aprovado para usar o sistema de check-in.</p>
             </div>
           </div>
@@ -623,8 +623,8 @@ const CheckInPage = () => {
               <div className="flex-grow">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2">
                   <div>
-                    <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                      🎯 {currentEvent.title}
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-700 mb-1">
+                      {currentEvent.title}
                     </h1>
                     <p className="text-sm text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
@@ -657,7 +657,7 @@ const CheckInPage = () => {
                     {/* Data */}
                     <div className="bg-blue-50 p-2 rounded border border-blue-200 flex flex-col items-center justify-center text-center">
                       <Calendar className="h-4 w-4 text-blue-600 mb-1" />
-                      <div className="text-xs font-medium text-blue-900">Data</div>
+                                              <div className="text-xs font-medium text-blue-700">Data</div>
                       <div className="text-xs text-blue-800 font-semibold">
                         {new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
                           day: '2-digit', 
@@ -669,7 +669,7 @@ const CheckInPage = () => {
                     {/* Check-ins */}
                     <div className="bg-green-50 p-2 rounded border border-green-200 flex flex-col items-center justify-center text-center">
                       <CheckCircle className="h-4 w-4 text-green-600 mb-1" />
-                      <div className="text-xs font-medium text-green-900">Check-ins</div>
+                                              <div className="text-xs font-medium text-green-700">Check-ins</div>
                       <div className="text-xs text-green-800 font-bold">
                         {checkinStats.checked_in}/{checkinStats.total_participants}
                       </div>
@@ -688,7 +688,7 @@ const CheckInPage = () => {
                         ) : (
                           <VolumeX className="h-4 w-4 text-purple-400 mb-1" />
                         )}
-                        <div className="text-xs font-medium text-purple-900">Som</div>
+                                                  <div className="text-xs font-medium text-purple-700">Som</div>
                         <div className="text-xs text-purple-600">{soundEnabled ? 'ON' : 'OFF'}</div>
                       </button>
                     </div>
@@ -701,7 +701,7 @@ const CheckInPage = () => {
                         title="Abrir scanner QR"
                       >
                         <Camera className="h-4 w-4 text-pink-600 mb-1" />
-                        <div className="text-xs font-medium text-pink-900">Scanner</div>
+                                                  <div className="text-xs font-medium text-pink-700">Scanner</div>
                         <div className="text-xs text-pink-600">QR</div>
                       </button>
                     </div>
@@ -731,7 +731,7 @@ const CheckInPage = () => {
                     <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200">
                       <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
                         <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium text-blue-900">Data & Horário</span>
+                        <span className="text-xs sm:text-sm font-medium text-blue-700">Data & Horário</span>
                       </div>
                       <div className="text-xs sm:text-sm text-blue-800">
                         <div>{new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
@@ -757,7 +757,7 @@ const CheckInPage = () => {
                     <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200">
                       <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
                         <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium text-green-900">Check-ins</span>
+                        <span className="text-xs sm:text-sm font-medium text-green-700">Check-ins</span>
                       </div>
                       <div className="text-xs sm:text-sm text-green-800">
                         <div className="flex items-center justify-between">
@@ -784,7 +784,7 @@ const CheckInPage = () => {
                     <div className="bg-purple-50 p-2 sm:p-3 rounded-lg border border-purple-200 sm:col-span-2 lg:col-span-1">
                       <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
                         <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium text-purple-900">
+                        <span className="text-xs sm:text-sm font-medium text-purple-700">
                           {currentEvent.location ? 'Localização' : 'Status'}
                         </span>
                       </div>
@@ -843,7 +843,7 @@ const CheckInPage = () => {
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center space-x-2">
                   <Search className="h-5 w-5 text-blue-600" />
-                  <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Busca Manual</h2>
+                  <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-700">Busca Manual</h2>
                 </div>
                 
                 {/* Botão Scanner QR - Modal Otimizado */}
@@ -891,7 +891,7 @@ const CheckInPage = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center space-x-2 mb-1 sm:mb-2">
                               <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
-                              <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{participant.name}</p>
+                              <p className="font-semibold text-gray-700 text-sm sm:text-base truncate">{participant.name}</p>
                             </div>
                             <div className="space-y-1 text-xs sm:text-sm">
                               <div className="flex items-center space-x-2">
@@ -963,7 +963,7 @@ const CheckInPage = () => {
           {/* Resumo dos Check-ins - Dados Reais */}
           {checkinStats.recent_checkins.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mt-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-3">Últimos Check-ins Realizados</h3>
+              <h3 className="text-lg font-bold text-gray-700 mb-3">Últimos Check-ins Realizados</h3>
               <div className="space-y-2">
                 {checkinStats.recent_checkins.slice(0, 3).map((checkin, index) => (
                   <div key={checkin.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
@@ -972,7 +972,7 @@ const CheckInPage = () => {
                         <CheckCircle className="h-4 w-4 text-green-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-700">
                           {checkin.ticket_users?.name || `Participante ${index + 1}`}
                         </p>
                         <p className="text-xs text-gray-500">
