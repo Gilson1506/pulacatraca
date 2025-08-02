@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cookie, Shield, X, ExternalLink } from 'lucide-react';
+import { Cookie, Shield, X, ExternalLink, CheckCircle } from 'lucide-react';
+import ProfessionalLoader from './ProfessionalLoader';
 
 interface CookieConsentProps {
   /**
