@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
 import QrScannerLib from 'qr-scanner';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 interface Event {
   id: string;
@@ -42,6 +43,7 @@ const CheckInPage = () => {
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [scannerType, setScannerType] = useState<'qr-scanner' | 'zxing'>('qr-scanner');
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -58,6 +60,7 @@ const CheckInPage = () => {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScannerLib | null>(null);
+  const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
     useEffect(() => {
@@ -74,8 +77,18 @@ const CheckInPage = () => {
 
   useEffect(() => {
     return () => {
+      // Cleanup QR Scanner
       if (qrScannerRef.current) {
-        qrScannerRef.current.destroy();
+        try {
+          qrScannerRef.current.destroy();
+        } catch (e) {}
+      }
+      
+      // Cleanup ZXING Scanner
+      if (zxingReaderRef.current) {
+        try {
+          zxingReaderRef.current.reset();
+        } catch (e) {}
       }
     };
   }, []);
@@ -444,6 +457,101 @@ const CheckInPage = () => {
     }
   };
 
+  const startZXingScanner = async () => {
+    if (!videoRef.current) {
+      console.error('❌ Elemento de vídeo não encontrado');
+      showModal('error', 'Erro interno: elemento de vídeo não encontrado');
+      return;
+    }
+
+    try {
+      console.log('📱 Iniciando scanner ZXING...');
+      setScannerActive(true);
+      setIsScanning(true);
+
+      // Parar scanner anterior se existir
+      if (zxingReaderRef.current) {
+        try {
+          zxingReaderRef.current.reset();
+        } catch (e) {}
+        zxingReaderRef.current = null;
+      }
+
+      const codeReader = new BrowserMultiFormatReader();
+      zxingReaderRef.current = codeReader;
+
+      // Iniciar decodificação
+      await codeReader.decodeFromVideoDevice(
+        undefined,
+        videoRef.current,
+        (result, err) => {
+          if (result) {
+            const qrData = result.getText();
+            console.log('📸 QR Code detectado (ZXING):', qrData);
+            handleQRCodeScan(qrData);
+            stopZXingScanner();
+          }
+          if (err && !result) {
+            console.log('⚠️ Erro de decodificação ZXING:', err);
+          }
+        }
+      );
+
+      setIsScanning(false);
+      console.log('✅ Scanner ZXING iniciado com sucesso');
+
+    } catch (error: any) {
+      console.error('❌ Erro ao iniciar scanner ZXING:', error);
+      let errorMessage = 'Erro ao acessar a câmera';
+
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Permissão de câmera negada. Permita o acesso e tente novamente.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'Nenhuma câmera encontrada neste dispositivo.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Câmera está sendo usada por outro aplicativo.';
+      } else {
+        errorMessage = `Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}`;
+      }
+
+      showModal('error', errorMessage, {
+        error_details: `${error.name}: ${error.message}`,
+        camera_error: true
+      });
+      setScannerActive(false);
+      setIsScanning(false);
+    }
+  };
+
+  const stopZXingScanner = () => {
+    console.log('⏹️ Parando scanner ZXING...');
+    
+    try {
+      if (zxingReaderRef.current) {
+        zxingReaderRef.current.reset();
+        zxingReaderRef.current = null;
+        console.log('✅ Scanner ZXING parado');
+      }
+      
+      // Garantir que o vídeo pare
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            track.stop();
+            console.log('📹 Track ZXING parado:', track.label);
+          });
+        }
+        videoRef.current.srcObject = null;
+      }
+    } catch (error) {
+      console.error('Erro ao parar scanner ZXING:', error);
+    } finally {
+      setScannerActive(false);
+      setIsScanning(false);
+    }
+  };
+
   const startQRScanner = async () => {
     if (!videoRef.current) {
       console.error('❌ Elemento de vídeo não encontrado');
@@ -573,14 +681,22 @@ const CheckInPage = () => {
   };
 
   const stopQRScanner = () => {
-    console.log('⏹️ Parando scanner QR...');
+    console.log('⏹️ Parando todos os scanners...');
     
     try {
+      // Parar QR Scanner (qr-scanner lib)
       if (qrScannerRef.current) {
         qrScannerRef.current.stop();
         qrScannerRef.current.destroy();
         qrScannerRef.current = null;
-        console.log('✅ Scanner QR parado');
+        console.log('✅ QR Scanner parado');
+      }
+      
+      // Parar ZXING Scanner
+      if (zxingReaderRef.current) {
+        zxingReaderRef.current.reset();
+        zxingReaderRef.current = null;
+        console.log('✅ ZXING Scanner parado');
       }
       
       // Garantir que o vídeo pare completamente
@@ -826,23 +942,40 @@ const CheckInPage = () => {
                       </p>
                     </div>
                     
-                    <button
-                      onClick={startQRScanner}
-                      disabled={isScanning}
-                      className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-3 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none text-sm sm:text-base"
-                    >
-                      {isScanning ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span className="font-semibold">Carregando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="h-5 w-5 sm:h-6 sm:w-6" />
-                          <span className="font-semibold">Ativar Scanner QR</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => scannerType === 'qr-scanner' ? startQRScanner() : startZXingScanner()}
+                        disabled={isScanning}
+                        className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-3 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none text-sm sm:text-base"
+                      >
+                        {isScanning ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-semibold">Carregando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="h-5 w-5 sm:h-6 sm:w-6" />
+                            <span className="font-semibold">Ativar Scanner QR</span>
+                          </>
+                        )}
+                      </button>
+                      
+                      <div className="flex justify-center space-x-2">
+                        <button
+                          onClick={() => setScannerType('qr-scanner')}
+                          className={`px-3 py-1 rounded-full text-xs ${scannerType === 'qr-scanner' ? 'bg-pink-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                        >
+                          Scanner Avançado
+                        </button>
+                        <button
+                          onClick={() => setScannerType('zxing')}
+                          className={`px-3 py-1 rounded-full text-xs ${scannerType === 'zxing' ? 'bg-pink-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                        >
+                          Scanner Compatível
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -858,10 +991,15 @@ const CheckInPage = () => {
                   <div className="min-w-0">
                     <h4 className="text-xs sm:text-sm font-medium text-blue-900">Como usar:</h4>
                     <ul className="text-xs sm:text-sm text-blue-700 mt-1 space-y-1">
+                      <li>• Escolha o tipo de scanner</li>
                       <li>• Permita acesso à câmera</li>
                       <li>• Aponte para o QR Code do ingresso</li>
                       <li>• Check-in automático ao detectar</li>
                     </ul>
+                    <p className="text-xs text-blue-600 mt-2">
+                      <strong>Scanner Avançado:</strong> Melhor performance<br/>
+                      <strong>Scanner Compatível:</strong> Maior compatibilidade
+                    </p>
                   </div>
                 </div>
               </div>

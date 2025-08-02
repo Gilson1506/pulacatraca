@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera, Loader2
 } from 'lucide-react';
@@ -2068,7 +2067,6 @@ const WithdrawalsSection = () => {
 
 // Check-ins Component
 const OrganizerCheckIns = () => {
-  const navigate = useNavigate();
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showQrScanner, setShowQrScanner] = useState(false);
@@ -2262,24 +2260,14 @@ const OrganizerCheckIns = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Check-ins</h2>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/checkin')}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg hover:from-pink-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
-          >
-            <CheckCircle className="h-5 w-5" />
-            Sistema Check-in
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowQrScanner(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Camera className="h-5 w-5" />
-            Scanner QR Code
-          </button>
-        </div>
+                 <button
+           type="button"
+           onClick={() => setShowQrScanner(true)}
+           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+         >
+           <Camera className="h-5 w-5" />
+           Scanner QR Code
+         </button>
       </div>
       {qrResult && (
         <div className="mt-2 text-green-700 font-semibold">QR Code lido: {qrResult}</div>
