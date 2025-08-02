@@ -2067,17 +2067,52 @@ const WithdrawalsSection = () => {
 
 // Check-ins Component
 const OrganizerCheckIns = () => {
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showQrScanner, setShowQrScanner] = useState(false);
-  const [qrResult, setQrResult] = useState<string | null>(null);
-  const [manualCode, setManualCode] = useState('');
+  return (
+    <div className="space-y-6">
+      <div className="p-6 space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Sistema de Check-in</h2>
+          <p className="text-gray-600 mb-6">Acesse o sistema completo de check-in com scanner QR e busca manual</p>
+          
+          <a
+            href="/checkin"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg font-semibold"
+          >
+            <CheckCircle className="h-6 w-6" />
+            Acessar Sistema de Check-in
+          </a>
+          
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <Camera className="h-8 w-8 text-pink-600 mx-auto mb-2" />
+              <h3 className="font-semibold text-gray-900">Scanner QR</h3>
+              <p className="text-sm text-gray-600">Escaneie códigos QR dos ingressos</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <Users className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+              <h3 className="font-semibold text-gray-900">Busca Manual</h3>
+              <p className="text-sm text-gray-600">Encontre participantes por nome</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <BarChart3 className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+              <h3 className="font-semibold text-gray-900">Estatísticas</h3>
+              <p className="text-sm text-gray-600">Acompanhe check-ins em tempo real</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-  // ✅ BUSCAR DADOS REAIS DO SUPABASE
-  const fetchCheckIns = async () => {
-    try {
-      setIsLoading(true);
-      console.log('🔄 Buscando check-ins...');
+// Configurações do Organizador
+const OrganizerSettings = () => {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: ''
       
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -2262,11 +2297,11 @@ const OrganizerCheckIns = () => {
         <h2 className="text-2xl font-bold text-gray-900">Check-ins</h2>
                  <button
            type="button"
-           onClick={() => window.open('/checkin', '_blank')}
-           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg hover:from-pink-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+           onClick={() => setShowQrScanner(true)}
+           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
          >
-                       <CheckCircle className="h-5 w-5" />
-            Sistema Check-in V2
+           <Camera className="h-5 w-5" />
+           Scanner QR Code
          </button>
       </div>
       {qrResult && (
