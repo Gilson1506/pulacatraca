@@ -851,7 +851,7 @@ const CheckInPage = () => {
                   <button
                     onClick={() => setShowFinalScanner(true)}
                     className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-purple-100 text-purple-600 hover:bg-purple-200 text-xs sm:text-sm"
-                    title="Scanner QR Final (@zxing/browser)"
+                    title="Scanner QR HTML5 Nativo"
                   >
                     <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Scanner QR</span>

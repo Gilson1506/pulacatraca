@@ -3,7 +3,7 @@ import {
   Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
-import QrScanner from '../components/QrScanner';
+// QrScanner removido - conflitava com html5-qrcode
 import { supabase } from '../lib/supabase';
 import LoadingButton from '../components/LoadingButton';
 import ProfessionalLoader from '../components/ProfessionalLoader';

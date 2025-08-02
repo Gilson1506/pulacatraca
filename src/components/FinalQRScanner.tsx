@@ -134,7 +134,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   }, [scanned, isOpen, onSuccess]);
 
   /**
-   * Inicia o scanner - ABORDAGEM DOM SEGURA
+   * Inicia o scanner - ABORDAGEM DOM SEGURA + FORÇADA
    */
   const startScanner = useCallback(async () => {
     if (!readerRef.current || !isMountedRef.current) return;
@@ -162,24 +162,39 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         scannerRef.current = null;
       }
 
+      // Aguarda um pouco para garantir DOM estável
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Cria novo Html5Qrcode usando ID do elemento
       scannerRef.current = new Html5Qrcode(readerId);
       
-      // Inicia scanner com configuração otimizada
+      // Configuração mais robusta para máxima compatibilidade
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        disableFlip: false,
+        // Configurações extras para compatibilidade
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: false
+        }
+      };
+
+      // Inicia scanner com configuração robusta
       await scannerRef.current.start(
-        { facingMode: "environment" }, // Câmera traseira
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
+        { 
+          facingMode: "environment" // Câmera traseira
         },
+        config,
         (decodedText) => {
-          // Sucesso na leitura
-          handleQRResult(decodedText);
+          // Sucesso na leitura - evita múltiplas leituras
+          if (!scanned && isMountedRef.current) {
+            handleQRResult(decodedText);
+          }
         },
         (error) => {
           // Erro na leitura (normal durante tentativas)
-          // Não logamos para evitar spam
+          // Silencioso para evitar spam no console
         }
       );
       
@@ -197,7 +212,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         setIsLoading(false);
       }
     }
-  }, [handleQRResult]);
+  }, [handleQRResult, scanned]);
 
   /**
    * Para e limpa o scanner
