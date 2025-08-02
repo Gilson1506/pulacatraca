@@ -220,10 +220,22 @@ const SimplifiedQRScanner: React.FC<SimplifiedQRScannerProps> = ({
         throw new Error('Não foi possível acessar a câmera');
       }
 
-      // Aguarda elemento DOM
-      const element = document.getElementById(qrReaderElementId);
+      // Aguarda elemento DOM com retry
+      let element = null;
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (!element && attempts < maxAttempts) {
+        element = document.getElementById(qrReaderElementId);
+        if (!element) {
+          addDebugInfo(`Aguardando elemento DOM... tentativa ${attempts + 1}/${maxAttempts}`);
+          await new Promise(resolve => setTimeout(resolve, 200));
+          attempts++;
+        }
+      }
+      
       if (!element) {
-        addDebugInfo('Elemento DOM não encontrado');
+        addDebugInfo('Elemento DOM não encontrado após várias tentativas');
         throw new Error('Elemento scanner não encontrado');
       }
       
