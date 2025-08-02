@@ -1030,142 +1030,46 @@ const CheckInPage = () => {
                     <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
                   
-                  {/* Controles: Som e Scanner */}
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                    {/* Botão Scanner QR */}
-                    <button
-                      onClick={scannerActive ? stopSimpleScanner : startSimpleScanner}
-                      disabled={isScanning}
-                      className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-                        scannerActive 
-                          ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                          : 'bg-pink-100 text-pink-600 hover:bg-pink-200'
-                      } disabled:opacity-50`}
-                      title={scannerActive ? 'Parar Scanner' : 'Ativar Scanner QR'}
-                    >
-                      {isScanning ? (
-                        <>
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                          <span className="text-xs sm:text-sm hidden sm:block">Iniciando...</span>
-                        </>
-                      ) : scannerActive ? (
-                        <>
-                          <CameraOff className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="text-xs sm:text-sm hidden sm:block">Parar</span>
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="text-xs sm:text-sm hidden sm:block">Scanner</span>
-                        </>
-                      )}
-                    </button>
-
-                    {/* Botão de som */}
-                    <button
-                      onClick={toggleSound}
-                      className={`p-2 rounded-lg transition-all duration-200 ${
-                        soundEnabled 
-                          ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                      title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
-                    >
-                      {soundEnabled ? (
-                        <Volume2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                      ) : (
-                        <VolumeX className="h-3 w-3 sm:h-4 sm:w-4" />
-                      )}
-                    </button>
-                  </div>
+                  {/* Botão de som apenas */}
+                  <button
+                    onClick={toggleSound}
+                    className={`mt-2 sm:mt-0 p-2 rounded-lg transition-all duration-200 ${
+                      soundEnabled 
+                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                    title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+                  >
+                    {soundEnabled ? (
+                      <Volume2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    ) : (
+                      <VolumeX className="h-3 w-3 sm:h-4 sm:w-4" />
+                    )}
+                  </button>
                 </div>
                 
-                {/* Estatísticas em Grid Responsivo - Dados Reais */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                  {/* Data do Evento */}
-                  <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200">
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-blue-600 font-medium">Data</p>
-                        <p className="text-xs sm:text-sm font-semibold text-blue-900 truncate">
-                          {new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
-                            day: '2-digit', 
-                            month: '2-digit' 
-                          })}
-                        </p>
-                      </div>
+                {/* Informações básicas do evento com dados reais */}
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span>Data: {new Date(currentEvent.start_date).toLocaleDateString('pt-BR')}</span>
+                    {currentEvent.location && (
+                      <span className="truncate ml-4">📍 {currentEvent.location}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>✅ Check-ins: <strong>{checkinStats.checked_in}</strong> / {checkinStats.total_participants}</span>
+                    <span className="text-green-600 font-semibold">{checkinStats.percentage}% concluído</span>
+                  </div>
+                  {checkinStats.last_checkin && (
+                    <div className="text-xs text-gray-500">
+                      Último check-in: {new Date(checkinStats.last_checkin).toLocaleString('pt-BR', { 
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
                     </div>
-                  </div>
-                  
-                  {/* Check-ins Realizados */}
-                  <div className="bg-green-50 p-2 sm:p-3 rounded-lg border border-green-200">
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-green-600 font-medium">Check-ins</p>
-                        <p className="text-xs sm:text-sm font-semibold text-green-900">
-                          {checkinStats.checked_in} / {checkinStats.total_participants}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Pendentes */}
-                  <div className="bg-purple-50 p-2 sm:p-3 rounded-lg border border-purple-200">
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                      <Users className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-purple-600 font-medium">Pendentes</p>
-                        <p className="text-xs sm:text-sm font-semibold text-purple-900">
-                          {checkinStats.pending}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Percentual */}
-                  <div className="bg-orange-50 p-2 sm:p-3 rounded-lg border border-orange-200">
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-orange-600 font-medium">Conclusão</p>
-                        <p className="text-xs sm:text-sm font-semibold text-orange-900">
-                          {checkinStats.percentage}%
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Barra de progresso com dados reais */}
-                <div className="mt-3 sm:mt-4">
-                  <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
-                    <span className="font-medium">Progresso do Check-in</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-green-600">{checkinStats.percentage}%</span>
-                      {checkinStats.last_checkin && (
-                        <span className="text-gray-400">
-                          • Último: {new Date(checkinStats.last_checkin).toLocaleTimeString('pt-BR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${checkinStats.percentage}%` }}
-                    ></div>
-                  </div>
-                  
-                  {/* Informações adicionais para mobile */}
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{checkinStats.checked_in} confirmados</span>
-                    <span>{checkinStats.pending} pendentes</span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Scanner QR Integrado */}
@@ -1222,9 +1126,40 @@ const CheckInPage = () => {
           <div className="max-w-4xl mx-auto">
             {/* Manual Search - Mobile Optimized */}
             <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-4 border-blue-500">
-              <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-                <Search className="h-5 w-5 text-blue-600" />
-                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Busca Manual</h2>
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="flex items-center space-x-2">
+                  <Search className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Busca Manual</h2>
+                </div>
+                
+                {/* Botão Scanner QR - Mobile Otimizado */}
+                <button
+                  onClick={scannerActive ? stopSimpleScanner : startSimpleScanner}
+                  disabled={isScanning}
+                  className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    scannerActive 
+                      ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                      : 'bg-pink-100 text-pink-600 hover:bg-pink-200'
+                  } disabled:opacity-50 text-xs sm:text-sm`}
+                  title={scannerActive ? 'Parar Scanner' : 'Ativar Scanner QR'}
+                >
+                  {isScanning ? (
+                    <>
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                      <span className="hidden sm:inline">Iniciando...</span>
+                    </>
+                  ) : scannerActive ? (
+                    <>
+                      <CameraOff className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Parar</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span>Scanner QR</span>
+                    </>
+                  )}
+                </button>
               </div>
               
               <div className="space-y-3 sm:space-y-4">
@@ -1338,39 +1273,60 @@ const CheckInPage = () => {
             </div>
           </div>
 
-          {/* Statistics */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mt-8">
-            <h2 className="text-xl font-bold mb-4">Estatísticas do Evento</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600">Check-ins realizados</p>
-                    <p className="text-2xl font-bold text-green-900">{checkedInCount}</p>
+          {/* Resumo dos Check-ins - Dados Reais */}
+          {checkinStats.recent_checkins.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mt-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Últimos Check-ins Realizados</h3>
+              <div className="space-y-2">
+                {checkinStats.recent_checkins.slice(0, 3).map((checkin, index) => (
+                  <div key={checkin.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {checkin.ticket_users?.name || `Participante ${index + 1}`}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {checkin.ticket_users?.email || 'Email não disponível'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-green-600">
+                        {new Date(checkin.created_at).toLocaleTimeString('pt-BR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(checkin.created_at).toLocaleDateString('pt-BR', { 
+                          day: '2-digit', 
+                          month: '2-digit' 
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
+                ))}
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-600">Total de participantes</p>
-                    <p className="text-2xl font-bold text-blue-900">{totalParticipants}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-blue-600" />
-                </div>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-600">Pendentes</p>
-                    <p className="text-2xl font-bold text-yellow-900">{totalParticipants - checkedInCount}</p>
-                  </div>
-                  <User className="h-8 w-8 text-yellow-600" />
+              
+              {/* Resumo final */}
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    Total de check-ins: <strong className="text-green-600">{checkinStats.checked_in}</strong>
+                  </span>
+                  <span className="text-gray-600">
+                    Restantes: <strong className="text-orange-600">{checkinStats.pending}</strong>
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    {checkinStats.percentage}% concluído
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
