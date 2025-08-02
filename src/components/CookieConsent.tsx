@@ -171,12 +171,12 @@ const CookieConsent: React.FC<CookieConsentProps> = ({
   const getPositionClasses = (): string => {
     switch (position) {
       case 'top':
-        return 'top-4 left-4 right-4 md:left-6 md:right-6';
+        return 'top-2 left-2 right-2 md:top-4 md:left-6 md:right-6';
       case 'center':
         return 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-lg w-full mx-4';
       case 'bottom':
       default:
-        return 'bottom-4 left-4 right-4 md:left-6 md:right-6 md:max-w-md md:left-auto';
+        return 'bottom-2 left-2 right-2 md:bottom-4 md:left-6 md:right-6 md:max-w-md md:left-auto';
     }
   };
 
@@ -271,80 +271,78 @@ const CookieConsent: React.FC<CookieConsentProps> = ({
             }}
             className={`
               fixed z-50 ${getPositionClasses()}
-              bg-white border border-gray-200 rounded-xl shadow-2xl
-              backdrop-blur-md bg-opacity-95
+              bg-gray-100/90 backdrop-blur-sm border border-gray-300/60 rounded-lg shadow-2xl
               ${position === 'center' ? 'shadow-3xl' : ''}
             `}
           >
             {/* Card Content */}
-            <div className="p-4 md:p-6">
+            <div className="p-3 md:p-4">
               
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
-                      <Cookie className="h-5 w-5 text-white" />
+                              {/* Header */}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
+                        <Cookie className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-base md:text-lg font-bold text-gray-800">
+                        {defaultTexts.title}
+                      </h3>
                     </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">
-                      {defaultTexts.title}
-                    </h3>
-                  </div>
+
+                                  {/* Close button apenas para posição center */}
+                  {position === 'center' && (
+                    <button
+                      onClick={() => setIsVisible(false)}
+                      className="text-gray-600 hover:text-gray-800 p-1 rounded-sm hover:bg-gray-300/50 transition-colors"
+                      aria-label="Fechar"
+                    >
+                      <X className="h-4 w-4 md:h-5 md:w-5" />
+                    </button>
+                  )}
                 </div>
 
-                {/* Close button apenas para posição center */}
-                {position === 'center' && (
-                  <button
-                    onClick={() => setIsVisible(false)}
-                    className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                    aria-label="Fechar"
+                {/* Description */}
+                <div className="mb-3">
+                  <p className="text-xs md:text-sm text-gray-600 leading-relaxed">
+                    {defaultTexts.description}
+                  </p>
+                </div>
+
+                              {/* Privacy Policy Link */}
+                <div className="mb-3">
+                  <a
+                    href={privacyPolicyUrl}
+                    className="inline-flex items-center text-xs md:text-sm text-pink-600 hover:text-pink-700 font-medium transition-colors group"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    <X className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+                    <Shield className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                    {defaultTexts.privacyLink}
+                    <ExternalLink className="h-2 w-2 md:h-3 md:w-3 ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </a>
+                </div>
 
-              {/* Description */}
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {defaultTexts.description}
-                </p>
-              </div>
-
-              {/* Privacy Policy Link */}
-              <div className="mb-4">
-                <a
-                  href={privacyPolicyUrl}
-                  className="inline-flex items-center text-sm text-pink-600 hover:text-pink-700 font-medium transition-colors group"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  {defaultTexts.privacyLink}
-                  <ExternalLink className="h-3 w-3 ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </a>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                
-                {/* Accept Button */}
-                <button
-                  onClick={handleAccept}
-                  disabled={isLoading}
-                  className={`
-                    flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 
-                    text-white font-semibold rounded-lg shadow-lg
-                    hover:from-pink-600 hover:to-purple-700 hover:shadow-xl
-                    transform hover:scale-105 active:scale-95
-                    transition-all duration-200 ease-in-out
-                    disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                    focus:outline-none focus:ring-4 focus:ring-pink-500 focus:ring-opacity-30
-                    flex items-center justify-center
-                  `}
-                >
+                              {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  
+                  {/* Accept Button */}
+                  <button
+                    onClick={handleAccept}
+                    disabled={isLoading}
+                    className={`
+                      flex-1 px-3 py-2 md:px-4 md:py-3 bg-pink-600 
+                      text-white font-bold rounded-sm
+                      hover:bg-pink-700
+                      transition-all duration-200
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                      flex items-center justify-center
+                      text-xs md:text-sm
+                    `}
+                  >
                   {isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -355,22 +353,21 @@ const CookieConsent: React.FC<CookieConsentProps> = ({
                   )}
                 </button>
 
-                {/* Reject Button */}
-                {showRejectButton && (
-                  <button
-                    onClick={handleReject}
-                    disabled={isLoading}
-                    className={`
-                      px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg
-                      hover:bg-gray-200 hover:shadow-md
-                      transform hover:scale-105 active:scale-95
-                      transition-all duration-200 ease-in-out
-                      disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                      focus:outline-none focus:ring-4 focus:ring-gray-300 focus:ring-opacity-30
-                      flex items-center justify-center
-                      ${position === 'center' ? 'sm:w-auto' : 'sm:flex-initial sm:w-auto'}
-                    `}
-                  >
+                                  {/* Reject Button */}
+                  {showRejectButton && (
+                    <button
+                      onClick={handleReject}
+                      disabled={isLoading}
+                      className={`
+                        px-3 py-2 md:px-4 md:py-3 bg-gray-200 text-gray-700 font-bold rounded-sm
+                        hover:bg-gray-300
+                        transition-all duration-200
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                        flex items-center justify-center
+                        text-xs md:text-sm
+                        ${position === 'center' ? 'sm:w-auto' : 'sm:flex-initial sm:w-auto'}
+                      `}
+                    >
                     {isLoading ? (
                       <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
@@ -382,12 +379,12 @@ const CookieConsent: React.FC<CookieConsentProps> = ({
                 )}
               </div>
 
-              {/* Compliance Note */}
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-xs text-gray-500 text-center">
-                  🔒 Suas informações estão protegidas conforme a LGPD
-                </p>
-              </div>
+                              {/* Compliance Note */}
+                <div className="mt-2 pt-2 border-t border-gray-300/60">
+                  <p className="text-xs text-gray-500 text-center">
+                    🔒 Suas informações estão protegidas conforme a LGPD
+                  </p>
+                </div>
             </div>
 
             {/* Subtle border animation */}
