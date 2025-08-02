@@ -950,22 +950,54 @@ const CheckInPage = () => {
                     <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
                   
-                  {/* Botão de som - Compacto */}
-                  <button
-                    onClick={toggleSound}
-                    className={`mt-2 sm:mt-0 p-2 rounded-lg transition-all duration-200 ${
-                      soundEnabled 
-                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                    }`}
-                    title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
-                  >
-                    {soundEnabled ? (
-                      <Volume2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    ) : (
-                      <VolumeX className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                  </button>
+                  {/* Controles: Som e Scanner */}
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                    {/* Botão Scanner QR */}
+                    <button
+                      onClick={scannerActive ? stopSimpleScanner : startSimpleScanner}
+                      disabled={isScanning}
+                      className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                        scannerActive 
+                          ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                          : 'bg-pink-100 text-pink-600 hover:bg-pink-200'
+                      } disabled:opacity-50`}
+                      title={scannerActive ? 'Parar Scanner' : 'Ativar Scanner QR'}
+                    >
+                      {isScanning ? (
+                        <>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs sm:text-sm hidden sm:block">Iniciando...</span>
+                        </>
+                      ) : scannerActive ? (
+                        <>
+                          <CameraOff className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="text-xs sm:text-sm hidden sm:block">Parar</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="text-xs sm:text-sm hidden sm:block">Scanner</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Botão de som */}
+                    <button
+                      onClick={toggleSound}
+                      className={`p-2 rounded-lg transition-all duration-200 ${
+                        soundEnabled 
+                          ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                      title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+                    >
+                      {soundEnabled ? (
+                        <Volume2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      ) : (
+                        <VolumeX className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Estatísticas em Grid Responsivo */}
@@ -1032,6 +1064,53 @@ const CheckInPage = () => {
                     ></div>
                   </div>
                 </div>
+
+                {/* Scanner QR Integrado */}
+                {scannerActive && (
+                  <div className="mt-4 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Camera className="h-4 w-4 text-pink-600" />
+                        <span className="text-sm font-medium text-pink-900">Scanner QR Ativo</span>
+                      </div>
+                      <button
+                        onClick={stopSimpleScanner}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                        title="Fechar Scanner"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="relative mx-auto max-w-xs">
+                      <video 
+                        ref={videoRef}
+                        className="w-full aspect-square rounded-lg shadow-lg border-2 border-pink-300 object-cover"
+                        playsInline
+                        muted
+                      />
+                      
+                      {/* Overlay de scanning */}
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute inset-4 border-2 border-white rounded-lg shadow-lg">
+                          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pink-500 rounded-tl-lg"></div>
+                          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-pink-500 rounded-tr-lg"></div>
+                          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-pink-500 rounded-bl-lg"></div>
+                          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pink-500 rounded-br-lg"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Status simples */}
+                      <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                        📷 Escaneando QR
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs text-pink-700 text-center mt-2">
+                      Aponte a câmera para o QR code do ingresso
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
