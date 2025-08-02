@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Minus, MapPin, Star, Users, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import OrganizerWarningModal from './OrganizerWarningModal';
 
 interface TicketData {
   id: string;
@@ -49,6 +50,7 @@ interface TicketSelectorModalProps {
     date: string;
     location: string;
     image: string;
+    user_id?: string; // ID do organizador
   };
   user: any;
 }
@@ -71,6 +73,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
   const [processedTickets, setProcessedTickets] = useState<TicketData[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showOrganizerWarning, setShowOrganizerWarning] = useState(false);
 
   // Animação de entrada do modal
   useEffect(() => {
@@ -178,6 +181,13 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
   };
 
   const handleFinalize = async () => {
+    // Verificar se o usuário é o organizador do evento
+    if (user && event.user_id && user.id === event.user_id) {
+      console.log('🚫 Organizador tentando comprar ingresso:', user.name);
+      setShowOrganizerWarning(true);
+      return;
+    }
+
     if (!user) {
       // Redirecionar diretamente para login em vez de AuthRequiredPage
       // Salvar dados do checkout no sessionStorage
@@ -607,6 +617,13 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
           </div>
         )}
       </div>
+      
+      {/* Modal de Aviso para Organizadores */}
+      <OrganizerWarningModal
+        isOpen={showOrganizerWarning}
+        onClose={() => setShowOrganizerWarning(false)}
+        organizerName={user?.name || 'Organizador'}
+      />
     </div>
   );
 };

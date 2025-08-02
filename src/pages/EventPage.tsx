@@ -853,7 +853,8 @@ const EventPage = () => {
           title: event.title,
           date: event.date,
           location: event.address,
-          image: event.image
+          image: event.image,
+          user_id: event.user_id
         }}
         user={user}
       />
