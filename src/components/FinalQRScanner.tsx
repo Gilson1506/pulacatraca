@@ -67,7 +67,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     try {
       addDebugInfo(`🔍 Buscando ticket com QR: ${qrCode}`);
       
-      // Busca dados completos do ticket
+      // Busca dados completos do ticket com relacionamentos específicos
       const { data, error } = await supabase
         .from('ticket_users')
         .select(`
@@ -76,17 +76,17 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           email,
           qr_code,
           created_at,
-          tickets!inner (
-            id as ticket_id,
-            name as ticket_type,
+          tickets (
+            id,
+            name,
             price,
             event_id,
-            events!inner (
-              id as event_id,
-              title as event_title,
-              date as event_date,
-              location as event_location,
-              user_id as organizer_id
+            events (
+              id,
+              title,
+              date,
+              location,
+              user_id
             )
           )
         `)
@@ -95,11 +95,21 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
 
       if (error) {
         addDebugInfo(`❌ Erro no banco: ${error.message}`);
-        throw new Error('Erro ao consultar banco de dados');
+        throw new Error(`Erro ao consultar banco: ${error.message}`);
       }
       
       if (!data) {
         addDebugInfo('❌ Ticket não encontrado no banco');
+        return null;
+      }
+      
+      if (!data.tickets) {
+        addDebugInfo('❌ Ingresso não tem ticket associado');
+        return null;
+      }
+      
+      if (!data.tickets.events) {
+        addDebugInfo('❌ Ticket não tem evento associado');
         return null;
       }
 
@@ -123,10 +133,10 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         id: data.id,
         name: data.name,
         email: data.email,
-        event_title: data.tickets.events.event_title,
-        event_date: data.tickets.events.event_date,
-        event_location: data.tickets.events.event_location,
-        ticket_type: data.tickets.ticket_type,
+        event_title: data.tickets.events.title,
+        event_date: data.tickets.events.date,
+        event_location: data.tickets.events.location,
+        ticket_type: data.tickets.name,
         ticket_price: data.tickets.price,
         qr_code: data.qr_code,
         purchased_at: data.created_at,
@@ -136,7 +146,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         // IDs necessários para check-in
         ticket_id: data.tickets.id,
         event_id: data.tickets.events.id,
-        organizer_id: data.tickets.events.organizer_id
+        organizer_id: data.tickets.events.user_id
       };
     } catch (error) {
       addDebugInfo(`❌ Erro fetchTicketData: ${error}`);
