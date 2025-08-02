@@ -569,18 +569,38 @@ const CheckInPage = () => {
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
       
-      // Usar qr-scanner simples
-      const qrScanner = new QrScannerLib(videoRef.current, (result) => {
-        console.log('📸 QR detectado:', result.data);
-        qrScanner.stop();
-        handleQRCodeScan(result.data);
-        stopSimpleScanner();
-      }, {
-        preferredCamera: 'environment',
-        highlightScanRegion: true,
-        highlightCodeOutline: true,
-        maxScansPerSecond: 2
-      });
+      // Usar qr-scanner com configuração otimizada
+      const qrScanner = new QrScannerLib(
+        videoRef.current, 
+        (result) => {
+          console.log('📸 QR detectado:', result.data);
+          // Parar o scanner imediatamente para evitar leituras múltiplas
+          qrScanner.stop();
+          // Processar o QR code
+          handleQRCodeScan(result.data);
+          // Parar o scanner completamente
+          stopSimpleScanner();
+        },
+        {
+          // Configurações otimizadas para melhor detecção
+          preferredCamera: 'environment',
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          maxScansPerSecond: 5, // Aumentar tentativas por segundo
+          returnDetailedScanResult: true,
+          // Permitir detecção em qualquer orientação
+          calculateScanRegion: (video) => {
+            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
+            const scanRegionSize = Math.round(0.7 * smallerDimension);
+            return {
+              x: Math.round((video.videoWidth - scanRegionSize) / 2),
+              y: Math.round((video.videoHeight - scanRegionSize) / 2),
+              width: scanRegionSize,
+              height: scanRegionSize,
+            };
+          }
+        }
+      );
 
       qrScannerRef.current = qrScanner;
       await qrScanner.start();
@@ -871,97 +891,122 @@ const CheckInPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-4 sm:py-8">
       <div className="container mx-auto px-2 sm:px-4">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-6">
 
           
-          {/* Header */}
+
+
+          {/* Event Info - Melhorado com imagem e estatísticas */}
           <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div className="flex items-center gap-4">
-                {/* Botão de voltar */}
-                <button
-                  onClick={() => {
-                    // Verificar se é organizador e redirecionar adequadamente
-                    if (user?.role === 'organizer') {
-                      window.location.href = '/organizer/dashboard';
-                    } else {
-                      window.history.back();
-                    }
-                  }}
-                  className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-gray-700 hover:text-gray-900"
-                  title="Voltar ao dashboard"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  <span className="hidden sm:block">Voltar</span>
-                </button>
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+              {/* Imagem do Evento */}
+              {currentEvent.image && (
+                <div className="flex-shrink-0">
+                  <img 
+                    src={currentEvent.image} 
+                    alt={currentEvent.title}
+                    className="w-full sm:w-24 sm:h-24 md:w-32 md:h-32 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+              
+              {/* Informações principais */}
+              <div className="flex-grow">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                      🎯 {currentEvent.title}
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
+                  </div>
+                  
+                  {/* Botão de som - Mais discreto */}
+                  <button
+                    onClick={toggleSound}
+                    className={`mt-2 sm:mt-0 p-2 rounded-lg transition-all duration-200 ${
+                      soundEnabled 
+                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                    title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+                  >
+                    {soundEnabled ? (
+                      <Volume2 className="h-4 w-4" />
+                    ) : (
+                      <VolumeX className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 
-                <div>
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                    🎯 Check-in de Participantes
-                  </h1>
-                  <p className="text-sm sm:text-base text-gray-600">Sistema completo de check-in com scanner QR e busca manual</p>
+                {/* Estatísticas em Grid Responsivo */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-xs text-blue-600 font-medium">Data</p>
+                        <p className="text-sm font-semibold text-blue-900">
+                          {new Date(currentEvent.start_date).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-xs text-green-600 font-medium">Check-ins</p>
+                        <p className="text-sm font-semibold text-green-900">
+                          {checkedInCount} / {totalParticipants}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4 text-purple-600" />
+                      <div>
+                        <p className="text-xs text-purple-600 font-medium">Pendentes</p>
+                        <p className="text-sm font-semibold text-purple-900">
+                          {totalParticipants - checkedInCount}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-orange-600" />
+                      <div>
+                        <p className="text-xs text-orange-600 font-medium">Local</p>
+                        <p className="text-sm font-semibold text-orange-900 truncate">
+                          {currentEvent.location || 'Não informado'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Barra de progresso */}
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <span>Progresso do Check-in</span>
+                    <span>{totalParticipants > 0 ? Math.round((checkedInCount / totalParticipants) * 100) : 0}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${totalParticipants > 0 ? (checkedInCount / totalParticipants) * 100 : 0}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Event Info */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4">Evento Atual</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="flex items-center space-x-3">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Data</p>
-                  <p className="font-medium">{new Date(currentEvent.start_date).toLocaleDateString('pt-BR')}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Local</p>
-                  <p className="font-medium">{currentEvent.location}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Users className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Check-ins</p>
-                  <p className="font-medium">{checkedInCount} de {totalParticipants}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <User className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Evento</p>
-                  <p className="font-medium">{currentEvent.title}</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Botão de controle de som */}
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={toggleSound}
-                className={`p-3 rounded-full transition-all duration-200 ${
-                  soundEnabled 
-                    ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                }`}
-                title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
-              >
-                {soundEnabled ? (
-                  <Volume2 className="h-5 w-5" />
-                ) : (
-                  <VolumeX className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             {/* QR Code Scanner - Melhorado */}
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border-l-4 border-pink-500">
               <div className="flex items-center space-x-2 mb-4">
@@ -1058,20 +1103,20 @@ const CheckInPage = () => {
 
             </div>
 
-            {/* Manual Search */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border-l-4 border-blue-500">
-              <div className="flex items-center space-x-2 mb-4">
-                <Search className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Busca Manual</h2>
+            {/* Manual Search - Mobile Optimized */}
+            <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 border-l-4 border-blue-500">
+              <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+                <Search className="h-5 w-5 text-blue-600" />
+                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Busca Manual</h2>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Buscar por nome, e-mail ou documento"
-                    className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-lg"
+                    placeholder="Nome, email ou documento"
+                    className="w-full pl-10 sm:pl-12 pr-8 sm:pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base placeholder-gray-500"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
@@ -1080,36 +1125,36 @@ const CheckInPage = () => {
                       onClick={() => handleSearch('')}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      <X className="h-5 w-5" />
+                      <X className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                   )}
                 </div>
 
-                {/* Search Results */}
-                <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
+                {/* Search Results - Mobile Optimized */}
+                <div className="space-y-2 max-h-80 sm:max-h-96 overflow-y-auto">
                   {isSearching ? (
-                    <div className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-                      <p className="text-sm text-gray-500 mt-3">Buscando participantes...</p>
+                    <div className="text-center py-6 sm:py-8">
+                      <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-blue-600" />
+                      <p className="text-xs sm:text-sm text-gray-500 mt-2">Buscando participantes...</p>
                     </div>
                   ) : participants.length > 0 ? (
                     participants.map((participant) => (
-                      <div key={participant.ticket_user_id} className="border-2 border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:border-blue-300 transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <User className="h-5 w-5 text-gray-400" />
-                              <p className="font-semibold text-gray-900 text-lg">{participant.name}</p>
+                      <div key={participant.ticket_user_id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:border-blue-300 transition-all duration-200 bg-white hover:bg-blue-50">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1 sm:mb-2">
+                              <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
+                              <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{participant.name}</p>
                             </div>
-                            <div className="space-y-1 ml-7">
+                            <div className="space-y-1 text-xs sm:text-sm">
                               <div className="flex items-center space-x-2">
-                                <Mail className="h-4 w-4 text-gray-400" />
-                                <p className="text-sm text-gray-600">{participant.email}</p>
+                                <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 flex-shrink-0" />
+                                <p className="text-gray-600 truncate">{participant.email}</p>
                               </div>
                               {participant.document && (
                                 <div className="flex items-center space-x-2">
-                                  <FileText className="h-4 w-4 text-gray-400" />
-                                  <p className="text-sm text-gray-600">Doc: {participant.document}</p>
+                                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 flex-shrink-0" />
+                                  <p className="text-gray-600">Doc: {participant.document}</p>
                                 </div>
                               )}
                               <div className="flex items-center space-x-2">
