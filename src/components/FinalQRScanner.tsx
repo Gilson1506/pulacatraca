@@ -16,8 +16,19 @@ interface TicketData {
   name: string;
   email: string;
   event_title: string;
+  event_date: string;
+  event_location: string;
   ticket_type: string;
+  ticket_price: number;
   qr_code: string;
+  purchased_at: string;
+  // Dados do check-in
+  is_checked_in: boolean;
+  checked_in_at: string | null;
+  // IDs necessários
+  ticket_id: string;
+  event_id: string;
+  organizer_id: string;
 }
 
 const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
@@ -50,12 +61,13 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   };
 
   /**
-   * Busca dados do ticket
+   * Busca dados do ticket e verifica check-in
    */
   const fetchTicketData = async (qrCode: string): Promise<TicketData | null> => {
     try {
-      addDebugInfo(`Buscando ticket com QR: ${qrCode}`);
+      addDebugInfo(`🔍 Buscando ticket com QR: ${qrCode}`);
       
+      // Busca dados completos do ticket
       const { data, error } = await supabase
         .from('ticket_users')
         .select(`
@@ -63,10 +75,18 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           name,
           email,
           qr_code,
+          created_at,
           tickets!inner (
+            id as ticket_id,
             name as ticket_type,
+            price,
+            event_id,
             events!inner (
-              title as event_title
+              id as event_id,
+              title as event_title,
+              date as event_date,
+              location as event_location,
+              user_id as organizer_id
             )
           )
         `)
@@ -74,26 +94,93 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         .maybeSingle();
 
       if (error) {
-        addDebugInfo(`Erro no banco: ${error.message}`);
+        addDebugInfo(`❌ Erro no banco: ${error.message}`);
         throw new Error('Erro ao consultar banco de dados');
       }
       
       if (!data) {
-        addDebugInfo('Ticket não encontrado no banco');
+        addDebugInfo('❌ Ticket não encontrado no banco');
         return null;
       }
 
-      addDebugInfo('Ticket encontrado com sucesso');
+      addDebugInfo(`✅ Ticket encontrado: ${data.name}`);
+      
+      // Verifica se já foi feito check-in
+      const { data: existingCheckin, error: checkinError } = await supabase
+        .from('checkin')
+        .select('id, checked_in_at')
+        .eq('ticket_user_id', data.id)
+        .maybeSingle();
+
+      if (checkinError) {
+        addDebugInfo(`⚠️ Erro ao verificar check-in: ${checkinError.message}`);
+      }
+
+      const isAlreadyCheckedIn = !!existingCheckin;
+      addDebugInfo(isAlreadyCheckedIn ? '⚠️ Já fez check-in' : '✅ Pode fazer check-in');
+
       return {
         id: data.id,
         name: data.name,
         email: data.email,
         event_title: data.tickets.events.event_title,
+        event_date: data.tickets.events.event_date,
+        event_location: data.tickets.events.event_location,
         ticket_type: data.tickets.ticket_type,
-        qr_code: data.qr_code
+        ticket_price: data.tickets.price,
+        qr_code: data.qr_code,
+        purchased_at: data.created_at,
+        // Dados do check-in
+        is_checked_in: isAlreadyCheckedIn,
+        checked_in_at: existingCheckin?.checked_in_at || null,
+        // IDs necessários para check-in
+        ticket_id: data.tickets.id,
+        event_id: data.tickets.events.id,
+        organizer_id: data.tickets.events.organizer_id
       };
     } catch (error) {
-      addDebugInfo(`Erro fetchTicketData: ${error}`);
+      addDebugInfo(`❌ Erro fetchTicketData: ${error}`);
+      throw error;
+    }
+  };
+
+  /**
+   * Realiza o check-in do participante
+   */
+  const performCheckin = async (ticketData: TicketData): Promise<boolean> => {
+    try {
+      addDebugInfo(`🎯 Realizando check-in para: ${ticketData.name}`);
+
+      // Verifica se já foi feito check-in
+      if (ticketData.is_checked_in) {
+        addDebugInfo('⚠️ Check-in já realizado anteriormente');
+        return true; // Retorna true mas não faz novo check-in
+      }
+
+      // Insere novo check-in
+      const { data: checkinData, error: checkinError } = await supabase
+        .from('checkin')
+        .insert([
+          {
+            ticket_user_id: ticketData.id,
+            event_id: ticketData.event_id,
+            organizer_id: ticketData.organizer_id,
+            checked_in_at: new Date().toISOString()
+          }
+        ])
+        .select()
+        .single();
+
+      if (checkinError) {
+        addDebugInfo(`❌ Erro ao inserir check-in: ${checkinError.message}`);
+        throw new Error('Erro ao realizar check-in');
+      }
+
+      addDebugInfo(`✅ Check-in realizado com sucesso! ID: ${checkinData.id}`);
+      return true;
+
+    } catch (error) {
+      addDebugInfo(`❌ Erro performCheckin: ${error}`);
       throw error;
     }
   };
@@ -130,12 +217,36 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       const ticketData = await fetchTicketData(decodedText);
       
       if (ticketData) {
-        setScanResult(ticketData);
-        setError(null);
-        addDebugInfo('Sucesso - ticket processado');
+        addDebugInfo('✅ Ticket encontrado - processando check-in...');
         
-        if (onSuccess) {
-          onSuccess(decodedText, ticketData);
+        // Realiza o check-in automaticamente
+        try {
+          const checkinSuccess = await performCheckin(ticketData);
+          
+          if (checkinSuccess) {
+            // Atualiza status para mostrar check-in realizado
+            const updatedTicketData = {
+              ...ticketData,
+              is_checked_in: true,
+              checked_in_at: new Date().toISOString()
+            };
+            
+            setScanResult(updatedTicketData);
+            setError(null);
+            addDebugInfo('🎉 Check-in realizado com sucesso!');
+            
+            if (onSuccess) {
+              onSuccess(decodedText, updatedTicketData);
+            }
+          } else {
+            setError('Erro ao realizar check-in. Tente novamente.');
+            setScanResult(null);
+            addDebugInfo('❌ Falha no check-in');
+          }
+        } catch (checkinError) {
+          addDebugInfo(`❌ Erro no check-in: ${checkinError}`);
+          setError('Erro ao realizar check-in. Tente novamente.');
+          setScanResult(null);
         }
       } else {
         setError('Código QR inválido ou ticket não encontrado');
@@ -518,35 +629,84 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           {/* Success State */}
           {scanResult && (
             <div className="text-center py-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                scanResult.is_checked_in ? 'bg-green-100' : 'bg-yellow-100'
+              }`}>
+                <CheckCircle className={`h-8 w-8 ${
+                  scanResult.is_checked_in ? 'text-green-600' : 'text-yellow-600'
+                }`} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Ticket Encontrado!</h3>
+              
+              <h3 className={`text-lg font-semibold mb-2 ${
+                scanResult.is_checked_in ? 'text-green-900' : 'text-yellow-900'
+              }`}>
+                {scanResult.is_checked_in ? '✅ Check-in Realizado!' : '⚠️ Já tinha Check-in'}
+              </h3>
+              
+              <p className={`text-sm mb-4 ${
+                scanResult.is_checked_in ? 'text-green-700' : 'text-yellow-700'
+              }`}>
+                {scanResult.is_checked_in ? 'Participante confirmado no evento' : 'Check-in já foi feito anteriormente'}
+              </p>
               
               <div className="bg-gray-50 rounded-lg p-4 text-left space-y-3">
+                {/* Participante */}
                 <div className="flex items-center space-x-3">
                   <User className="h-5 w-5 text-gray-600" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm text-gray-600">Participante</p>
                     <p className="font-semibold text-gray-900">{scanResult.name}</p>
+                    <p className="text-xs text-gray-500">{scanResult.email}</p>
                   </div>
                 </div>
                 
+                {/* Evento */}
                 <div className="flex items-center space-x-3">
                   <Calendar className="h-5 w-5 text-gray-600" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm text-gray-600">Evento</p>
                     <p className="font-semibold text-gray-900">{scanResult.event_title}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(scanResult.event_date).toLocaleDateString('pt-BR')} • {scanResult.event_location}
+                    </p>
                   </div>
                 </div>
                 
+                {/* Tipo de Ingresso */}
                 <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                    <div className="w-2 h-2 bg-green-600 rounded"></div>
+                  <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
+                    <div className="w-2 h-2 bg-blue-600 rounded"></div>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm text-gray-600">Tipo de Ingresso</p>
                     <p className="font-semibold text-gray-900">{scanResult.ticket_type}</p>
+                    <p className="text-xs text-gray-500">
+                      R$ {scanResult.ticket_price?.toFixed(2) || '0,00'}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Status Check-in */}
+                <div className="flex items-center space-x-3">
+                  <div className={`w-5 h-5 rounded flex items-center justify-center ${
+                    scanResult.is_checked_in ? 'bg-green-100' : 'bg-red-100'
+                  }`}>
+                    <div className={`w-2 h-2 rounded ${
+                      scanResult.is_checked_in ? 'bg-green-600' : 'bg-red-600'
+                    }`}></div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Status</p>
+                    <p className={`font-semibold ${
+                      scanResult.is_checked_in ? 'text-green-900' : 'text-red-900'
+                    }`}>
+                      {scanResult.is_checked_in ? 'Check-in Confirmado' : 'Pendente'}
+                    </p>
+                    {scanResult.checked_in_at && (
+                      <p className="text-xs text-gray-500">
+                        {new Date(scanResult.checked_in_at).toLocaleString('pt-BR')}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
