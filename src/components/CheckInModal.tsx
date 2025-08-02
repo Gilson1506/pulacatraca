@@ -66,7 +66,7 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
           text: 'text-white',
           icon: CheckCircle,
           iconColor: 'text-white',
-          animation: 'animate-pulse'
+          // animation: 'animate-pulse' // Removido
         };
       case 'already_checked':
         return {
@@ -124,7 +124,7 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
 
           {/* Ícone principal com animação */}
           <div className="flex justify-center mb-3 sm:mb-4">
-            <div className={`p-3 sm:p-4 rounded-full bg-white bg-opacity-20 ${type === 'success' ? 'animate-pulse' : ''}`}>
+            <div className={`p-3 sm:p-4 rounded-full bg-white bg-opacity-20`}>
               <IconComponent className={`w-8 h-8 sm:w-12 sm:h-12 ${styles.iconColor}`} />
             </div>
           </div>
@@ -224,7 +224,7 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
               {/* Status do check-in */}
               {type === 'success' && (
                 <div className="flex items-center justify-center mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
-                  <Sparkles className={`w-5 h-5 ${styles.text} mr-2 animate-pulse`} />
+                  <Sparkles className={`w-5 h-5 ${styles.text} mr-2`} />
                   <p className={`font-bold ${styles.text} text-lg`}>✅ CHECK-IN CONFIRMADO</p>
                 </div>
               )}

@@ -767,65 +767,11 @@ const CheckInPage = () => {
               </div>
               
               {/* Controles */}
-              <div className="flex items-center space-x-4">
-                {/* Botão de som */}
-                <button
-                  onClick={toggleSound}
-                  className={`p-3 rounded-full transition-all duration-200 ${
-                    soundEnabled 
-                      ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                  }`}
-                  title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
-                >
-                  {soundEnabled ? (
-                    <Volume2 className="h-5 w-5" />
-                  ) : (
-                    <VolumeX className="h-5 w-5" />
-                  )}
-                </button>
-                
-                {/* Status do sistema */}
-                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg px-4 py-2 border border-green-200">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-green-700">Sistema Ativo</span>
-                  </div>
-                </div>
-                
-                {/* Botões de teste */}
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => showModal('success', 'Teste de modal de sucesso!', {
-                      participant_name: 'João Silva',
-                      participant_email: 'joao@email.com',
-                      participant_document: '123.456.789-00',
-                      ticket_type: 'VIP',
-                      event_title: 'Evento de Teste',
-                      checkin_date: new Date().toISOString()
-                    })}
-                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                  >
-                    Teste Sucesso
-                  </button>
-                  <button
-                    onClick={() => showModal('already_checked', 'Teste de check-in já realizado!', {
-                      participant_name: 'Maria Santos',
-                      participant_email: 'maria@email.com',
-                      ticket_type: 'Padrão',
-                      event_title: 'Evento de Teste',
-                      checkin_date: new Date().toISOString()
-                    })}
-                    className="px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
-                  >
-                    Teste Aviso
-                  </button>
-                  <button
-                    onClick={() => showModal('error', 'Teste de erro no check-in!')}
-                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                  >
-                    Teste Erro
-                  </button>
+              {/* Status do sistema */}
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg px-4 py-2 border border-green-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-700">Sistema Ativo</span>
                 </div>
               </div>
             </div>
@@ -863,6 +809,25 @@ const CheckInPage = () => {
                   <p className="font-medium">{currentEvent.title}</p>
                 </div>
               </div>
+            </div>
+            
+            {/* Botão de controle de som */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={toggleSound}
+                className={`p-3 rounded-full transition-all duration-200 ${
+                  soundEnabled 
+                    ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                }`}
+                title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-5 w-5" />
+                ) : (
+                  <VolumeX className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -980,29 +945,7 @@ const CheckInPage = () => {
                 )}
               </div>
               
-              {/* Instruções - Responsivas */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                <div className="flex items-start space-x-2 sm:space-x-3">
-                  <div className="bg-blue-100 rounded-full p-1 flex-shrink-0">
-                    <svg className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-medium text-blue-900">Como usar:</h4>
-                    <ul className="text-xs sm:text-sm text-blue-700 mt-1 space-y-1">
-                      <li>• Escolha o tipo de scanner</li>
-                      <li>• Permita acesso à câmera</li>
-                      <li>• Aponte para o QR Code do ingresso</li>
-                      <li>• Check-in automático ao detectar</li>
-                    </ul>
-                    <p className="text-xs text-blue-600 mt-2">
-                      <strong>Scanner Avançado:</strong> Melhor performance<br/>
-                      <strong>Scanner Compatível:</strong> Maior compatibilidade
-                    </p>
-                  </div>
-                </div>
-              </div>
+
             </div>
 
             {/* Manual Search */}
