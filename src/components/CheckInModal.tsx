@@ -286,10 +286,21 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
                   <div className="mt-3 p-2 bg-blue-500 bg-opacity-30 rounded">
                     <p className={`text-xs ${styles.text} font-semibold mb-1`}>💡 Possíveis Soluções:</p>
                     <ul className={`text-xs ${styles.text} space-y-1`}>
-                      <li>• Verifique se o QR code está correto</li>
-                      <li>• Confirme que o ingresso pertence a este evento</li>
-                      <li>• Verifique se o usuário foi definido no ingresso</li>
-                      <li>• Execute os scripts SQL no Supabase se necessário</li>
+                      {data?.camera_error ? (
+                        <>
+                          <li>• Permita acesso à câmera nas configurações do navegador</li>
+                          <li>• Verifique se outra aba/app não está usando a câmera</li>
+                          <li>• Tente recarregar a página e permitir acesso</li>
+                          <li>• Use a busca manual como alternativa</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>• Verifique se o QR code está correto</li>
+                          <li>• Confirme que o ingresso pertence a este evento</li>
+                          <li>• Verifique se o usuário foi definido no ingresso</li>
+                          <li>• Execute os scripts SQL no Supabase se necessário</li>
+                        </>
+                      )}
                     </ul>
                   </div>
                 </div>
