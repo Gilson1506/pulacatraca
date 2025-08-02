@@ -466,9 +466,20 @@ const CheckInPage = () => {
   };
 
   const startZXingScanner = async () => {
+    // Aguardar o elemento de vídeo estar disponível
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!videoRef.current && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
     if (!videoRef.current) {
-      console.error('❌ Elemento de vídeo não encontrado');
-      showModal('error', 'Erro interno: elemento de vídeo não encontrado');
+      console.error('❌ Elemento de vídeo não encontrado após aguardar');
+      showModal('error', 'Erro: elemento de vídeo não disponível. Tente ativar o scanner novamente.');
+      setScannerActive(false);
+      setIsScanning(false);
       return;
     }
 
@@ -561,9 +572,20 @@ const CheckInPage = () => {
   };
 
   const startQRScanner = async () => {
+    // Aguardar o elemento de vídeo estar disponível
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!videoRef.current && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
     if (!videoRef.current) {
-      console.error('❌ Elemento de vídeo não encontrado');
-      showModal('error', 'Erro interno: elemento de vídeo não encontrado');
+      console.error('❌ Elemento de vídeo não encontrado após aguardar');
+      showModal('error', 'Erro: elemento de vídeo não disponível. Tente ativar o scanner novamente.');
+      setScannerActive(false);
+      setIsScanning(false);
       return;
     }
 
@@ -922,7 +944,11 @@ const CheckInPage = () => {
                     
                     <div className="space-y-3">
                       <button
-                        onClick={() => scannerType === 'qr-scanner' ? startQRScanner() : startZXingScanner()}
+                        onClick={async () => {
+                          // Aguardar um pouco para o DOM estar pronto
+                          await new Promise(resolve => setTimeout(resolve, 100));
+                          scannerType === 'qr-scanner' ? startQRScanner() : startZXingScanner();
+                        }}
                         disabled={isScanning}
                         className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-3 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none text-sm sm:text-base"
                       >
