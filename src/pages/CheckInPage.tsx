@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
-import QrScanner from 'qr-scanner';
+import QrScannerLib from 'qr-scanner';
 
 interface Event {
   id: string;
@@ -37,6 +37,17 @@ const CheckInPage = () => {
     console.log('🔄 CheckInPage renderizada em:', timestamp);
     console.log('📱 UserAgent:', navigator.userAgent);
     console.log('🌐 URL:', window.location.href);
+    
+    // Verificar se é uma versão cached antiga
+    const lastUpdate = localStorage.getItem('checkin_last_update');
+    const currentBuild = '2024-08-01-v2.0';
+    
+    if (lastUpdate !== currentBuild) {
+      console.log('🔄 Detectada nova versão, forçando atualização...');
+      localStorage.setItem('checkin_last_update', currentBuild);
+      // Não recarregar automaticamente, apenas logar
+    }
+    
     return timestamp;
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,7 +75,7 @@ const CheckInPage = () => {
   });
   
   const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<QrScanner | null>(null);
+  const qrScannerRef = useRef<QrScannerLib | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
     useEffect(() => {
@@ -487,7 +498,7 @@ const CheckInPage = () => {
         throw new Error('Permissão de câmera negada. Por favor, permita o acesso à câmera e tente novamente.');
       }
       
-      qrScannerRef.current = new QrScanner(
+      qrScannerRef.current = new QrScannerLib(
         videoRef.current,
         result => {
           console.log('📸 QR Code detectado:', result.data);
