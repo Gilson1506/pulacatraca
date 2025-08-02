@@ -598,26 +598,26 @@ const CheckInPageV2 = () => {
   }
 
   return (
-    <div key={buildTime} className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
-      <div className="container mx-auto px-4">
-        <div className="max-w-6xl mx-auto">
+    <div key={buildTime} className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-4 sm:py-8">
+      <div className="container mx-auto px-2 sm:px-4">
+        <div className="max-w-5xl mx-auto">
           {/* Banner de Atualização */}
-          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg mb-6 text-center">
-            <h2 className="text-2xl font-bold">🚀 PÁGINA ATUALIZADA COM SUCESSO!</h2>
-            <p className="mt-2">Interface moderna implementada - Teste os botões abaixo</p>
+          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 text-center">
+            <h2 className="text-lg sm:text-2xl font-bold">🚀 PÁGINA ATUALIZADA!</h2>
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base">Interface moderna implementada</p>
           </div>
           
           {/* Header */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <div className="flex justify-between items-center">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          🚀 CHECK-IN V2 NOVA VERSÃO FUNCIONANDO! 
-          <span className="text-base bg-red-600 text-white px-3 py-1 rounded-full ml-2 animate-pulse">
-            ATUALIZADO AGORA!
-          </span>
-        </h1>
-        <p className="text-gray-600">✨ Scanner QR melhorado, interface responsiva e câmera otimizada</p>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                  🚀 CHECK-IN V2 
+                  <span className="text-xs sm:text-sm bg-red-600 text-white px-2 py-1 rounded-full ml-2 animate-pulse">
+                    ATUALIZADO!
+                  </span>
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600">✨ Scanner QR melhorado e responsivo</p>
               </div>
               
               {/* Controles */}
@@ -720,7 +720,7 @@ const CheckInPageV2 = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
             {/* QR Code Scanner - Melhorado */}
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border-l-4 border-pink-500">
               <div className="flex items-center space-x-2 mb-4">
@@ -838,10 +838,10 @@ const CheckInPageV2 = () => {
             </div>
 
             {/* Manual Search */}
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border-l-4 border-blue-500">
               <div className="flex items-center space-x-2 mb-4">
-                <Search className="h-6 w-6 text-blue-600" />
-                <h2 className="text-xl font-bold text-gray-900">Busca Manual</h2>
+                <Search className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Busca Manual</h2>
               </div>
               
               <div className="space-y-4">
@@ -849,8 +849,8 @@ const CheckInPageV2 = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Buscar por nome, e-mail, documento ou ID"
-                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-lg"
+                    placeholder="Buscar por nome, e-mail ou documento"
+                    className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-lg"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
@@ -865,7 +865,7 @@ const CheckInPageV2 = () => {
                 </div>
 
                 {/* Search Results */}
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
                   {isSearching ? (
                     <div className="text-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
@@ -873,7 +873,7 @@ const CheckInPageV2 = () => {
                     </div>
                   ) : participants.length > 0 ? (
                     participants.map((participant) => (
-                      <div key={participant.ticket_user_id} className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
+                      <div key={participant.ticket_user_id} className="border-2 border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:border-blue-300 transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">

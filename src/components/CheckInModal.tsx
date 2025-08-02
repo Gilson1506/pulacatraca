@@ -109,12 +109,12 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
       onClick={handleOverlayClick}
     >
       <div 
-        className={`relative w-full max-w-md ${styles.background} ${styles.border} border-2 rounded-2xl shadow-2xl transform transition-all duration-300 ${
+        className={`relative w-full max-w-sm sm:max-w-md mx-4 ${styles.background} ${styles.border} border-2 rounded-xl sm:rounded-2xl shadow-2xl transform transition-all duration-300 ${
           isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
-        } ${styles.animation}`}
+        } ${styles.animation} max-h-[90vh] overflow-y-auto`}
       >
         {/* Header */}
-        <div className="relative p-6 pb-4">
+        <div className="relative p-4 sm:p-6 pb-3 sm:pb-4">
           <button
             onClick={handleClose}
             className={`absolute top-4 right-4 p-1 rounded-full hover:bg-black hover:bg-opacity-20 transition-colors ${styles.text}`}
@@ -123,41 +123,41 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
           </button>
 
           {/* Ícone principal com animação */}
-          <div className="flex justify-center mb-4">
-            <div className={`p-4 rounded-full bg-white bg-opacity-20 ${type === 'success' ? 'animate-pulse' : ''}`}>
-              <IconComponent className={`w-12 h-12 ${styles.iconColor}`} />
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className={`p-3 sm:p-4 rounded-full bg-white bg-opacity-20 ${type === 'success' ? 'animate-pulse' : ''}`}>
+              <IconComponent className={`w-8 h-8 sm:w-12 sm:h-12 ${styles.iconColor}`} />
             </div>
           </div>
 
           {/* Título */}
-          <h2 className={`text-2xl font-bold text-center mb-2 ${styles.text}`}>
+          <h2 className={`text-lg sm:text-2xl font-bold text-center mb-2 ${styles.text}`}>
             {type === 'success' && '🎉 Check-in Realizado!'}
             {type === 'already_checked' && '⚠️ Já Registrado'}
             {type === 'error' && '❌ Erro no Check-in'}
           </h2>
 
           {/* Mensagem */}
-          <p className={`text-center text-lg ${styles.text} opacity-90`}>
+          <p className={`text-center text-sm sm:text-lg ${styles.text} opacity-90`}>
             {message}
           </p>
         </div>
 
         {/* Detalhes do participante */}
         {data && (
-          <div className="px-6 pb-6">
-            <div className="bg-white bg-opacity-20 rounded-xl p-4 space-y-3">
-              <h3 className={`font-bold text-lg ${styles.text} mb-3 flex items-center`}>
-                <User className="w-5 h-5 mr-2" />
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <div className="bg-white bg-opacity-20 rounded-lg sm:rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
+              <h3 className={`font-bold text-base sm:text-lg ${styles.text} mb-2 sm:mb-3 flex items-center`}>
+                <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 Detalhes do Ingresso
               </h3>
               
               {/* Nome do participante */}
               {data.participant_name && (
-                <div className="flex items-center space-x-3">
-                  <User className={`w-4 h-4 ${styles.text} opacity-70`} />
-                  <div>
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <User className={`w-3 h-3 sm:w-4 sm:h-4 ${styles.text} opacity-70 flex-shrink-0`} />
+                  <div className="min-w-0 flex-1">
                     <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Nome</p>
-                    <p className={`font-semibold ${styles.text}`}>{data.participant_name}</p>
+                    <p className={`font-semibold text-sm sm:text-base ${styles.text} truncate`}>{data.participant_name}</p>
                   </div>
                 </div>
               )}
@@ -310,10 +310,10 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
         )}
 
         {/* Botão de fechar */}
-        <div className="px-6 pb-6">
+        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
           <button
             onClick={handleClose}
-            className={`w-full py-3 px-4 bg-white bg-opacity-20 hover:bg-opacity-30 ${styles.text} font-semibold rounded-xl transition-all duration-200 border border-white border-opacity-30`}
+            className={`w-full py-2 sm:py-3 px-3 sm:px-4 bg-white bg-opacity-20 hover:bg-opacity-30 ${styles.text} font-semibold rounded-lg sm:rounded-xl transition-all duration-200 border border-white border-opacity-30 text-sm sm:text-base`}
           >
             Fechar
           </button>
