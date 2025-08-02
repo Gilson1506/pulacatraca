@@ -1371,7 +1371,6 @@ const CheckInPage = () => {
               </div>
             </div>
           </div>
-          </div>
         </div>
       </div>
 
