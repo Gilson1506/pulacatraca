@@ -164,7 +164,32 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   }, [scanned, isOpen, onSuccess]);
 
   /**
-   * Inicia o scanner - VERSÃO ULTRA ROBUSTA
+   * Aguarda elemento DOM estar completamente renderizado
+   */
+  const waitForDOMElement = (): Promise<HTMLDivElement> => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout: Elemento DOM não renderizado em 5s'));
+      }, 5000);
+
+      const checkElement = () => {
+        const element = document.getElementById(readerId);
+        if (element && readerRef.current) {
+          clearTimeout(timeout);
+          addDebugInfo('✅ Elemento DOM completamente renderizado');
+          resolve(element as HTMLDivElement);
+        } else {
+          addDebugInfo(`Aguardando DOM... element: ${!!element}, ref: ${!!readerRef.current}`);
+          setTimeout(checkElement, 100);
+        }
+      };
+      
+      checkElement();
+    });
+  };
+
+  /**
+   * Inicia o scanner - VERSÃO ULTRA ROBUSTA COM DOM WAIT
    */
   const startScanner = useCallback(async () => {
     if (!isMountedRef.current) {
@@ -179,13 +204,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       setError(null);
       setScanned(false);
       
-      // 1. Verifica se o elemento DOM existe
-      if (!readerRef.current) {
-        throw new Error('Elemento DOM não encontrado');
-      }
-      addDebugInfo('✅ Elemento DOM encontrado');
-      
-      // 2. Verifica ambiente seguro
+      // 1. Verifica ambiente seguro PRIMEIRO
       const isSecure = window.location.protocol === 'https:' || 
                       window.location.hostname === 'localhost' ||
                       window.location.hostname === '127.0.0.1';
@@ -195,7 +214,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       }
       addDebugInfo('✅ Ambiente seguro verificado');
 
-      // 3. Para scanner anterior se existir
+      // 2. Para scanner anterior se existir
       if (scannerRef.current) {
         try {
           addDebugInfo('Limpando scanner anterior...');
@@ -207,23 +226,23 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         scannerRef.current = null;
       }
 
-      // 4. Aguarda DOM estável
-      addDebugInfo('Aguardando DOM estável...');
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // 5. Verifica novamente se ainda está montado
+      // 3. Aguarda DOM estar completamente renderizado
+      addDebugInfo('Aguardando elemento DOM ser renderizado...');
+      const domElement = await waitForDOMElement();
+      
+      // 4. Verifica novamente se ainda está montado após DOM wait
       if (!isMountedRef.current) {
-        addDebugInfo('Componente desmontado durante delay');
+        addDebugInfo('Componente desmontado durante DOM wait');
         return;
       }
 
-      // 6. Verifica suporte a getUserMedia
+      // 5. Verifica suporte a getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('getUserMedia não suportado pelo navegador');
       }
       addDebugInfo('✅ getUserMedia suportado');
 
-      // 7. Testa acesso à câmera
+      // 6. Testa acesso à câmera
       try {
         const testStream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: "environment" } 
@@ -235,17 +254,27 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         throw new Error('Erro ao acessar câmera. Verifique as permissões.');
       }
 
-      // 8. Cria novo Html5Qrcode
-      addDebugInfo('Criando instância Html5Qrcode...');
+      // 7. Aguarda um pouco mais para garantir estabilidade
+      addDebugInfo('Aguardando estabilidade total...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 8. Verifica novamente se ainda está montado
+      if (!isMountedRef.current) {
+        addDebugInfo('Componente desmontado durante estabilização');
+        return;
+      }
+
+      // 9. Cria novo Html5Qrcode usando ID do elemento (que agora sabemos que existe)
+      addDebugInfo(`Criando Html5Qrcode com elemento: ${readerId}`);
       try {
         scannerRef.current = new Html5Qrcode(readerId);
-        addDebugInfo('✅ Html5Qrcode criado');
+        addDebugInfo('✅ Html5Qrcode criado com sucesso');
       } catch (e) {
         addDebugInfo(`Erro ao criar Html5Qrcode: ${e}`);
         throw new Error('Erro ao criar scanner QR');
       }
       
-      // 9. Configuração robusta
+      // 10. Configuração robusta
       const config = {
         fps: 5, // Mais conservador
         qrbox: { width: 200, height: 200 }, // Menor para melhor performance
@@ -260,7 +289,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
 
       addDebugInfo('Iniciando scanner com configuração...');
 
-      // 10. Inicia scanner
+      // 11. Inicia scanner
       await scannerRef.current.start(
         { 
           facingMode: "environment" // Câmera traseira
@@ -281,7 +310,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       
       if (isMountedRef.current) {
         setIsScanning(true);
-        addDebugInfo('✅ Scanner iniciado com sucesso');
+        addDebugInfo('✅ Scanner iniciado com sucesso - TUDO OK!');
       }
 
     } catch (error) {
@@ -351,10 +380,10 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     
     if (isOpen) {
       addDebugInfo('Modal aberto - iniciando scanner');
-      // Pequeno delay para garantir que DOM está pronto
+      // Delay robusto para garantir que DOM está completamente renderizado
       const timer = setTimeout(() => {
         startScanner();
-      }, 300); // Delay maior para maior segurança
+      }, 500); // Delay mais robusto para renderização completa
       
       return () => clearTimeout(timer);
     } else {
