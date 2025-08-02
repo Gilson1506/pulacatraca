@@ -33,6 +33,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [domReady, setDomReady] = useState(false);
   
   // Refs DOM seguros
   const readerRef = useRef<HTMLDivElement>(null);
@@ -164,36 +165,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   }, [scanned, isOpen, onSuccess]);
 
   /**
-   * Aguarda elemento DOM estar completamente renderizado
-   */
-  const waitForDOMElement = (): Promise<HTMLDivElement> => {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout: Elemento DOM não renderizado em 5s'));
-      }, 5000);
-
-      const checkElement = () => {
-        const element = document.getElementById(readerId);
-        if (element && readerRef.current) {
-          clearTimeout(timeout);
-          addDebugInfo('✅ Elemento DOM completamente renderizado');
-          resolve(element as HTMLDivElement);
-        } else {
-          addDebugInfo(`Aguardando DOM... element: ${!!element}, ref: ${!!readerRef.current}`);
-          setTimeout(checkElement, 100);
-        }
-      };
-      
-      checkElement();
-    });
-  };
-
-  /**
-   * Inicia o scanner - VERSÃO ULTRA ROBUSTA COM DOM WAIT
+   * Inicia o scanner - SOLUÇÃO DEFINITIVA COM SETTIMEOUT
    */
   const startScanner = useCallback(async () => {
-    if (!isMountedRef.current) {
-      addDebugInfo('Componente desmontado - abortando');
+    if (!isMountedRef.current || !domReady) {
+      addDebugInfo('Componente desmontado ou DOM não pronto - abortando');
       return;
     }
 
@@ -204,7 +180,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       setError(null);
       setScanned(false);
       
-      // 1. Verifica ambiente seguro PRIMEIRO
+      // 1. Verifica ambiente seguro
       const isSecure = window.location.protocol === 'https:' || 
                       window.location.hostname === 'localhost' ||
                       window.location.hostname === '127.0.0.1';
@@ -226,23 +202,13 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         scannerRef.current = null;
       }
 
-      // 3. Aguarda DOM estar completamente renderizado
-      addDebugInfo('Aguardando elemento DOM ser renderizado...');
-      const domElement = await waitForDOMElement();
-      
-      // 4. Verifica novamente se ainda está montado após DOM wait
-      if (!isMountedRef.current) {
-        addDebugInfo('Componente desmontado durante DOM wait');
-        return;
-      }
-
-      // 5. Verifica suporte a getUserMedia
+      // 3. Verifica suporte a getUserMedia
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('getUserMedia não suportado pelo navegador');
       }
       addDebugInfo('✅ getUserMedia suportado');
 
-      // 6. Testa acesso à câmera
+      // 4. Testa acesso à câmera
       try {
         const testStream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: "environment" } 
@@ -254,77 +220,81 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         throw new Error('Erro ao acessar câmera. Verifique as permissões.');
       }
 
-      // 7. Aguarda um pouco mais para garantir estabilidade
       addDebugInfo('Aguardando estabilidade total...');
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // 8. Verifica novamente se ainda está montado
-      if (!isMountedRef.current) {
-        addDebugInfo('Componente desmontado durante estabilização');
-        return;
-      }
-
-      // 9. Cria novo Html5Qrcode usando ID do elemento (que agora sabemos que existe)
-      addDebugInfo(`Criando Html5Qrcode com elemento: ${readerId}`);
-      try {
-        scannerRef.current = new Html5Qrcode(readerId);
-        addDebugInfo('✅ Html5Qrcode criado com sucesso');
-      } catch (e) {
-        addDebugInfo(`Erro ao criar Html5Qrcode: ${e}`);
-        throw new Error('Erro ao criar scanner QR');
-      }
       
-      // 10. Configuração robusta
-      const config = {
-        fps: 5, // Mais conservador
-        qrbox: { width: 200, height: 200 }, // Menor para melhor performance
-        aspectRatio: 1.0,
-        disableFlip: false,
-        rememberLastUsedCamera: true,
-        // Configurações conservadoras
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: false
-        }
-      };
-
-      addDebugInfo('Iniciando scanner com configuração...');
-
-      // 11. Inicia scanner
-      await scannerRef.current.start(
-        { 
-          facingMode: "environment" // Câmera traseira
-        },
-        config,
-        (decodedText) => {
-          addDebugInfo(`QR lido: ${decodedText.substring(0, 20)}...`);
-          // Sucesso na leitura - evita múltiplas leituras
-          if (!scanned && isMountedRef.current) {
-            handleQRResult(decodedText);
+      // 5. SOLUÇÃO DEFINITIVA: setTimeout para garantir DOM real
+      setTimeout(async () => {
+        try {
+          if (!isMountedRef.current) {
+            addDebugInfo('Componente desmontado durante setTimeout');
+            return;
           }
-        },
-        (error) => {
-          // Erro na leitura (normal durante tentativas)
-          // Silencioso para evitar spam
+
+          // 6. Verifica se elemento existe via document.getElementById
+          const domElement = document.getElementById(readerId);
+          if (!domElement || !readerRef.current) {
+            throw new Error('Elemento DOM não encontrado via getElementById');
+          }
+          addDebugInfo(`✅ Elemento encontrado via getElementById: ${readerId}`);
+
+          // 7. Cria Html5Qrcode usando ID
+          addDebugInfo(`Criando Html5Qrcode com elemento: ${readerId}`);
+          scannerRef.current = new Html5Qrcode(readerId);
+          addDebugInfo('✅ Html5Qrcode criado com sucesso');
+          
+          // 8. Configuração robusta
+          const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            disableFlip: false,
+            rememberLastUsedCamera: true
+          };
+
+          addDebugInfo('Iniciando scanner com configuração...');
+
+          // 9. Inicia scanner
+          await scannerRef.current.start(
+            { 
+              facingMode: "environment"
+            },
+            config,
+            (decodedText) => {
+              addDebugInfo(`✅ QR LIDO: ${decodedText.substring(0, 20)}...`);
+              if (!scanned && isMountedRef.current) {
+                handleQRResult(decodedText);
+              }
+            },
+            (error) => {
+              // Erro na leitura (normal durante tentativas)
+            }
+          );
+          
+          if (isMountedRef.current) {
+            setIsScanning(true);
+            setIsLoading(false);
+            addDebugInfo('✅ Scanner iniciado com sucesso - TUDO OK!');
+          }
+
+        } catch (error) {
+          addDebugInfo(`❌ Erro no setTimeout: ${error}`);
+          if (isMountedRef.current) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao inicializar scanner';
+            setError(errorMessage);
+            setIsLoading(false);
+          }
         }
-      );
-      
-      if (isMountedRef.current) {
-        setIsScanning(true);
-        addDebugInfo('✅ Scanner iniciado com sucesso - TUDO OK!');
-      }
+      }, 100); // Tempo ideal para estabilizar DOM real
 
     } catch (error) {
       addDebugInfo(`❌ Erro startScanner: ${error}`);
       if (isMountedRef.current) {
         const errorMessage = error instanceof Error ? error.message : 'Erro ao inicializar scanner';
         setError(errorMessage);
-      }
-    } finally {
-      if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, [handleQRResult, scanned]);
+  }, [handleQRResult, scanned, domReady]);
 
   /**
    * Para e limpa o scanner
@@ -348,6 +318,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     setScanResult(null);
     setError(null);
     setScanned(false);
+    setDomReady(false);
   }, []);
 
   /**
@@ -359,9 +330,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     stopScanner();
     setTimeout(() => {
       isMountedRef.current = true;
-      startScanner();
+      if (domReady) {
+        startScanner();
+      }
     }, 1000);
-  }, [stopScanner, startScanner]);
+  }, [stopScanner, startScanner, domReady]);
 
   /**
    * Retoma scan
@@ -374,23 +347,36 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     startScanner();
   }, [startScanner]);
 
-  // Effect principal - DOM SEGURO
+  /**
+   * Callback do ref para detectar DOM pronto
+   */
+  const handleRefCallback = useCallback((element: HTMLDivElement | null) => {
+    readerRef.current = element;
+    if (element) {
+      addDebugInfo('✅ Elemento DOM completamente renderizado via ref callback');
+      setDomReady(true);
+    } else {
+      addDebugInfo('Aguardando elemento DOM ser renderizado...');
+      setDomReady(false);
+    }
+  }, []);
+
+  // Effect principal - aguarda DOM estar pronto
   useEffect(() => {
     isMountedRef.current = true;
     
-    if (isOpen) {
-      addDebugInfo('Modal aberto - iniciando scanner');
-      // Delay robusto para garantir que DOM está completamente renderizado
+    if (isOpen && domReady) {
+      addDebugInfo('Modal aberto e DOM pronto - iniciando scanner');
       const timer = setTimeout(() => {
         startScanner();
-      }, 500); // Delay mais robusto para renderização completa
+      }, 200); // Delay menor já que temos setTimeout interno
       
       return () => clearTimeout(timer);
-    } else {
+    } else if (!isOpen) {
       addDebugInfo('Modal fechado - parando scanner');
       stopScanner();
     }
-  }, [isOpen, startScanner, stopScanner]);
+  }, [isOpen, domReady, startScanner, stopScanner]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -421,7 +407,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold">Scanner QR</h2>
-              <p className="text-green-100 text-sm">HTML5 Ultra-Robusto</p>
+              <p className="text-green-100 text-sm">HTML5 com setTimeout Fix</p>
             </div>
           </div>
         </div>
@@ -434,7 +420,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             <div className="text-center py-8">
               <ProfessionalLoader size="lg" className="mb-4" />
               <p className="text-gray-600">Inicializando scanner...</p>
-              <p className="text-xs text-gray-500 mt-2">Verificando câmera e permissões</p>
+              <p className="text-xs text-gray-500 mt-2">Aguardando DOM + setTimeout</p>
             </div>
           )}
 
@@ -519,17 +505,24 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
           )}
 
-          {/* Scanner Area - DOM SEGURO */}
+          {/* Scanner Area - DOM SEGURO COM REF CALLBACK */}
           {!isLoading && !error && !scanResult && (
             <div className="space-y-4">
               
-              {/* QR Reader Container - SEMPRE PRESENTE NO DOM */}
+              {/* QR Reader Container - REF CALLBACK */}
               <div className="relative">
                 <div
                   id={readerId}
-                  ref={readerRef}
+                  ref={handleRefCallback}
                   className="w-full min-h-[300px] border-2 border-dashed border-green-300 rounded-lg bg-green-50 flex items-center justify-center"
                 />
+                
+                {/* Status DOM */}
+                {!domReady && (
+                  <div className="absolute inset-0 bg-green-50 bg-opacity-90 flex items-center justify-center">
+                    <p className="text-green-600 text-sm font-medium">Preparando DOM...</p>
+                  </div>
+                )}
                 
                 {/* Status Overlay */}
                 {isScanning && (
@@ -550,7 +543,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                   Aponte a câmera para o código QR
                 </p>
                 <p className="text-xs text-gray-500">
-                  Scanner HTML5 ultra-robusto com diagnóstico
+                  Scanner com setTimeout fix - DOM: {domReady ? '✅' : '⏳'}
                 </p>
               </div>
               
@@ -558,7 +551,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               {debugInfo && (
                 <div className="bg-gray-100 rounded p-2">
                   <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
-                    {debugInfo.split('\n').slice(-8).join('\n')}
+                    {debugInfo.split('\n').slice(-6).join('\n')}
                   </p>
                 </div>
               )}
@@ -567,7 +560,8 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               <div className="flex space-x-3">
                 <button
                   onClick={restartScanner}
-                  className="flex-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2"
+                  disabled={!domReady}
+                  className="flex-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RotateCcw className="h-4 w-4" />
                   <span>Reiniciar</span>
