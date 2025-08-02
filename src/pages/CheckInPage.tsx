@@ -60,6 +60,8 @@ const CheckInPage = () => {
 
   useEffect(() => {
     console.log('🚀 CheckInPage V2.0 - Melhorias de câmera carregadas!');
+  console.log('🌐 URL Atual:', window.location.href);
+  console.log('👤 Usuário:', user);
     if (user) {
       fetchCurrentEvent();
     }

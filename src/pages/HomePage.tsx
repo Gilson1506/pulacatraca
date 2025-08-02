@@ -10,6 +10,11 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // DEBUG: Indicador de versão para verificar deploy
+  useEffect(() => {
+    console.log('🏠 HomePage V2.0 - Deploy funcionando!', new Date().toISOString());
+  }, []);
+
   // Eventos estáticos como fallback
   const fallbackEvents = [
     {
