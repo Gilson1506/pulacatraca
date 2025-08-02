@@ -144,58 +144,86 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error(`❌ Erro ao configurar vídeo: ${error.message}. Tente fechar e abrir o scanner novamente.`);
       }
 
-      // Configuração ULTRA-RÁPIDA para leitura instantânea
+      // Configuração EXTREMAMENTE OTIMIZADA para leitura INSTANTÂNEA
       const qrScanner = new QrScannerLib(
         videoRef.current,
         (result) => {
           try {
             const qrData = typeof result === 'string' ? result : (result.data || result);
-            console.log('⚡ QR DETECTADO INSTANTANEAMENTE:', qrData);
+            console.log('🔥 QR LIDO INSTANTANEAMENTE:', qrData);
             
-            // Parar scanner IMEDIATAMENTE (sem delay)
+            // Parar TUDO imediatamente
             qrScanner.stop();
-            qrScanner.destroy();
+            if (qrScanner.destroy) qrScanner.destroy();
             
-            // Processar QR instantaneamente
+            // Vibrar para feedback (se suportado)
+            if (navigator.vibrate) {
+              navigator.vibrate(100);
+            }
+            
+            // Processar e fechar IMEDIATAMENTE
             onScan(qrData);
-            
-            // Fechar modal instantaneamente
             onClose();
           } catch (error) {
             console.error('Erro ao processar QR:', error);
           }
         },
         {
-          // CONFIGURAÇÕES ULTRA-RÁPIDAS
+          // CONFIGURAÇÕES MÁXIMA PERFORMANCE
           preferredCamera: 'environment',
-          highlightScanRegion: false,      // Performance máxima
-          highlightCodeOutline: false,     // Performance máxima
-          maxScansPerSecond: 60,           // TRIPLICADO: 60 scans/segundo
-          returnDetailedScanResult: false, // Resultado direto
-          // Área de scan AMPLIADA para captura mais fácil
+          highlightScanRegion: false,      
+          highlightCodeOutline: false,     
+          maxScansPerSecond: 120,          // MÁXIMO ABSOLUTO: 120 scans/segundo!!!
+          returnDetailedScanResult: false, 
+          // TELA INTEIRA para máxima sensibilidade
           calculateScanRegion: (video) => {
-            const size = Math.min(video.videoWidth, video.videoHeight) * 0.8; // Aumentado para 80%
             return {
-              x: (video.videoWidth - size) / 2,
-              y: (video.videoHeight - size) / 2,
-              width: size,
-              height: size,
+              x: 0,
+              y: 0, 
+              width: video.videoWidth,     // TELA INTEIRA!!!
+              height: video.videoHeight,   // SEM LIMITAÇÕES!!!
             };
           },
-          // SUPORTE AVANÇADO DE LEITURA
-          onDecodeError: () => {
-            // Silencioso - não logar erros de decode para máxima performance
-          },
+          // Configurações avançadas para máxima sensibilidade
+          onDecodeError: () => {}, // Silencioso
         }
       );
 
       qrScannerRef.current = qrScanner;
 
-      // Iniciar scanner
-      await qrScanner.start();
-
-      setIsInitializing(false);
-      console.log('✅ Scanner ultra-rápido ativo');
+      // Configurações AVANÇADAS pós-inicialização
+      try {
+        // Iniciar scanner com configurações otimizadas
+        await qrScanner.start();
+        
+        // Configurações adicionais da câmera para máxima performance
+        if (videoRef.current) {
+          const video = videoRef.current;
+          
+          // Configurar para máxima qualidade e responsividade
+          video.setAttribute('playsinline', 'true');
+          video.setAttribute('webkit-playsinline', 'true');
+          
+          // Forçar reprodução contínua para evitar pausas
+          video.onpause = () => {
+            if (!video.ended) {
+              video.play().catch(() => {});
+            }
+          };
+          
+          console.log('📹 Vídeo configurado para máxima responsividade');
+        }
+        
+        setIsInitializing(false);
+        console.log('🔥 SCANNER EXTREMAMENTE RÁPIDO ATIVO - 120 scans/segundo + tela inteira!');
+        
+        // Feedback visual que está ativo
+        setScanCount(0);
+        
+      } catch (startError) {
+        console.error('❌ Erro ao iniciar scanner:', startError);
+        throw startError;
+      }
 
     } catch (error: any) {
       console.error('❌ Erro ao iniciar scanner:', error);
@@ -306,23 +334,32 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
             
                           {/* Indicador de velocidade - só quando ativo */}
               {!error && !isInitializing && (
-                <div className="absolute top-2 left-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg animate-pulse">
+                <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 text-white px-2 py-1 rounded-full text-xs font-black flex items-center space-x-1 shadow-lg animate-bounce">
                   <Zap className="h-3 w-3" />
-                  <span>ULTRA-RÁPIDO</span>
+                  <span>EXTREMO</span>
                 </div>
               )}
 
-            {/* Área de scan visual - só quando ativo */}
-            {!error && !isInitializing && (
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-8 border-2 border-white rounded-lg shadow-lg">
-                  <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pink-500 rounded-tl-lg"></div>
-                  <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-pink-500 rounded-tr-lg"></div>
-                  <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-pink-500 rounded-bl-lg"></div>
-                  <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pink-500 rounded-br-lg"></div>
+                          {/* Indicador de área ativa - tela inteira */}
+              {!error && !isInitializing && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Border da tela inteira para mostrar que toda área é sensível */}
+                  <div className="absolute inset-1 border-2 border-green-400 rounded-lg shadow-lg animate-pulse">
+                    {/* Cantos indicadores em cada canto da tela */}
+                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
+                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
+                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
+                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
+                    
+                    {/* Texto central indicando área ativa */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-green-500 bg-opacity-90 text-white px-3 py-1 rounded-full text-xs font-bold">
+                        TELA INTEIRA ATIVA
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* Estados de UI sobrepostos */}
@@ -364,10 +401,10 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
               {/* Instruções */}
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">
-                  Aponte a câmera para o QR code do ingresso
+                  Aponte a câmera para qualquer parte da tela com QR
                 </p>
-                <p className="text-xs text-gray-500">
-                  Leitura ultra-rápida (60 scans/segundo) + área ampliada
+                <p className="text-xs text-green-600 font-medium">
+                  🔥 EXTREMAMENTE RÁPIDO: 120 scans/segundo + tela inteira sensível
                 </p>
               </div>
 
