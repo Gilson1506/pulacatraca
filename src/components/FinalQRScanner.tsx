@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, AlertTriangle, CheckCircle, User, Calendar, RotateCcw } from 'lucide-react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '../lib/supabase';
 import ProfessionalLoader from './ProfessionalLoader';
 
@@ -32,13 +32,12 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [scanResult, setScanResult] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
   
-  // Refs
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  // Refs DOM seguros
+  const readerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const isMountedRef = useRef(true);
-  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const readerId = "qr-reader-element";
 
   /**
    * Busca dados do ticket
@@ -81,16 +80,16 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   /**
    * Processa resultado do QR
    */
-  const handleQRResult = useCallback(async (qrValue: string) => {
-    if (scanned) return; // Evita múltiplos processamentos
+  const handleQRResult = useCallback(async (decodedText: string) => {
+    if (scanned || !isMountedRef.current) return;
     
     try {
       setScanned(true);
       
       // Para o scanner
-      if (codeReaderRef.current) {
+      if (scannerRef.current) {
         try {
-          codeReaderRef.current.reset();
+          await scannerRef.current.stop();
         } catch {}
       }
       
@@ -100,14 +99,14 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       }
 
       // Busca dados do ticket
-      const ticketData = await fetchTicketData(qrValue);
+      const ticketData = await fetchTicketData(decodedText);
       
       if (ticketData) {
         setScanResult(ticketData);
         setError(null);
         
         if (onSuccess) {
-          onSuccess(qrValue, ticketData);
+          onSuccess(decodedText, ticketData);
         }
       } else {
         setError('Código QR inválido ou ticket não encontrado');
@@ -117,7 +116,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         setTimeout(() => {
           if (isMountedRef.current && isOpen) {
             setScanned(false);
-            initializeScanner();
+            startScanner();
           }
         }, 3000);
       }
@@ -128,39 +127,17 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       setTimeout(() => {
         if (isMountedRef.current && isOpen) {
           setScanned(false);
-          initializeScanner();
+          startScanner();
         }
       }, 3000);
     }
   }, [scanned, isOpen, onSuccess]);
 
   /**
-   * Aguarda vídeo estar pronto
+   * Inicia o scanner - ABORDAGEM DOM SEGURA
    */
-  const waitForVideo = (): Promise<HTMLVideoElement> => {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout: Elemento de vídeo não encontrado'));
-      }, 5000);
-
-      const checkVideo = () => {
-        if (videoRef.current && videoReady) {
-          clearTimeout(timeout);
-          resolve(videoRef.current);
-        } else {
-          setTimeout(checkVideo, 100);
-        }
-      };
-
-      checkVideo();
-    });
-  };
-
-  /**
-   * Inicializa o scanner de forma ultra-robusta
-   */
-  const initializeScanner = useCallback(async () => {
-    if (!isMountedRef.current || !isOpen) return;
+  const startScanner = useCallback(async () => {
+    if (!readerRef.current || !isMountedRef.current) return;
     
     try {
       setIsLoading(true);
@@ -176,32 +153,33 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         throw new Error('Scanner requer HTTPS ou localhost');
       }
 
-      // Aguarda vídeo estar pronto
-      const videoElement = await waitForVideo();
-      
-      if (!isMountedRef.current) return; // Check se ainda está montado
-
-      // Para qualquer scanner anterior
-      if (codeReaderRef.current) {
+      // Para scanner anterior se existir
+      if (scannerRef.current) {
         try {
-          codeReaderRef.current.reset();
+          await scannerRef.current.stop();
+          await scannerRef.current.clear();
         } catch {}
-        codeReaderRef.current = null;
+        scannerRef.current = null;
       }
 
-      // Cria novo BrowserMultiFormatReader
-      const codeReader = new BrowserMultiFormatReader();
-      codeReaderRef.current = codeReader;
-
-      // Inicia decodificação
-      await codeReader.decodeFromVideoDevice(
-        undefined, // deviceId padrão
-        videoElement,
-        (result, err) => {
-          if (result && isMountedRef.current && !scanned) {
-            const qrValue = result.getText();
-            handleQRResult(qrValue);
-          }
+      // Cria novo Html5Qrcode usando ID do elemento
+      scannerRef.current = new Html5Qrcode(readerId);
+      
+      // Inicia scanner com configuração otimizada
+      await scannerRef.current.start(
+        { facingMode: "environment" }, // Câmera traseira
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        },
+        (decodedText) => {
+          // Sucesso na leitura
+          handleQRResult(decodedText);
+        },
+        (error) => {
+          // Erro na leitura (normal durante tentativas)
+          // Não logamos para evitar spam
         }
       );
       
@@ -219,7 +197,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         setIsLoading(false);
       }
     }
-  }, [isOpen, videoReady, handleQRResult, scanned]);
+  }, [handleQRResult]);
 
   /**
    * Para e limpa o scanner
@@ -227,23 +205,20 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const stopScanner = useCallback(async () => {
     isMountedRef.current = false;
     
-    if (initTimeoutRef.current) {
-      clearTimeout(initTimeoutRef.current);
-      initTimeoutRef.current = null;
-    }
-    
-    if (codeReaderRef.current) {
+    if (scannerRef.current) {
       try {
-        codeReaderRef.current.reset();
-      } catch {}
-      codeReaderRef.current = null;
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch (err) {
+        // Ignora erros de cleanup
+      }
+      scannerRef.current = null;
     }
     
     setIsScanning(false);
     setScanResult(null);
     setError(null);
     setScanned(false);
-    setVideoReady(false);
   }, []);
 
   /**
@@ -253,11 +228,9 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     stopScanner();
     setTimeout(() => {
       isMountedRef.current = true;
-      if (videoReady) {
-        initializeScanner();
-      }
+      startScanner();
     }, 1000);
-  }, [stopScanner, initializeScanner, videoReady]);
+  }, [stopScanner, startScanner]);
 
   /**
    * Retoma scan
@@ -266,37 +239,24 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     setScanned(false);
     setScanResult(null);
     setError(null);
-    if (videoReady) {
-      initializeScanner();
-    }
-  }, [initializeScanner, videoReady]);
+    startScanner();
+  }, [startScanner]);
 
-  /**
-   * Handler quando vídeo está carregado
-   */
-  const handleVideoLoaded = useCallback(() => {
-    setVideoReady(true);
-  }, []);
-
-  // Effect principal
+  // Effect principal - DOM SEGURO
   useEffect(() => {
     isMountedRef.current = true;
     
-    if (isOpen && videoReady) {
-      // Aguarda um pouco para garantir que tudo está pronto
-      initTimeoutRef.current = setTimeout(() => {
-        initializeScanner();
-      }, 1500);
-    } else if (!isOpen) {
+    if (isOpen) {
+      // Pequeno delay para garantir que DOM está pronto
+      const timer = setTimeout(() => {
+        startScanner();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    } else {
       stopScanner();
     }
-
-    return () => {
-      if (initTimeoutRef.current) {
-        clearTimeout(initTimeoutRef.current);
-      }
-    };
-  }, [isOpen, videoReady, initializeScanner, stopScanner]);
+  }, [isOpen, startScanner, stopScanner]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -312,7 +272,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-4 text-white relative">
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
@@ -326,7 +286,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold">Scanner QR</h2>
-              <p className="text-purple-100 text-sm">Detector ultra-robusto</p>
+              <p className="text-green-100 text-sm">HTML5 QR Code Scanner</p>
             </div>
           </div>
         </div>
@@ -339,9 +299,6 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             <div className="text-center py-8">
               <ProfessionalLoader size="lg" className="mb-4" />
               <p className="text-gray-600">Inicializando scanner...</p>
-              {!videoReady && (
-                <p className="text-sm text-gray-500 mt-2">Aguardando vídeo...</p>
-              )}
             </div>
           )}
 
@@ -356,7 +313,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               
               <button
                 onClick={restartScanner}
-                className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                className="w-full bg-green-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Tentar Novamente</span>
@@ -409,7 +366,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
                 >
                   Concluir
                 </button>
@@ -417,39 +374,28 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
           )}
 
-          {/* Scanner Area - SEMPRE RENDERIZADO */}
+          {/* Scanner Area - DOM SEGURO */}
           {!isLoading && !error && !scanResult && (
             <div className="space-y-4">
               
-              {/* Video Container - SEMPRE PRESENTE */}
+              {/* QR Reader Container - SEMPRE PRESENTE NO DOM */}
               <div className="relative">
-                <video
-                  ref={videoRef}
-                  className="w-full h-64 bg-gray-900 rounded-lg object-cover"
-                  playsInline
-                  muted
-                  autoPlay
-                  onLoadedMetadata={handleVideoLoaded}
-                  onCanPlay={handleVideoLoaded}
+                <div
+                  id={readerId}
+                  ref={readerRef}
+                  className="w-full min-h-[300px] border-2 border-dashed border-green-300 rounded-lg bg-green-50 flex items-center justify-center"
                 />
                 
-                {/* Video Ready Indicator */}
-                {!videoReady && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="text-white text-sm">Preparando vídeo...</div>
-                  </div>
-                )}
-                
                 {/* Status Overlay */}
-                {isScanning && videoReady && (
-                  <div className="absolute top-2 left-2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium">
+                {isScanning && (
+                  <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
                     ATIVO
                   </div>
                 )}
                 
                 {/* Scanning Indicator */}
-                {isScanning && videoReady && (
-                  <div className="absolute inset-0 border-2 border-purple-500 rounded-lg animate-pulse"></div>
+                {isScanning && (
+                  <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse pointer-events-none"></div>
                 )}
               </div>
 
@@ -459,7 +405,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                   Aponte a câmera para o código QR
                 </p>
                 <p className="text-xs text-gray-500">
-                  {videoReady ? 'Scanner pronto para uso' : 'Aguardando vídeo carregar...'}
+                  Scanner HTML5 nativo para máxima compatibilidade
                 </p>
               </div>
               
@@ -467,8 +413,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               <div className="flex space-x-3">
                 <button
                   onClick={restartScanner}
-                  disabled={!videoReady}
-                  className="flex-1 text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2"
                 >
                   <RotateCcw className="h-4 w-4" />
                   <span>Reiniciar</span>
