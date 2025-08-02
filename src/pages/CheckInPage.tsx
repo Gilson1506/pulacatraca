@@ -251,11 +251,19 @@ const CheckInPage = () => {
       });
 
       if (error) {
-        console.error('❌ Erro na função RPC search_event_participants:', error);
+        console.error('❌ Erro na função RPC search_participants_by_text:', error);
         
         // Se a função RPC não existir, mostrar erro específico
         if (error.message?.includes('function') && error.message?.includes('does not exist')) {
-          showModal('error', 'Função de busca não encontrada. Execute o script SQL para criar as funções necessárias.');
+          showModal('error', 'Função de busca não encontrada. Execute o script SQL fix_checkin_qr_code_search.sql para criar as funções necessárias.');
+          setIsLoading(false);
+          setIsSearching(false);
+          return;
+        }
+        
+        // Se for erro de coluna, mostrar erro específico
+        if (error.message?.includes('column') && error.message?.includes('does not exist')) {
+          showModal('error', 'Erro na estrutura do banco de dados. Execute o script SQL fix_search_participants_column.sql para corrigir.');
           setIsLoading(false);
           setIsSearching(false);
           return;
@@ -759,19 +767,24 @@ const CheckInPage = () => {
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                  🎯 Check-in de Participantes
-                </h1>
-                <p className="text-sm sm:text-base text-gray-600">Sistema completo de check-in com scanner QR e busca manual</p>
-              </div>
-              
-              {/* Controles */}
-              {/* Status do sistema */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg px-4 py-2 border border-green-200">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-green-700">Sistema Ativo</span>
+              <div className="flex items-center gap-4">
+                {/* Botão de voltar */}
+                <button
+                  onClick={() => window.history.back()}
+                  className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-gray-700 hover:text-gray-900"
+                  title="Voltar ao dashboard"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="hidden sm:block">Voltar</span>
+                </button>
+                
+                <div>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                    🎯 Check-in de Participantes
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600">Sistema completo de check-in com scanner QR e busca manual</p>
                 </div>
               </div>
             </div>
