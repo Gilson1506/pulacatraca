@@ -415,15 +415,78 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           
-          {/* Loading State */}
-          {isLoading && (
-            <div className="text-center py-8">
-              <ProfessionalLoader size="lg" className="mb-4" />
-              <p className="text-gray-600">Inicializando scanner...</p>
-              <p className="text-xs text-gray-500 mt-2">Aguardando DOM + setTimeout</p>
+          {/* QR Reader Container - SEMPRE PRESENTE NO DOM */}
+          <div className="space-y-4 mb-6">
+            <div className="relative">
+              <div
+                id={readerId}
+                ref={handleRefCallback}
+                className="w-full min-h-[300px] border-2 border-dashed border-green-300 rounded-lg bg-green-50 flex items-center justify-center"
+              />
+              
+              {/* Status DOM */}
+              {!domReady && (
+                <div className="absolute inset-0 bg-green-50 bg-opacity-90 flex items-center justify-center">
+                  <p className="text-green-600 text-sm font-medium">Preparando DOM...</p>
+                </div>
+              )}
+              
+              {/* Loading Overlay */}
+              {isLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center">
+                  <div className="text-center">
+                    <ProfessionalLoader size="lg" className="mb-4" />
+                    <p className="text-gray-600">Inicializando scanner...</p>
+                    <p className="text-xs text-gray-500 mt-2">Aguardando DOM + setTimeout</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Status Overlay */}
+              {isScanning && (
+                <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
+                  ATIVO
+                </div>
+              )}
+              
+              {/* Scanning Indicator */}
+              {isScanning && (
+                <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse pointer-events-none"></div>
+              )}
             </div>
-          )}
-
+            
+            {/* Instructions */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-2">
+                Aponte a câmera para o código QR
+              </p>
+              <p className="text-xs text-gray-500">
+                Scanner com setTimeout fix - DOM: {domReady ? '✅' : '⏳'}
+              </p>
+            </div>
+            
+            {/* Debug Info */}
+            {debugInfo && (
+              <div className="bg-gray-100 rounded p-2">
+                <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
+                  {debugInfo.split('\n').slice(-6).join('\n')}
+                </p>
+              </div>
+            )}
+            
+            {/* Manual Controls */}
+            <div className="flex space-x-3">
+              <button
+                onClick={restartScanner}
+                disabled={!domReady}
+                className="flex-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Reiniciar</span>
+              </button>
+            </div>
+          </div>
+          
           {/* Error State */}
           {error && (
             <div className="text-center py-6">
@@ -500,71 +563,6 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                   className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
                 >
                   Concluir
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Scanner Area - DOM SEGURO COM REF CALLBACK */}
-          {!isLoading && !error && !scanResult && (
-            <div className="space-y-4">
-              
-              {/* QR Reader Container - REF CALLBACK */}
-              <div className="relative">
-                <div
-                  id={readerId}
-                  ref={handleRefCallback}
-                  className="w-full min-h-[300px] border-2 border-dashed border-green-300 rounded-lg bg-green-50 flex items-center justify-center"
-                />
-                
-                {/* Status DOM */}
-                {!domReady && (
-                  <div className="absolute inset-0 bg-green-50 bg-opacity-90 flex items-center justify-center">
-                    <p className="text-green-600 text-sm font-medium">Preparando DOM...</p>
-                  </div>
-                )}
-                
-                {/* Status Overlay */}
-                {isScanning && (
-                  <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-                    ATIVO
-                  </div>
-                )}
-                
-                {/* Scanning Indicator */}
-                {isScanning && (
-                  <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse pointer-events-none"></div>
-                )}
-              </div>
-
-              {/* Instructions */}
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">
-                  Aponte a câmera para o código QR
-                </p>
-                <p className="text-xs text-gray-500">
-                  Scanner com setTimeout fix - DOM: {domReady ? '✅' : '⏳'}
-                </p>
-              </div>
-              
-              {/* Debug Info in Scanner Mode */}
-              {debugInfo && (
-                <div className="bg-gray-100 rounded p-2">
-                  <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
-                    {debugInfo.split('\n').slice(-6).join('\n')}
-                  </p>
-                </div>
-              )}
-              
-              {/* Manual Controls */}
-              <div className="flex space-x-3">
-                <button
-                  onClick={restartScanner}
-                  disabled={!domReady}
-                  className="flex-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>Reiniciar</span>
                 </button>
               </div>
             </div>
