@@ -186,7 +186,9 @@ const HomePage = () => {
       {/* Events Section */}
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-2" style={{ fontWeight: 600, letterSpacing: '-0.5px' }}>Eventos</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-2" style={{ fontWeight: 600, letterSpacing: '-0.5px' }}>
+            Eventos <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">V2.0</span>
+          </h2>
           <div className="w-16 h-1 bg-pink-600"></div>
         </div>
 
