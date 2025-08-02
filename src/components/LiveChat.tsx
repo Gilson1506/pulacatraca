@@ -8,6 +8,7 @@ import {
   getSupportAgents,
   subscribeToMessages 
 } from '../lib/supabase';
+import { Send, Loader2 } from 'lucide-react';
 import LoadingButton from './LoadingButton';
 
 const LOGO_URL = 'https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png';
@@ -304,16 +305,18 @@ const LiveChat: React.FC = () => {
               disabled={!connected || sending}
               aria-label="Digite sua mensagem"
             />
-            <LoadingButton
+            <button
               type="submit"
-              isLoading={sending}
-              loadingText=""
-              disabled={!input.trim() || !connected}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 shadow-md disabled:opacity-50"
+              disabled={!input.trim() || !connected || sending}
+              className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full w-11 h-11 flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
               aria-label="Enviar mensagem"
             >
-              {sending ? '⏳' : '📤'}
-            </LoadingButton>
+              {sending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </button>
           </form>
         </div>
       )}
