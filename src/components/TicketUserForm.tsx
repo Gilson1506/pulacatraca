@@ -135,60 +135,68 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="relative bg-gray-100/90 backdrop-blur-sm border border-gray-300/60 rounded-lg shadow-2xl w-full max-w-sm sm:max-w-md max-h-[85vh] flex flex-col transform transition-all duration-500 ease-out animate-fadeInUp">
         {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4 text-white relative">
+        <div className="relative bg-gray-200/80 backdrop-blur-md px-3 sm:px-4 py-3 sm:py-4 border-b border-gray-300/60">
+          <div className="absolute inset-0 bg-gray-200/80"></div>
           <button
             onClick={onCancel}
             disabled={loading}
-            className="absolute top-4 right-4 text-white hover:text-pink-200 transition-colors disabled:opacity-50"
+            className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 p-1.5 sm:p-2 hover:bg-gray-300/50 rounded-sm transition-colors disabled:opacity-50"
           >
-            ✕
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <h2 className="text-xl font-bold pr-8">👤 Definir Usuário do Ingresso</h2>
-          <p className="text-pink-100 text-sm mt-1">
-            Informe os dados de quem irá usar este ingresso
-          </p>
+          <div className="relative z-10">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <span className="text-xl sm:text-2xl">👤</span>
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-center text-gray-800 px-6">Definir Usuário do Ingresso</h2>
+            <p className="text-gray-600 text-xs sm:text-sm text-center mt-1 px-2">
+              Informe os dados de quem irá usar este ingresso
+            </p>
+          </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto bg-white p-3 sm:p-4">
           {errors.general && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm">⚠️ {errors.general}</p>
+            <div className="mb-3 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-sm">
+              <p className="text-red-600 text-xs sm:text-sm">⚠️ {errors.general}</p>
             </div>
           )}
 
           {/* Botão para usar dados do comprador */}
           {currentUser && (
-            <div className="mb-4">
+            <div className="mb-3 sm:mb-4">
               <button
                 type="button"
                 onClick={handleUseBuyerData}
                 disabled={loading}
-                className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 bg-gray-50 border border-gray-300 rounded-sm text-gray-700 font-medium hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-sm"
               >
-                <span className="text-lg">👤</span>
-                Usar meus dados ({currentUser.name})
+                <span className="text-sm sm:text-lg">👤</span>
+                <span className="truncate">Usar meus dados ({currentUser.name})</span>
               </button>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Nome */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-800 mb-1 sm:mb-2">
                 Nome Completo *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all duration-200 ${
+                className={`w-full px-3 py-2 sm:px-4 sm:py-3 border rounded-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all duration-200 text-sm ${
                   errors.name 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-pink-500'
+                    : 'border-gray-300 focus:border-gray-500'
                 }`}
                 placeholder="Digite o nome completo"
                 maxLength={100}
@@ -201,17 +209,17 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
 
             {/* E-mail */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-800 mb-1 sm:mb-2">
                 E-mail *
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all duration-200 ${
+                className={`w-full px-3 py-2 sm:px-4 sm:py-3 border rounded-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all duration-200 text-sm ${
                   errors.email 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-pink-500'
+                    : 'border-gray-300 focus:border-gray-500'
                 }`}
                 placeholder="Digite o e-mail"
                 maxLength={100}
@@ -224,17 +232,17 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
 
             {/* Documento */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-800 mb-1 sm:mb-2">
                 CPF ou CNPJ (opcional)
               </label>
               <input
                 type="text"
                 value={formData.document}
                 onChange={handleDocumentChange}
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-100 transition-all duration-200 ${
+                className={`w-full px-3 py-2 sm:px-4 sm:py-3 border rounded-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all duration-200 text-sm ${
                   errors.document 
                     ? 'border-red-300 focus:border-red-500' 
-                    : 'border-gray-200 focus:border-pink-500'
+                    : 'border-gray-300 focus:border-gray-500'
                 }`}
                 placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 maxLength={18}
@@ -247,29 +255,31 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
           </div>
 
           {/* Info Box */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <div className="text-blue-500 text-lg">ℹ️</div>
-              <div>
-                <p className="text-blue-800 text-sm font-medium mb-1">
+          <div className="mt-4 sm:mt-6 p-2 sm:p-3 bg-gray-50 border border-gray-300 rounded-sm">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <div className="text-gray-500 text-sm sm:text-lg flex-shrink-0">ℹ️</div>
+              <div className="min-w-0">
+                <p className="text-gray-800 text-xs sm:text-sm font-medium mb-1">
                   Importante
                 </p>
-                <ul className="text-blue-600 text-xs space-y-1">
+                <ul className="text-gray-600 text-xs space-y-1">
                   <li>• Estes dados serão associados permanentemente ao ingresso</li>
                   <li>• O QR Code será gerado com base nestas informações</li>
                   <li>• Não será possível alterar após confirmar</li>
                 </ul>
               </div>
-            </div>
+                        </div>
           </div>
+        </form>
 
-          {/* Actions */}
-          <div className="flex gap-3 mt-6">
+        {/* Actions - Fixo no bottom */}
+        <div className="sticky bottom-0 bg-gray-200/80 backdrop-blur-md border-t border-gray-300/60 p-3 sm:p-4">
+          <div className="flex gap-2 sm:gap-3">
             <button
               type="button"
               onClick={onCancel}
               disabled={loading}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200 disabled:opacity-50"
+              className="flex-1 px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-sm text-gray-700 font-medium hover:bg-gray-100 transition-all duration-200 disabled:opacity-50 text-xs sm:text-sm"
             >
               Cancelar
             </button>
@@ -278,12 +288,13 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
               isLoading={loading}
               loadingText="Salvando..."
               disabled={!formData.name?.trim() || !formData.email?.trim()}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-200 shadow-lg disabled:opacity-50"
+              className="flex-1 px-3 py-2 sm:px-4 sm:py-3 bg-pink-600 text-white rounded-sm font-bold hover:bg-pink-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+              onClick={handleSubmit}
             >
               Confirmar
             </LoadingButton>
           </div>
-        </form>
+        </div>
       </div>
 
       <style>{`
