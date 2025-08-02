@@ -30,6 +30,15 @@ interface CheckInResult {
 
 const CheckInPage = () => {
   const { user } = useAuth();
+  
+  // DEBUG: Forçar re-render com timestamp
+  const [buildTime] = useState(() => {
+    const timestamp = new Date().toISOString();
+    console.log('🔄 CheckInPage renderizada em:', timestamp);
+    console.log('📱 UserAgent:', navigator.userAgent);
+    console.log('🌐 URL:', window.location.href);
+    return timestamp;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [participants, setParticipants] = useState<ParticipantSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -578,7 +587,7 @@ const CheckInPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
+    <div key={buildTime} className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           {/* Banner de Atualização */}
@@ -591,8 +600,13 @@ const CheckInPage = () => {
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">🎯 Check-in de Participantes - ATUALIZADO</h1>
-                <p className="text-gray-600">✨ Interface moderna - Gerencie o check-in dos participantes do evento</p>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          🎯 Check-in de Participantes 
+          <span className="text-base bg-gradient-to-r from-pink-600 to-purple-600 text-white px-3 py-1 rounded-full ml-2">
+            V2.0 - {buildTime.slice(11, 19)}
+          </span>
+        </h1>
+        <p className="text-gray-600">✨ Scanner QR melhorado, interface responsiva e câmera otimizada</p>
               </div>
               
               {/* Controles */}
