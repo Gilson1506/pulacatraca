@@ -7,6 +7,7 @@ import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
 import ImprovedQRScanner from '../components/ImprovedQRScanner';
 import SimplifiedQRScanner from '../components/SimplifiedQRScanner';
+import UltraRobustQRScanner from '../components/UltraRobustQRScanner';
 import CameraDiagnostic from '../components/CameraDiagnostic';
 
 interface Event {
@@ -42,6 +43,7 @@ const CheckInPage = () => {
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showSimplifiedScanner, setShowSimplifiedScanner] = useState(false);
+  const [showUltraRobustScanner, setShowUltraRobustScanner] = useState(false);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
@@ -870,6 +872,17 @@ const CheckInPage = () => {
                     <span className="sm:hidden">S</span>
                   </button>
 
+                  {/* Botão Scanner Ultra-Robusto */}
+                  <button
+                    onClick={() => setShowUltraRobustScanner(true)}
+                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 text-xs sm:text-sm"
+                    title="Scanner Ultra-Robusto (MutationObserver)"
+                  >
+                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Ultra</span>
+                    <span className="sm:hidden">U</span>
+                  </button>
+
                   {/* Botão Diagnóstico de Câmera */}
                   <button
                     onClick={() => setShowDiagnostic(true)}
@@ -1063,6 +1076,14 @@ const CheckInPage = () => {
       <SimplifiedQRScanner
         isOpen={showSimplifiedScanner}
         onClose={() => setShowSimplifiedScanner(false)}
+        onSuccess={handleQRCodeScan}
+        eventId={currentEvent?.id}
+      />
+
+      {/* Modal do Scanner Ultra-Robusto */}
+      <UltraRobustQRScanner
+        isOpen={showUltraRobustScanner}
+        onClose={() => setShowUltraRobustScanner(false)}
         onSuccess={handleQRCodeScan}
         eventId={currentEvent?.id}
       />
