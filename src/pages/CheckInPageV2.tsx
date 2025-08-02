@@ -28,7 +28,7 @@ interface CheckInResult {
   };
 }
 
-const CheckInPage = () => {
+const CheckInPageV2 = () => {
   const { user } = useAuth();
   
   // DEBUG: Forçar re-render com timestamp
@@ -612,9 +612,9 @@ const CheckInPage = () => {
             <div className="flex justify-between items-center">
               <div>
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          🎯 Check-in de Participantes 
-          <span className="text-base bg-gradient-to-r from-pink-600 to-purple-600 text-white px-3 py-1 rounded-full ml-2">
-            V2.0 - {buildTime.slice(11, 19)}
+          🚀 CHECK-IN V2 NOVA VERSÃO FUNCIONANDO! 
+          <span className="text-base bg-red-600 text-white px-3 py-1 rounded-full ml-2 animate-pulse">
+            ATUALIZADO AGORA!
           </span>
         </h1>
         <p className="text-gray-600">✨ Scanner QR melhorado, interface responsiva e câmera otimizada</p>
@@ -1003,4 +1003,4 @@ const CheckInPage = () => {
   );
 };
 
-export default CheckInPage;
+export default CheckInPageV2;
