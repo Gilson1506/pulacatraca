@@ -8,7 +8,8 @@ import {
   getSupportAgents,
   subscribeToMessages 
 } from '../lib/supabase';
-import { Send, Loader2 } from 'lucide-react';
+import { Send } from 'lucide-react';
+import ProfessionalLoader from './ProfessionalLoader';
 import LoadingButton from './LoadingButton';
 
 const LOGO_URL = 'https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png';
@@ -247,13 +248,13 @@ const LiveChat: React.FC = () => {
 
           {/* Messages Area */}
           <div className="flex-1 px-4 py-3 overflow-y-auto bg-gradient-to-b from-pink-50/30 to-purple-50/30">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full mx-auto mb-3"></div>
-                  <p className="text-gray-600 text-sm">Conectando com o suporte...</p>
+                          {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <ProfessionalLoader size="md" className="mb-3" />
+                    <p className="text-gray-600 text-sm">Conectando com o suporte...</p>
+                  </div>
                 </div>
-              </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -312,7 +313,7 @@ const LiveChat: React.FC = () => {
               aria-label="Enviar mensagem"
             >
               {sending ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <ProfessionalLoader size="sm" />
               ) : (
                 <Send className="h-5 w-5" />
               )}
