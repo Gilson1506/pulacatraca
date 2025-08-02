@@ -644,13 +644,13 @@ const CheckInPage = () => {
                   </div>
                 </div>
                 
-                {/* Layout Mobile: Grid Quadrados Compactos | Desktop: Layout Completo */}
+                {/* Layout Mobile: Grid Micro Compacto (50% menor) | Desktop: Layout Completo */}
                 <div className="sm:hidden">
-                  {/* Mobile: Grid 2x3 de mini-quadrados (60% do tamanho original) */}
-                  <div className="grid grid-cols-2 gap-1.5" style={{ transform: 'scale(0.9)', transformOrigin: 'center' }}>
+                  {/* Mobile: Grid 2x2 micro (50% do tamanho original) */}
+                  <div className="grid grid-cols-2 gap-1" style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}>
                     {/* Data */}
-                    <div className="bg-blue-50 p-2 rounded-md border border-blue-200 aspect-square flex flex-col items-center justify-center text-center">
-                      <Calendar className="h-4 w-4 text-blue-600 mb-1" />
+                    <div className="bg-blue-50 p-1 rounded border border-blue-200 aspect-square flex flex-col items-center justify-center text-center">
+                      <Calendar className="h-3 w-3 text-blue-600 mb-0.5" />
                       <div className="text-xs font-medium text-blue-900">Data</div>
                       <div className="text-xs text-blue-800 font-semibold">
                         {new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
@@ -661,8 +661,8 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Check-ins */}
-                    <div className="bg-green-50 p-2 rounded-md border border-green-200 aspect-square flex flex-col items-center justify-center text-center">
-                      <CheckCircle className="h-4 w-4 text-green-600 mb-1" />
+                    <div className="bg-green-50 p-1 rounded border border-green-200 aspect-square flex flex-col items-center justify-center text-center">
+                      <CheckCircle className="h-3 w-3 text-green-600 mb-0.5" />
                       <div className="text-xs font-medium text-green-900">Check-ins</div>
                       <div className="text-xs text-green-800 font-bold">
                         {checkinStats.checked_in}/{checkinStats.total_participants}
@@ -671,16 +671,16 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Som */}
-                    <div className="bg-purple-50 p-2 rounded-md border border-purple-200 aspect-square flex flex-col items-center justify-center">
+                    <div className="bg-purple-50 p-1 rounded border border-purple-200 aspect-square flex flex-col items-center justify-center">
                       <button
                         onClick={toggleSound}
                         className="flex flex-col items-center justify-center h-full w-full"
                         title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
                       >
                         {soundEnabled ? (
-                          <Volume2 className="h-4 w-4 text-purple-600 mb-1" />
+                          <Volume2 className="h-3 w-3 text-purple-600 mb-0.5" />
                         ) : (
-                          <VolumeX className="h-4 w-4 text-purple-400 mb-1" />
+                          <VolumeX className="h-3 w-3 text-purple-400 mb-0.5" />
                         )}
                         <div className="text-xs font-medium text-purple-900">Som</div>
                         <div className="text-xs text-purple-600">{soundEnabled ? 'ON' : 'OFF'}</div>
@@ -688,8 +688,8 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Status/Local */}
-                    <div className="bg-orange-50 p-2 rounded-md border border-orange-200 aspect-square flex flex-col items-center justify-center text-center">
-                      <MapPin className="h-4 w-4 text-orange-600 mb-1" />
+                    <div className="bg-orange-50 p-1 rounded border border-orange-200 aspect-square flex flex-col items-center justify-center text-center">
+                      <MapPin className="h-3 w-3 text-orange-600 mb-0.5" />
                       <div className="text-xs font-medium text-orange-900">
                         {currentEvent.location ? 'Local' : 'Status'}
                       </div>
@@ -699,18 +699,6 @@ const CheckInPage = () => {
                         ) : (
                           'Ativo'
                         )}
-                      </div>
-                    </div>
-
-                    {/* Total de Participantes */}
-                    <div className="bg-indigo-50 p-2 rounded-md border border-indigo-200 aspect-square flex flex-col items-center justify-center text-center col-span-2">
-                      <Users className="h-4 w-4 text-indigo-600 mb-1" />
-                      <div className="text-xs font-medium text-indigo-900">Total de Participantes</div>
-                      <div className="text-xs text-indigo-800 font-bold">
-                        {checkinStats.total_participants} inscritos
-                      </div>
-                      <div className="text-xs text-indigo-600">
-                        {checkinStats.pending} pendentes
                       </div>
                     </div>
                   </div>

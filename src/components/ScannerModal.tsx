@@ -24,22 +24,26 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   // Inicializar scanner quando modal abrir
   useEffect(() => {
     if (isOpen) {
-      // Reset estados
+      // Reset completo de estados
       setError(null);
       setIsInitializing(false);
       
-      // Delay para garantir renderização completa
+      console.log('🎯 Modal aberto - Preparando scanner...');
+      
+      // Delay maior para garantir renderização DOM completa
       const timer = setTimeout(() => {
         if (isOpen && !error) {
+          console.log('🚀 Iniciando scanner após delay...');
           startScanner();
         }
-      }, 300); // Aumentado para 300ms
+      }, 500); // Aumentado para 500ms para máxima estabilidade
       
       return () => {
         clearTimeout(timer);
         stopScanner();
       };
     } else {
+      console.log('📱 Modal fechado - Parando scanner...');
       stopScanner();
     }
   }, [isOpen]);
@@ -59,25 +63,28 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log('🚀 Iniciando scanner ultra-rápido...');
 
-      // Verificação simples e direta do elemento de vídeo
-      if (!videoRef.current) {
-        console.log('🔍 Aguardando elemento de vídeo...');
-        
-        // Aguardar elemento aparecer
-        for (let i = 0; i < 10; i++) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          if (videoRef.current) {
-            console.log(`✅ Elemento encontrado após ${i + 1} tentativas`);
-            break;
-          }
+      // Garantir que elemento de vídeo exista
+      console.log('🔍 Verificando elemento de vídeo...');
+      
+      // Aguardar elemento aparecer com verificação robusta
+      let elementFound = false;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        if (videoRef.current && videoRef.current.tagName === 'VIDEO') {
+          console.log(`✅ Elemento de vídeo válido encontrado (tentativa ${attempt + 1})`);
+          elementFound = true;
+          break;
         }
         
-        if (!videoRef.current) {
-          throw new Error('Elemento de vídeo não encontrado. Tente fechar e abrir o scanner novamente.');
-        }
+        // Aguardar mais tempo entre tentativas
+        await new Promise(resolve => setTimeout(resolve, 200));
+        console.log(`🔄 Tentativa ${attempt + 1}/15 - Aguardando elemento...`);
+      }
+      
+      if (!elementFound || !videoRef.current) {
+        throw new Error('❌ Elemento de vídeo não encontrado após 3 segundos. Feche o scanner e tente novamente.');
       }
 
-      console.log('🎥 Elemento de vídeo pronto para configuração');
+      console.log('🎥 Elemento de vídeo confirmado e pronto');
 
       // Verificar suporte à câmera
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -126,18 +133,38 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error(errorMessage);
       }
 
-      // Configuração direta e simples do vídeo
-      console.log('🔗 Configurando vídeo...');
+      // Verificação final antes de configurar o vídeo
+      console.log('🔗 Configurando stream de vídeo...');
       
-      videoRef.current.srcObject = stream;
+      // Triple check: elemento ainda existe?
+      if (!videoRef.current || videoRef.current.tagName !== 'VIDEO') {
+        // Parar todas as tracks do stream antes de falhar
+        if (stream && stream.getTracks) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        throw new Error('❌ Elemento de vídeo perdido durante a configuração. Tente novamente.');
+      }
       
-      // Aguardar vídeo carregar
       try {
+        // Configurar stream com proteção
+        videoRef.current.srcObject = stream;
+        console.log('✅ Stream configurado com sucesso');
+        
+        // Aguardar vídeo carregar
         await videoRef.current.play();
-        console.log('📹 Vídeo reproduzindo com sucesso');
-      } catch (playError) {
-        console.warn('⚠️ Erro ao reproduzir vídeo:', playError);
-        // Continuar mesmo se play falhar - alguns browsers tem restrições
+        console.log('📹 Vídeo reproduzindo perfeitamente');
+        
+      } catch (error) {
+        // Se falhar, limpar tudo
+        if (stream && stream.getTracks) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+        
+        throw new Error(`❌ Erro ao configurar vídeo: ${error.message}. Tente fechar e abrir o scanner novamente.`);
       }
 
       // Configuração otimizada para máxima velocidade
