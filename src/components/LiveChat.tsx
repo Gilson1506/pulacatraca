@@ -198,7 +198,7 @@ const LiveChat: React.FC = () => {
       {!open && (
         <button
           onClick={handleOpen}
-          className="relative w-16 h-16 rounded-full border-4 border-pink-500 bg-white shadow-lg flex items-center justify-center hover:scale-105 transition-transform duration-200 focus:outline-none"
+          className="relative w-16 h-16 rounded-full border border-pink-500 bg-white shadow-lg flex items-center justify-center hover:scale-105 transition-transform duration-200 focus:outline-none"
           aria-label="Abrir chat de suporte"
         >
           <img 
@@ -223,7 +223,7 @@ const LiveChat: React.FC = () => {
               <img 
                 src={LOGO_URL} 
                 alt="Logo" 
-                className="w-10 h-10 rounded-full bg-white p-1 border-2 border-white shadow-md" 
+                className="w-10 h-10 rounded-full bg-white p-1 border border-white shadow-md" 
               />
               <div>
                 <span className="text-white font-bold text-sm block">Suporte PulaCatraca</span>
@@ -249,7 +249,7 @@ const LiveChat: React.FC = () => {
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+                  <div className="animate-spin w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full mx-auto mb-3"></div>
                   <p className="text-gray-600 text-sm">Conectando com o suporte...</p>
                 </div>
               </div>
@@ -296,7 +296,7 @@ const LiveChat: React.FC = () => {
           <form onSubmit={handleSend} className="flex items-center gap-2 px-4 py-3 bg-white border-t border-gray-100">
             <input
               type="text"
-              className="flex-1 border-2 border-gray-200 rounded-full px-4 py-2 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 text-sm transition-all duration-200"
+              className="flex-1 border border-gray-200 rounded-full px-4 py-2 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 text-sm transition-all duration-200"
               placeholder={connected ? "Digite sua mensagem..." : "Conectando..."}
               value={input}
               onChange={e => setInput(e.target.value)}
