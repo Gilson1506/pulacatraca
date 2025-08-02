@@ -8,7 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import EventPage from './pages/EventPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
-import CheckInPage from './pages/CheckInPageV2';
+import CheckInPage from './pages/CheckInPage';
 import OrganizerRegisterPage from './pages/OrganizerRegisterPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import TicketPage from './pages/TicketPage';
