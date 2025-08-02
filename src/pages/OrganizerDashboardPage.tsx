@@ -158,44 +158,36 @@ const DashboardOverview = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">Receita Total</p>
-              <p className="text-2xl font-bold">R$ {stats.totalRevenue.toLocaleString()}</p>
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
+            <div className="text-center">
+              <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-blue-200 mx-auto mb-2" />
+              <p className="text-blue-100 text-xs md:text-sm">Receita Total</p>
+              <p className="text-lg md:text-2xl font-bold">R$ {stats.totalRevenue.toLocaleString()}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-blue-200" />
+          </div>
+        
+        <div className="bg-gradient-to-r from-green-500 to-green-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
+          <div className="text-center">
+            <Users className="h-6 w-6 md:h-8 md:w-8 text-green-200 mx-auto mb-2" />
+            <p className="text-green-100 text-xs md:text-sm">Ingressos Vendidos</p>
+            <p className="text-lg md:text-2xl font-bold">{stats.totalTicketsSold.toLocaleString()}</p>
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Ingressos Vendidos</p>
-              <p className="text-2xl font-bold">{stats.totalTicketsSold.toLocaleString()}</p>
-            </div>
-            <Users className="h-8 w-8 text-green-200" />
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
+          <div className="text-center">
+            <Calendar className="h-6 w-6 md:h-8 md:w-8 text-purple-200 mx-auto mb-2" />
+            <p className="text-purple-100 text-xs md:text-sm">Eventos Ativos</p>
+            <p className="text-lg md:text-2xl font-bold">{stats.activeEvents}</p>
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm">Eventos Ativos</p>
-              <p className="text-2xl font-bold">{stats.activeEvents}</p>
-            </div>
-            <Calendar className="h-8 w-8 text-purple-200" />
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-100 text-sm">Vendas Pendentes</p>
-              <p className="text-2xl font-bold">{stats.pendingSales}</p>
-            </div>
-            <AlertCircle className="h-8 w-8 text-orange-200" />
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
+          <div className="text-center">
+            <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-orange-200 mx-auto mb-2" />
+            <p className="text-orange-100 text-xs md:text-sm">Vendas Pendentes</p>
+            <p className="text-lg md:text-2xl font-bold">{stats.pendingSales}</p>
           </div>
         </div>
       </div>
