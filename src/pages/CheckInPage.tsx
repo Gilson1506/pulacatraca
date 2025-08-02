@@ -28,28 +28,10 @@ interface CheckInResult {
   };
 }
 
-const CheckInPageV2 = () => {
+const CheckInPage = () => {
   const { user } = useAuth();
   
-  // DEBUG: Forçar re-render com timestamp
-  const [buildTime] = useState(() => {
-    const timestamp = new Date().toISOString();
-    console.log('🔄 CheckInPage renderizada em:', timestamp);
-    console.log('📱 UserAgent:', navigator.userAgent);
-    console.log('🌐 URL:', window.location.href);
-    
-    // Verificar se é uma versão cached antiga
-    const lastUpdate = localStorage.getItem('checkin_last_update');
-    const currentBuild = '2024-08-01-v2.0';
-    
-    if (lastUpdate !== currentBuild) {
-      console.log('🔄 Detectada nova versão, forçando atualização...');
-      localStorage.setItem('checkin_last_update', currentBuild);
-      // Não recarregar automaticamente, apenas logar
-    }
-    
-    return timestamp;
-  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [participants, setParticipants] = useState<ParticipantSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -480,23 +462,65 @@ const CheckInPageV2 = () => {
         qrScannerRef.current = null;
       }
 
-      // Solicitar permissões de câmera primeiro
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+      // Verificar se dispositivo suporta câmera
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Este dispositivo ou navegador não suporta acesso à câmera.');
+      }
+
+      // Verificar dispositivos de vídeo disponíveis
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      if (videoDevices.length === 0) {
+        throw new Error('Nenhuma câmera encontrada neste dispositivo.');
+      }
+
+      console.log(`📷 ${videoDevices.length} câmera(s) encontrada(s)`);
+
+      // Solicitar permissões de câmera com diferentes tentativas
+      let stream = null;
+      const constraints = [
+        // Primeira tentativa: Câmera traseira (preferida para QR)
+        { 
           video: { 
             facingMode: 'environment',
-            width: { ideal: 640 },
-            height: { ideal: 480 }
+            width: { ideal: 640, min: 320 },
+            height: { ideal: 480, min: 240 }
           } 
-        });
-        
-        // Parar o stream temporário (o QrScanner vai gerenciar)
-        stream.getTracks().forEach(track => track.stop());
-        console.log('✅ Permissões de câmera concedidas');
-      } catch (permissionError) {
-        console.error('❌ Erro de permissão de câmera:', permissionError);
-        throw new Error('Permissão de câmera negada. Por favor, permita o acesso à câmera e tente novamente.');
+        },
+        // Segunda tentativa: Câmera frontal
+        { 
+          video: { 
+            facingMode: 'user',
+            width: { ideal: 640, min: 320 },
+            height: { ideal: 480, min: 240 }
+          } 
+        },
+        // Terceira tentativa: Qualquer câmera
+        { 
+          video: { 
+            width: { ideal: 640, min: 320 },
+            height: { ideal: 480, min: 240 }
+          } 
+        }
+      ];
+
+      for (const constraint of constraints) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraint);
+          console.log('✅ Permissões de câmera concedidas');
+          break;
+        } catch (err) {
+          console.log('⚠️ Tentativa com constraint falhou:', constraint);
+        }
       }
+
+      if (!stream) {
+        throw new Error('Não foi possível acessar nenhuma câmera. Verifique as permissões.');
+      }
+
+      // Parar o stream temporário (o QrScanner vai gerenciar)
+      stream.getTracks().forEach(track => track.stop());
       
       qrScannerRef.current = new QrScannerLib(
         videoRef.current,
@@ -508,7 +532,6 @@ const CheckInPageV2 = () => {
         {
           onDecodeError: (error) => {
             // Silenciar erros de decodificação normais
-            // console.log('QR decode error:', error);
           },
           preferredCamera: 'environment',
           highlightScanRegion: true,
@@ -526,20 +549,22 @@ const CheckInPageV2 = () => {
       console.error('❌ Erro ao iniciar scanner:', error);
       let errorMessage = 'Erro ao acessar a câmera';
       
-      if (error.message?.includes('Permission')) {
-        errorMessage = 'Permissão de câmera negada. Verifique as configurações do navegador.';
-      } else if (error.message?.includes('NotFoundError')) {
-        errorMessage = 'Nenhuma câmera encontrada no dispositivo.';
-      } else if (error.message?.includes('NotAllowedError')) {
-        errorMessage = 'Acesso à câmera foi negado. Permita o acesso e tente novamente.';
-      } else if (error.message?.includes('NotReadableError')) {
-        errorMessage = 'Câmera está sendo usada por outro aplicativo.';
-      } else if (error.message) {
+      if (error.name === 'NotAllowedError' || error.message?.includes('Permission')) {
+        errorMessage = 'Permissão de câmera negada. Clique no ícone de câmera na barra de endereços e permita o acesso.';
+      } else if (error.name === 'NotFoundError' || error.message?.includes('NotFoundError')) {
+        errorMessage = 'Nenhuma câmera encontrada. Verifique se seu dispositivo possui câmera.';
+      } else if (error.name === 'NotReadableError' || error.message?.includes('NotReadableError')) {
+        errorMessage = 'Câmera está sendo usada por outro aplicativo. Feche outros apps que usam câmera.';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = 'Configuração de câmera não suportada. Tentando configuração alternativa...';
+      } else if (error.message?.includes('suporta')) {
         errorMessage = error.message;
+      } else {
+        errorMessage = `Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}`;
       }
       
       showModal('error', errorMessage, {
-        error_details: error.toString(),
+        error_details: `${error.name}: ${error.message}`,
         camera_error: true
       });
       setScannerActive(false);
@@ -550,19 +575,31 @@ const CheckInPageV2 = () => {
   const stopQRScanner = () => {
     console.log('⏹️ Parando scanner QR...');
     
-    if (qrScannerRef.current) {
-      try {
+    try {
+      if (qrScannerRef.current) {
         qrScannerRef.current.stop();
         qrScannerRef.current.destroy();
         qrScannerRef.current = null;
         console.log('✅ Scanner QR parado');
-      } catch (error) {
-        console.error('Erro ao parar scanner:', error);
       }
+      
+      // Garantir que o vídeo pare completamente
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            track.stop();
+            console.log('📹 Track de vídeo parado:', track.label);
+          });
+        }
+        videoRef.current.srcObject = null;
+      }
+    } catch (error) {
+      console.error('Erro ao parar scanner:', error);
+    } finally {
+      setScannerActive(false);
+      setIsScanning(false);
     }
-    
-    setScannerActive(false);
-    setIsScanning(false);
   };
 
   const handleSearch = (searchTerm: string) => {
@@ -598,26 +635,19 @@ const CheckInPageV2 = () => {
   }
 
   return (
-    <div key={buildTime} className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-4 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-4 sm:py-8">
       <div className="container mx-auto px-2 sm:px-4">
         <div className="max-w-5xl mx-auto">
-          {/* Banner de Atualização */}
-          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 text-center">
-            <h2 className="text-lg sm:text-2xl font-bold">🚀 PÁGINA ATUALIZADA!</h2>
-            <p className="mt-1 sm:mt-2 text-sm sm:text-base">Interface moderna implementada</p>
-          </div>
+
           
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                  🚀 CHECK-IN V2 
-                  <span className="text-xs sm:text-sm bg-red-600 text-white px-2 py-1 rounded-full ml-2 animate-pulse">
-                    ATUALIZADO!
-                  </span>
+                  🎯 Check-in de Participantes
                 </h1>
-                <p className="text-sm sm:text-base text-gray-600">✨ Scanner QR melhorado e responsivo</p>
+                <p className="text-sm sm:text-base text-gray-600">Sistema completo de check-in com scanner QR e busca manual</p>
               </div>
               
               {/* Controles */}
@@ -1003,4 +1033,4 @@ const CheckInPageV2 = () => {
   );
 };
 
-export default CheckInPageV2;
+export default CheckInPage;

@@ -2269,7 +2269,7 @@ const OrganizerCheckIns = () => {
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg hover:from-pink-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
           >
             <CheckCircle className="h-5 w-5" />
-            Página Check-in V2
+            Sistema Check-in
           </button>
           <button
             type="button"
