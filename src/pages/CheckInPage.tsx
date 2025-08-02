@@ -261,10 +261,17 @@ const CheckInPage = () => {
           return;
         }
         
-        // Se for erro de coluna, mostrar erro específico
+        // Se for erro de tabela ou coluna, mostrar erro específico
+        if (error.message?.includes('relation') && error.message?.includes('checkins') && error.message?.includes('does not exist')) {
+          showModal('error', 'Erro: a função ainda está usando a tabela "checkins" (plural). Execute fix_search_participants_checkin_table.sql no Supabase para corrigir.');
+          setIsLoading(false);
+          setIsSearching(false);
+          return;
+        }
+        
         if (error.message?.includes('column') && error.message?.includes('does not exist')) {
           if (error.message?.includes('organizer_id')) {
-            showModal('error', 'Erro: coluna organizer_id não existe na tabela checkins. Execute o script SQL fix_checkins_organizer_id.sql para corrigir.');
+            showModal('error', 'Erro: coluna organizer_id não existe na tabela checkin. Execute o script SQL fix_checkin_table_and_functions.sql para corrigir.');
           } else {
             showModal('error', 'Erro na estrutura do banco de dados. Execute o script SQL fix_search_participants_column.sql para corrigir.');
           }
@@ -438,13 +445,13 @@ const CheckInPage = () => {
         console.error('❌ RPC Error:', error.message);
         
         // Tratamento específico de erros de banco
-        if (error.message?.includes('organizer_id') && error.message?.includes('does not exist')) {
-          showModal('error', 'Execute fix_checkins_organizer_id.sql no Supabase para corrigir a tabela checkins', {
-            qr_code: trimmedQR,
-            error_details: 'Coluna organizer_id ausente na tabela checkins'
-          });
-          return;
-        }
+                 if (error.message?.includes('organizer_id') && error.message?.includes('does not exist')) {
+           showModal('error', 'Execute fix_checkin_table_and_functions.sql no Supabase para corrigir a tabela checkin', {
+             qr_code: trimmedQR,
+             error_details: 'Coluna organizer_id ausente na tabela checkin'
+           });
+           return;
+         }
         
         if (error.message?.includes('function') && error.message?.includes('does not exist')) {
           showModal('error', 'Execute fix_checkin_qr_code_search.sql no Supabase para criar funções', {
