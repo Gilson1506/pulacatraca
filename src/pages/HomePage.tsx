@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import EventCarousel from '../components/EventCarousel';
 import EventCard from '../components/EventCard';
 import MobileEventSearchBar from '../components/MobileEventSearchBar';
+import LiveChat from '../components/LiveChat';
 import { supabase } from '../lib/supabase';
 import { Loader2 } from 'lucide-react';
 
@@ -217,6 +218,9 @@ const HomePage = () => {
           ))}
         </div>
       </div>
+      
+      {/* LiveChat apenas na página inicial */}
+      <LiveChat />
     </div>
   );
 };
