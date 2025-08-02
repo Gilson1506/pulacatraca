@@ -1,22 +1,22 @@
--- ✅ CORRIGIR TABELA CHECKINS - ADICIONAR COLUNA ORGANIZER_ID
+-- ✅ CORRIGIR TABELA CHECKIN - ADICIONAR COLUNA ORGANIZER_ID
 -- Execute este script no Supabase SQL Editor
 
 DO $$
 BEGIN
-    RAISE NOTICE '=== CORRIGINDO TABELA CHECKINS ===';
+    RAISE NOTICE '=== CORRIGINDO TABELA CHECKIN ===';
 END $$;
 
--- 1. Verificar se a tabela checkins existe
+-- 1. Verificar se a tabela checkin existe
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables 
-        WHERE table_name = 'checkins'
+        WHERE table_name = 'checkin'
     ) THEN
-        RAISE EXCEPTION 'Tabela checkins não existe!';
+        RAISE EXCEPTION 'Tabela checkin não existe!';
     END IF;
     
-    RAISE NOTICE '✅ Tabela checkins encontrada';
+    RAISE NOTICE '✅ Tabela checkin encontrada';
 END $$;
 
 -- 2. Adicionar coluna organizer_id se não existir
@@ -24,13 +24,13 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'checkins' 
+        WHERE table_name = 'checkin' 
         AND column_name = 'organizer_id'
     ) THEN
-        ALTER TABLE checkins ADD COLUMN organizer_id UUID;
-        RAISE NOTICE '✅ Coluna organizer_id adicionada na tabela checkins';
+        ALTER TABLE checkin ADD COLUMN organizer_id UUID;
+        RAISE NOTICE '✅ Coluna organizer_id adicionada na tabela checkin';
     ELSE
-        RAISE NOTICE '⚠️ Coluna organizer_id já existe na tabela checkins';
+        RAISE NOTICE '⚠️ Coluna organizer_id já existe na tabela checkin';
     END IF;
 END $$;
 
@@ -39,10 +39,10 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'checkins_organizer_id_fkey'
+        WHERE constraint_name = 'checkin_organizer_id_fkey'
     ) THEN
-        ALTER TABLE checkins 
-        ADD CONSTRAINT checkins_organizer_id_fkey 
+        ALTER TABLE checkin 
+        ADD CONSTRAINT checkin_organizer_id_fkey 
         FOREIGN KEY (organizer_id) REFERENCES auth.users(id);
         RAISE NOTICE '✅ Foreign key para organizer_id criada';
     ELSE
@@ -53,11 +53,11 @@ END $$;
 -- 4. Atualizar dados existentes (copiar organizer_id dos eventos)
 DO $$
 BEGIN
-    UPDATE checkins 
+    UPDATE checkin 
     SET organizer_id = e.organizer_id
     FROM events e
-    WHERE checkins.event_id = e.id 
-    AND checkins.organizer_id IS NULL;
+    WHERE checkin.event_id = e.id 
+    AND checkin.organizer_id IS NULL;
     
     GET DIAGNOSTICS updated_rows = ROW_COUNT;
     RAISE NOTICE '✅ Atualizados % registros com organizer_id', updated_rows;
@@ -123,7 +123,7 @@ BEGIN
     
     -- 3. Verificar se já foi feito check-in
     SELECT * INTO v_existing_checkin
-    FROM checkins 
+    FROM checkin 
     WHERE ticket_user_id = v_ticket_user_record.id 
     AND event_id = p_event_id;
     
@@ -144,7 +144,7 @@ BEGIN
     END IF;
     
     -- 4. Realizar check-in
-    INSERT INTO checkins (
+    INSERT INTO checkin (
         id,
         ticket_user_id,
         event_id,
