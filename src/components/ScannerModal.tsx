@@ -24,13 +24,16 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   // Inicializar scanner quando modal abrir
   useEffect(() => {
     if (isOpen) {
-      // Delay progressivo para garantir DOM pronto
+      // Reset estados
+      setError(null);
+      setIsInitializing(false);
+      
+      // Delay para garantir renderização completa
       const timer = setTimeout(() => {
-        // Verificar se ainda está aberto antes de iniciar
-        if (isOpen) {
+        if (isOpen && !error) {
           startScanner();
         }
-      }, 200); // Aumentado para 200ms
+      }, 300); // Aumentado para 300ms
       
       return () => {
         clearTimeout(timer);
@@ -56,34 +59,25 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log('🚀 Iniciando scanner ultra-rápido...');
 
-      // Aguardar elemento de vídeo com estratégia robusta
-      let attempts = 0;
-      const maxAttempts = 30;
-      
-      while (attempts < maxAttempts) {
-        if (videoRef.current) {
-          console.log(`✅ Elemento de vídeo encontrado na tentativa ${attempts + 1}`);
-          break;
-        }
+      // Verificação simples e direta do elemento de vídeo
+      if (!videoRef.current) {
+        console.log('🔍 Aguardando elemento de vídeo...');
         
-        await new Promise(resolve => setTimeout(resolve, 150));
-        attempts++;
-        console.log(`🔍 Aguardando elemento de vídeo... (${attempts}/${maxAttempts})`);
-        
-        // Forçar re-render verificando o DOM
-        if (attempts % 5 === 0) {
-          const videoElement = document.querySelector('video');
-          if (videoElement && !videoRef.current) {
-            console.log('🔄 Tentando reconectar referência do vídeo...');
+        // Aguardar elemento aparecer
+        for (let i = 0; i < 10; i++) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          if (videoRef.current) {
+            console.log(`✅ Elemento encontrado após ${i + 1} tentativas`);
+            break;
           }
         }
+        
+        if (!videoRef.current) {
+          throw new Error('Elemento de vídeo não encontrado. Tente fechar e abrir o scanner novamente.');
+        }
       }
 
-      if (!videoRef.current) {
-        throw new Error(`Elemento de vídeo não encontrado após ${maxAttempts} tentativas (4.5s)`);
-      }
-
-      console.log('🎥 Elemento de vídeo confirmado e pronto');
+      console.log('🎥 Elemento de vídeo pronto para configuração');
 
       // Verificar suporte à câmera
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -100,114 +94,51 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log(`📷 ${videoDevices.length} câmera(s) encontrada(s)`);
 
-      // Tentar diferentes configurações de câmera
-      let stream = null;
+      // Configurações de câmera simplificadas e mais compatíveis
       const cameraConfigs = [
-        // Configuração 1: Câmera traseira (ideal para QR)
-        { 
-          video: { 
-            facingMode: { exact: 'environment' },
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 }
-          } 
-        },
-        // Configuração 2: Câmera traseira (fallback)
-        { 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-          } 
-        },
-        // Configuração 3: Qualquer câmera
-        { 
-          video: { 
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-          } 
-        },
-        // Configuração 4: Configuração mínima
-        { video: true }
+        // Configuração 1: Básica (mais compatível)
+        { video: { facingMode: 'environment' } },
+        // Configuração 2: Qualquer câmera
+        { video: true },
+        // Configuração 3: Câmera frontal
+        { video: { facingMode: 'user' } }
       ];
+
+      let stream = null;
+      let lastError = null;
 
       for (let i = 0; i < cameraConfigs.length; i++) {
         try {
-          console.log(`📷 Tentando configuração ${i + 1}...`);
+          console.log(`📷 Tentando acesso à câmera (método ${i + 1}/3)...`);
           stream = await navigator.mediaDevices.getUserMedia(cameraConfigs[i]);
-          console.log(`✅ Câmera iniciada com configuração ${i + 1}`);
+          console.log(`✅ Câmera acessada com sucesso!`);
           break;
         } catch (err) {
-          console.log(`⚠️ Configuração ${i + 1} falhou:`, err.message);
-          if (i === cameraConfigs.length - 1) {
-            throw err;
-          }
+          lastError = err;
+          console.log(`⚠️ Método ${i + 1} falhou:`, err.message);
         }
       }
 
       if (!stream) {
-        throw new Error('Não foi possível acessar nenhuma câmera');
+        const errorMessage = lastError?.name === 'NotAllowedError' 
+          ? 'Permissão de câmera negada. Permita o acesso à câmera nas configurações do navegador.'
+          : `Erro ao acessar câmera: ${lastError?.message || 'Dispositivo não suportado'}`;
+        throw new Error(errorMessage);
       }
 
-      // Aguardar um pouco antes de configurar o stream
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Configuração direta e simples do vídeo
+      console.log('🔗 Configurando vídeo...');
       
-      // Verificar múltiplas vezes se o elemento ainda existe
-      let videoCheckAttempts = 0;
-      while (videoCheckAttempts < 5) {
-        if (videoRef.current) {
-          break;
-        }
-        await new Promise(resolve => setTimeout(resolve, 50));
-        videoCheckAttempts++;
-      }
+      videoRef.current.srcObject = stream;
       
-      if (!videoRef.current) {
-        // Parar o stream se o elemento não existir mais
-        stream.getTracks().forEach(track => track.stop());
-        throw new Error('Elemento de vídeo perdido durante configuração (verificação dupla falhou)');
-      }
-
-      console.log('🔗 Configurando stream no elemento de vídeo...');
-      
-      // Configurar o vídeo com stream de forma segura
+      // Aguardar vídeo carregar
       try {
-        videoRef.current.srcObject = stream;
-        console.log('✅ Stream configurado com sucesso');
-      } catch (error) {
-        stream.getTracks().forEach(track => track.stop());
-        throw new Error(`Erro ao definir srcObject: ${error.message}`);
+        await videoRef.current.play();
+        console.log('📹 Vídeo reproduzindo com sucesso');
+      } catch (playError) {
+        console.warn('⚠️ Erro ao reproduzir vídeo:', playError);
+        // Continuar mesmo se play falhar - alguns browsers tem restrições
       }
-      
-      // Aguardar vídeo carregar com verificações adicionais
-      await new Promise((resolve, reject) => {
-        if (!videoRef.current) {
-          reject(new Error('Elemento de vídeo não disponível'));
-          return;
-        }
-        
-        const video = videoRef.current;
-        
-        video.onloadedmetadata = () => {
-          if (video && video.play) {
-            video.play()
-              .then(resolve)
-              .catch(reject);
-          } else {
-            reject(new Error('Método play não disponível'));
-          }
-        };
-        
-        video.onerror = (e) => {
-          reject(new Error('Erro ao carregar vídeo'));
-        };
-        
-        // Timeout de segurança
-        setTimeout(() => {
-          reject(new Error('Timeout ao carregar vídeo'));
-        }, 10000);
-      });
-      
-      console.log('📹 Vídeo configurado e reproduzindo');
 
       // Configuração otimizada para máxima velocidade
       const qrScanner = new QrScannerLib(
