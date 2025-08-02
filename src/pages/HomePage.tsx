@@ -195,10 +195,7 @@ const HomePage = () => {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <ProfessionalLoader size="lg" className="mb-4" />
-              <p className="text-gray-600">Carregando eventos aprovados...</p>
-            </div>
+            <ProfessionalLoader size="lg" />
           </div>
         ) : error ? (
           <div className="text-center py-12">

@@ -574,10 +574,7 @@ const CheckInPage = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <ProfessionalLoader size="lg" className="mb-4" />
-          <p className="text-gray-600">Carregando sistema de check-in...</p>
-        </div>
+        <ProfessionalLoader size="lg" />
       </div>
     );
   }
@@ -881,9 +878,8 @@ const CheckInPage = () => {
                 {/* Search Results - Mobile Optimized */}
                 <div className="space-y-2 max-h-80 sm:max-h-96 overflow-y-auto">
                   {isSearching ? (
-                    <div className="text-center py-6 sm:py-8">
-                      <ProfessionalLoader size="md" className="mx-auto mb-2" />
-                      <p className="text-xs sm:text-sm text-gray-500">Buscando participantes...</p>
+                    <div className="flex justify-center py-6 sm:py-8">
+                      <ProfessionalLoader size="md" />
                     </div>
                   ) : participants.length > 0 ? (
                     participants.map((participant) => (

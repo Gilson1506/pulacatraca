@@ -250,10 +250,7 @@ const LiveChat: React.FC = () => {
           <div className="flex-1 px-4 py-3 overflow-y-auto bg-gradient-to-b from-pink-50/30 to-purple-50/30">
                           {loading ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <ProfessionalLoader size="md" className="mb-3" />
-                    <p className="text-gray-600 text-sm">Conectando com o suporte...</p>
-                  </div>
+                  <ProfessionalLoader size="md" />
                 </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full">

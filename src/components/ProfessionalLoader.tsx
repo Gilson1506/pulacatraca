@@ -27,7 +27,10 @@ const ProfessionalLoader: React.FC<ProfessionalLoaderProps> = ({
           rounded-full 
           animate-spin
         `}
-        style={{ animationDuration: '0.8s' }}
+        style={{ 
+          animationDuration: '1s',
+          animationTimingFunction: 'linear'
+        }}
       />
     </div>
   );
