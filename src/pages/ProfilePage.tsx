@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 import LoadingButton from '../components/LoadingButton';
-import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { QrCode, BarChart3, User, MessageCircle, LogOut, ArrowLeft, ChevronRight } from 'lucide-react';
+import ProfessionalLoader from '../components/ProfessionalLoader';
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -220,7 +221,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
   if (isLoading) {
     return (
       <div className="w-full max-w-2xl mx-auto flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+        <ProfessionalLoader size="lg" className="mr-2" />
         <span className="ml-2 text-gray-600">Carregando histórico...</span>
       </div>
     );
@@ -403,7 +404,7 @@ const TicketsSection = ({ userEmail }: { userEmail: string }) => {
   if (isLoading) {
     return (
       <div className="w-full max-w-2xl mx-auto flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+        <ProfessionalLoader size="lg" className="mr-2" />
         <span className="ml-2 text-gray-600">Carregando ingressos...</span>
       </div>
     );

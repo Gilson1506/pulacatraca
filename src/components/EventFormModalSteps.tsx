@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, Upload, Loader2 } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
+import ProfessionalLoader from './ProfessionalLoader';
 
 // ✅ COMPONENTES SEPARADOS PARA EVITAR PROBLEMAS DE RENDERIZAÇÃO
 
@@ -51,7 +52,7 @@ export const MobileStep1: React.FC<StepProps> = ({
             <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-500 hover:bg-pink-50 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {uploadingImage ? (
                 <>
-                  <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+                  <ProfessionalLoader size="lg" className="mb-2" />
                   <span className="mt-2 text-sm text-gray-500">Enviando imagem...</span>
                   <span className="text-xs text-gray-400">Por favor, aguarde</span>
                 </>

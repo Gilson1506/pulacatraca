@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Clock, CheckCircle, XCircle, AlertCircle, Eye, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
+import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
 
 interface Event {
@@ -119,7 +120,7 @@ const EventStatusPage = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <ProfessionalLoader size="lg" className="mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Carregando pedidos...</p>
         </div>
       </div>

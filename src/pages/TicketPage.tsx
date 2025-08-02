@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, MapPin, UserPlus, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, UserPlus } from 'lucide-react';
+import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getTicketWithUser, createTicketUser, supabase } from '../lib/supabase';
@@ -293,7 +294,7 @@ const TicketPage = () => {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+          <ProfessionalLoader size="lg" className="mr-2" />
           <span className="text-gray-600 text-lg">Carregando ingresso...</span>
         </div>
       </div>
@@ -565,7 +566,7 @@ const TicketPage = () => {
                   >
                     {isDownloading ? (
                       <>
-                        <Loader2 className="animate-spin" size={16} />
+                        <ProfessionalLoader size="sm" className="mr-1" />
                         Gerando PDF...
                       </>
                     ) : (

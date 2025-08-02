@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera, Loader2
+  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
 import QrScanner from '../components/QrScanner';
 import { supabase } from '../lib/supabase';
 import LoadingButton from '../components/LoadingButton';
+import ProfessionalLoader from '../components/ProfessionalLoader';
 
 // Interfaces
 interface Event {
@@ -144,7 +145,7 @@ const DashboardOverview = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <ProfessionalLoader size="lg" className="mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Carregando dados do dashboard...</p>
         </div>
       </div>
@@ -524,7 +525,7 @@ const OrganizerEvents = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <ProfessionalLoader size="lg" className="mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Carregando eventos...</p>
         </div>
       </div>
@@ -1558,7 +1559,7 @@ const BankAccountsSection = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+            <ProfessionalLoader size="md" className="mr-2" />
             <span className="ml-2 text-gray-600">Carregando contas bancárias...</span>
           </div>
         ) : bankAccounts.length === 0 ? (
@@ -2492,7 +2493,7 @@ const OrganizerSettings = () => {
       
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+          <ProfessionalLoader size="md" className="mr-2" />
           <span className="ml-2 text-gray-600">Carregando dados...</span>
         </div>
       ) : (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import ProfessionalLoader from './ProfessionalLoader';
 
 interface LoadingButtonProps {
   children: React.ReactNode;
@@ -40,11 +40,11 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
     lg: 'px-6 py-3 text-lg'
   };
 
-  // ✅ TAMANHO DO SPINNER
-  const spinnerSizes = {
-    sm: 'h-4 w-4',
-    md: 'h-5 w-5',
-    lg: 'h-6 w-6'
+  // ✅ MAPEAMENTO DE TAMANHO DO PROFESSIONLOADER
+  const loaderSizes = {
+    sm: 'sm' as const,
+    md: 'md' as const,
+    lg: 'lg' as const
   };
 
   const baseClasses = 'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center';
@@ -60,7 +60,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
     >
       {isLoading ? (
         <>
-          <Loader2 className={`animate-spin -ml-1 mr-2 ${spinnerSizes[size]} text-current`} />
+          <ProfessionalLoader size={loaderSizes[size]} className="mr-2" />
           {loadingText || 'Carregando...'}
         </>
       ) : (

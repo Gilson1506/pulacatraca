@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { CreditCard, QrCode, Plus, Minus, AlertTriangle, Loader2 } from 'lucide-react';
+import { CreditCard, QrCode, Plus, Minus, AlertTriangle } from 'lucide-react';
+import ProfessionalLoader from '../components/ProfessionalLoader';
 import LoadingButton from '../components/LoadingButton';
 
 const CheckoutPage = () => {
@@ -651,7 +652,7 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+          <ProfessionalLoader size="lg" className="mr-2" />
           <span className="text-gray-600 text-lg">Carregando...</span>
         </div>
       </div>
@@ -682,7 +683,7 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+          <ProfessionalLoader size="lg" className="mr-2" />
           <span className="text-gray-600 text-lg">Verificando permissões...</span>
         </div>
       </div>
