@@ -16,7 +16,7 @@ import ABTestingDashboard, { useABTestingDashboardShortcut } from './components/
 
 const AppRoutes = () => {
   const location = useLocation();
-  const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard') || location.pathname.startsWith('/ingresso');
+  const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard') || location.pathname.startsWith('/ingresso') || location.pathname.startsWith('/checkin');
   const hideHeader = location.pathname.startsWith('/event/') || location.pathname.startsWith('/ingresso');
   
   // A/B Testing Dashboard (apenas em desenvolvimento)

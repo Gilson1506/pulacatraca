@@ -542,6 +542,94 @@ const CheckInPage = () => {
     }
   };
 
+  // Scanner Simplificado - Mais confiável
+  const startSimpleScanner = async () => {
+    try {
+      setScannerActive(true);
+      setIsScanning(true);
+      
+      console.log('🎥 Iniciando scanner simplificado...');
+      
+      // Aguardar elemento de vídeo estar disponível
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      if (!videoRef.current) {
+        throw new Error('Elemento de vídeo não encontrado');
+      }
+
+      // Solicitar acesso à câmera
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment', // Câmera traseira preferencialmente
+          width: { ideal: 640 },
+          height: { ideal: 640 }
+        }
+      });
+
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      
+      // Usar qr-scanner simples
+      const qrScanner = new QrScannerLib(videoRef.current, (result) => {
+        console.log('📸 QR detectado:', result.data);
+        qrScanner.stop();
+        handleQRCodeScan(result.data);
+        stopSimpleScanner();
+      }, {
+        preferredCamera: 'environment',
+        highlightScanRegion: true,
+        highlightCodeOutline: true,
+        maxScansPerSecond: 2
+      });
+
+      qrScannerRef.current = qrScanner;
+      await qrScanner.start();
+      
+      setIsScanning(false);
+      console.log('✅ Scanner iniciado com sucesso');
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao iniciar scanner:', error);
+      let errorMessage = 'Erro ao acessar a câmera';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Permissão negada. Permita o acesso à câmera.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'Câmera não encontrada.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Câmera em uso por outro aplicativo.';
+      }
+      
+      showModal('error', errorMessage);
+      stopSimpleScanner();
+    }
+  };
+
+  const stopSimpleScanner = () => {
+    try {
+      setScannerActive(false);
+      setIsScanning(false);
+      
+      // Parar QR Scanner
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop();
+        qrScannerRef.current.destroy();
+        qrScannerRef.current = null;
+      }
+      
+      // Parar stream de vídeo
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      
+      console.log('⏹️ Scanner parado');
+    } catch (error) {
+      console.error('Erro ao parar scanner:', error);
+    }
+  };
+
   const stopZXingScanner = () => {
     console.log('⏹️ Parando scanner ZXING...');
     
@@ -792,7 +880,14 @@ const CheckInPage = () => {
               <div className="flex items-center gap-4">
                 {/* Botão de voltar */}
                 <button
-                  onClick={() => window.history.back()}
+                  onClick={() => {
+                    // Verificar se é organizador e redirecionar adequadamente
+                    if (user?.role === 'organizer') {
+                      window.location.href = '/organizer/dashboard';
+                    } else {
+                      window.history.back();
+                    }
+                  }}
                   className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-gray-700 hover:text-gray-900"
                   title="Voltar ao dashboard"
                 >
@@ -895,10 +990,9 @@ const CheckInPage = () => {
                         </div>
                       </div>
                       
-                      {/* Status indicator */}
-                      <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        <span className="font-medium">ESCANEANDO</span>
+                      {/* Status simples */}
+                      <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        📷 Escaneando QR
                       </div>
                       
                       {/* Processing indicator */}
@@ -915,42 +1009,32 @@ const CheckInPage = () => {
                     <div className="space-y-2">
                       <p className="text-sm text-gray-600">Aponte a câmera para o QR code do ingresso</p>
                       <button
-                        onClick={stopQRScanner}
-                        disabled={isScanning}
-                        className="bg-red-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center space-x-2 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:transform-none text-sm sm:text-base"
+                        onClick={stopSimpleScanner}
+                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors font-medium"
                       >
-                        <CameraOff className="h-4 w-4 sm:h-5 sm:w-5" />
-                        <span>Parar Scanner</span>
+                        ❌ Parar Scanner
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="relative">
-                      <QrCode className="h-16 w-16 sm:h-20 sm:w-20 text-pink-400 mx-auto animate-pulse" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-pink-300 rounded-lg animate-ping opacity-30"></div>
-                      </div>
+                    {/* Ícone Scanner Simples */}
+                    <div className="mx-auto w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center">
+                      <QrCode className="h-10 w-10 text-pink-600" />
                     </div>
                     
-                    <div className="space-y-2">
-                      <p className="text-gray-700 font-medium text-sm sm:text-base">
-                        {isScanning ? 'Iniciando câmera...' : 'Escaneie o QR code do ingresso'}
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        Permita o acesso à câmera quando solicitado
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Scanner QR Code</h3>
+                      <p className="text-sm text-gray-600">
+                        {isScanning ? 'Iniciando câmera...' : 'Clique para ativar a câmera e escanear ingressos'}
                       </p>
                     </div>
                     
                     <div className="space-y-3">
                       <button
-                        onClick={async () => {
-                          // Aguardar um pouco para o DOM estar pronto
-                          await new Promise(resolve => setTimeout(resolve, 100));
-                          scannerType === 'qr-scanner' ? startQRScanner() : startZXingScanner();
-                        }}
+                        onClick={startSimpleScanner}
                         disabled={isScanning}
-                        className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-3 mx-auto shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none text-sm sm:text-base"
+                        className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center space-x-2 mx-auto"
                       >
                         {isScanning ? (
                           <>
@@ -965,20 +1049,7 @@ const CheckInPage = () => {
                         )}
                       </button>
                       
-                      <div className="flex justify-center space-x-2">
-                        <button
-                          onClick={() => setScannerType('qr-scanner')}
-                          className={`px-3 py-1 rounded-full text-xs ${scannerType === 'qr-scanner' ? 'bg-pink-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-                        >
-                          Scanner Avançado
-                        </button>
-                        <button
-                          onClick={() => setScannerType('zxing')}
-                          className={`px-3 py-1 rounded-full text-xs ${scannerType === 'zxing' ? 'bg-pink-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-                        >
-                          Scanner Compatível
-                        </button>
-                      </div>
+
                     </div>
                   </div>
                 )}
