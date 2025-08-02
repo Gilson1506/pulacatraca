@@ -6,6 +6,18 @@ import { CreditCard, QrCode, Plus, Minus, AlertTriangle } from 'lucide-react';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import LoadingButton from '../components/LoadingButton';
 
+/**
+ * Gera código QR no formato PLKTK + 6 dígitos únicos
+ * Exemplo: PLKTK324534, PLKTK789012
+ */
+const generateQRCode = (): string => {
+  // Usa timestamp + random para garantir unicidade
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  const combined = (timestamp + random).toString().slice(-6);
+  return `PLKTK${combined}`;
+};
+
 const CheckoutPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -312,7 +324,7 @@ const CheckoutPage = () => {
                 user_id: user.id,
                 price: Math.round(selectedTicket.price * 100), // Preço em centavos
                 original_price: Math.round(selectedTicket.price * 100),
-                qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                qr_code: generateQRCode(),
                 ticket_type: selectedTicket.ticketName || 'Padrão',
                 ticket_type_name: selectedTicket.ticketName || 'Padrão',
                 ticket_area: selectedTicket.area || 'Geral',
@@ -333,7 +345,7 @@ const CheckoutPage = () => {
               buyer_id: user.id,
               user_id: user.id,
               price: Math.round((ticket.price || 0) * 100),
-              qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              qr_code: generateQRCode(),
               ticket_type: ticket.name || 'Padrão',
               status: 'active',
               created_at: new Date().toISOString()
@@ -371,7 +383,7 @@ const CheckoutPage = () => {
                   user_id: user.id,
                   price: Math.round(selectedTicket.price * 100),
                   original_price: Math.round(selectedTicket.price * 100),
-                  qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  qr_code: generateQRCode(),
                   ticket_type: selectedTicket.ticketName || 'Padrão',
                   ticket_type_name: selectedTicket.ticketName || 'Padrão',
                   ticket_area: selectedTicket.area || 'Geral',
@@ -390,7 +402,7 @@ const CheckoutPage = () => {
                 event_id: event.id,
                 user_id: user.id,
                 price: Math.round((ticket.price || 0) * 100),
-                qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                qr_code: generateQRCode(),
                 ticket_type: ticket.name || 'Padrão',
                 status: 'active',
                 created_at: new Date().toISOString()
@@ -427,7 +439,7 @@ const CheckoutPage = () => {
                      user_id: user.id,
                      price: Math.round(selectedTicket.price * 100),
                      original_price: Math.round(selectedTicket.price * 100),
-                     qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                     qr_code: generateQRCode(),
                      ticket_type_name: selectedTicket.ticketName || 'Padrão',
                      ticket_area: selectedTicket.area || 'Geral',
                      gender: selectedTicket.gender || 'unisex',
@@ -443,7 +455,7 @@ const CheckoutPage = () => {
                    user_id: user.id,
                    price: Math.round((ticket.price || 0) * 100),
                    original_price: Math.round((ticket.price || 0) * 100),
-                   qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                   qr_code: generateQRCode(),
                    ticket_type_name: ticket.name || 'Padrão',
                    ticket_area: 'Geral',
                    gender: 'unisex',
@@ -481,7 +493,7 @@ const CheckoutPage = () => {
                        user_id: user.id,
                        price: Math.round(selectedTicket.price * 100),
                        original_price: Math.round(selectedTicket.price * 100),
-                       qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                       qr_code: generateQRCode(),
                        ticket_type_name: selectedTicket.ticketName || 'Padrão',
                        ticket_area: selectedTicket.area || 'Geral',
                        gender: selectedTicket.gender || 'unisex',
@@ -497,7 +509,7 @@ const CheckoutPage = () => {
                      user_id: user.id,
                      price: Math.round((ticket.price || 0) * 100),
                      original_price: Math.round((ticket.price || 0) * 100),
-                     qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                     qr_code: generateQRCode(),
                      ticket_type_name: ticket.name || 'Padrão',
                      ticket_area: 'Geral',
                      gender: 'unisex',
@@ -544,7 +556,7 @@ const CheckoutPage = () => {
                        user_id: user.id,
                        price: Math.round(selectedTicket.price * 100),
                        original_price: Math.round(selectedTicket.price * 100),
-                       qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                       qr_code: generateQRCode(),
                        ticket_type: selectedTicket.ticketName || 'Padrão',
                        ticket_type_name: selectedTicket.ticketName || 'Padrão',
                        ticket_area: selectedTicket.area || 'Geral',
@@ -573,7 +585,7 @@ const CheckoutPage = () => {
                      user_id: user.id,
                      price: Math.round((ticket.price || 0) * 100),
                      original_price: Math.round((ticket.price || 0) * 100),
-                     qr_code: `QR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                     qr_code: generateQRCode(),
                      ticket_type: ticket.name || 'Padrão',
                      ticket_type_name: ticket.name || 'Padrão',
                      ticket_area: 'Geral',

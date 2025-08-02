@@ -517,8 +517,8 @@ const TicketPage = () => {
                       </div>
                       
                       <div className="mt-2 text-center">
-                        <p className="text-pink-700 text-xs font-medium mb-1 truncate">
-                          Código: <span className="font-mono text-xs">{(ticket.qr_code || ticket.id).substring(0, 20)}...</span>
+                        <p className="text-pink-700 text-xs font-medium mb-1">
+                          Código: <span className="font-mono text-xs font-bold tracking-wider">{ticket.qr_code || ticket.id}</span>
                         </p>
                         <div className="flex items-center justify-center gap-1">
                           <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse"></div>
