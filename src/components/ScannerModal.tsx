@@ -24,19 +24,19 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   // Inicializar scanner quando modal abrir
   useEffect(() => {
     if (isOpen) {
-      // Reset completo de estados
+      // Reset estados
       setError(null);
       setIsInitializing(false);
       
-      console.log('🎯 Modal aberto - Preparando scanner...');
+      console.log('🎯 Modal aberto - Elemento de vídeo sempre disponível');
       
-      // Delay maior para garantir renderização DOM completa
+      // Delay reduzido pois elemento sempre existe no DOM
       const timer = setTimeout(() => {
-        if (isOpen && !error) {
-          console.log('🚀 Iniciando scanner após delay...');
+        if (isOpen) {
+          console.log('🚀 Iniciando scanner...');
           startScanner();
         }
-      }, 500); // Aumentado para 500ms para máxima estabilidade
+      }, 200); // Reduzido para 200ms pois elemento sempre existe
       
       return () => {
         clearTimeout(timer);
@@ -63,28 +63,14 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log('🚀 Iniciando scanner ultra-rápido...');
 
-      // Garantir que elemento de vídeo exista
+      // Verificação simples - elemento sempre no DOM
       console.log('🔍 Verificando elemento de vídeo...');
       
-      // Aguardar elemento aparecer com verificação robusta
-      let elementFound = false;
-      for (let attempt = 0; attempt < 15; attempt++) {
-        if (videoRef.current && videoRef.current.tagName === 'VIDEO') {
-          console.log(`✅ Elemento de vídeo válido encontrado (tentativa ${attempt + 1})`);
-          elementFound = true;
-          break;
-        }
-        
-        // Aguardar mais tempo entre tentativas
-        await new Promise(resolve => setTimeout(resolve, 200));
-        console.log(`🔄 Tentativa ${attempt + 1}/15 - Aguardando elemento...`);
-      }
-      
-      if (!elementFound || !videoRef.current) {
-        throw new Error('❌ Elemento de vídeo não encontrado após 3 segundos. Feche o scanner e tente novamente.');
+      if (!videoRef.current) {
+        throw new Error('❌ Referência de vídeo não encontrada. Feche e abra o scanner novamente.');
       }
 
-      console.log('🎥 Elemento de vídeo confirmado e pronto');
+      console.log('✅ Elemento de vídeo confirmado (sempre presente no DOM)');
 
       // Verificar suporte à câmera
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -133,17 +119,8 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error(errorMessage);
       }
 
-      // Verificação final antes de configurar o vídeo
+      // Configuração direta do stream de vídeo
       console.log('🔗 Configurando stream de vídeo...');
-      
-      // Triple check: elemento ainda existe?
-      if (!videoRef.current || videoRef.current.tagName !== 'VIDEO') {
-        // Parar todas as tracks do stream antes de falhar
-        if (stream && stream.getTracks) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        throw new Error('❌ Elemento de vídeo perdido durante a configuração. Tente novamente.');
-      }
       
       try {
         // Configurar stream com proteção
@@ -310,7 +287,40 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
         {/* Scanner Area */}
         <div className="p-4">
-          {error ? (
+          {/* Elemento de vídeo sempre presente no DOM (oculto quando necessário) */}
+          <div className="relative mx-auto max-w-xs">
+            <video 
+              ref={videoRef}
+              className={`w-full aspect-square rounded-lg shadow-lg border-2 border-pink-300 object-cover ${
+                error || isInitializing ? 'hidden' : 'block'
+              }`}
+              playsInline
+              muted
+            />
+            
+            {/* Indicador de velocidade - só quando ativo */}
+            {!error && !isInitializing && (
+              <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
+                <Zap className="h-3 w-3" />
+                <span>Rápido & Confiável</span>
+              </div>
+            )}
+
+            {/* Área de scan visual - só quando ativo */}
+            {!error && !isInitializing && (
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-8 border-2 border-white rounded-lg shadow-lg">
+                  <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pink-500 rounded-tl-lg"></div>
+                  <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-pink-500 rounded-tr-lg"></div>
+                  <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-pink-500 rounded-bl-lg"></div>
+                  <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pink-500 rounded-br-lg"></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Estados de UI sobrepostos */}
+          {error && (
             // Erro
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -325,7 +335,9 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                 Tentar Novamente
               </button>
             </div>
-          ) : isInitializing ? (
+          )}
+
+          {isInitializing && (
             // Carregando
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -334,34 +346,11 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
               <p className="text-pink-600 font-medium mb-2">Inicializando Câmera</p>
               <p className="text-sm text-gray-600">Aguarde um momento...</p>
             </div>
-          ) : (
-            // Scanner Ativo
-            <div className="space-y-4">
-              <div className="relative mx-auto max-w-xs">
-                <video 
-                  ref={videoRef}
-                  className="w-full aspect-square rounded-lg shadow-lg border-2 border-pink-300 object-cover"
-                  playsInline
-                  muted
-                />
-                
-                {/* Indicador de velocidade */}
-                <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
-                  <Zap className="h-3 w-3" />
-                  <span>Rápido & Confiável</span>
-                </div>
+          )}
 
-                {/* Área de scan visual */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-8 border-2 border-white rounded-lg shadow-lg">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pink-500 rounded-tl-lg"></div>
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-pink-500 rounded-tr-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-pink-500 rounded-bl-lg"></div>
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pink-500 rounded-br-lg"></div>
-                  </div>
-                </div>
-              </div>
-
+          {/* Instruções e botões - só quando ativo */}
+          {!error && !isInitializing && (
+            <div className="space-y-4 mt-4">
               {/* Instruções */}
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">
