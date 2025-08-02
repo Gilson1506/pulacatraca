@@ -435,8 +435,8 @@ const OrganizerRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-4 px-4 sm:py-12 sm:px-6 lg:px-8 flex items-start sm:items-center justify-center overflow-auto">
+      <div className="max-w-2xl w-full my-auto flex flex-col justify-center min-h-0">
         {/* Back Button */}
         <Link
           to="/register"
@@ -446,21 +446,21 @@ const OrganizerRegisterPage = () => {
           <span>Voltar para cadastro normal</span>
         </Link>
         {/* Register Card */}
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 w-full max-h-screen overflow-y-auto">
           {/* Logo */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6 sm:mb-8">
             <img
               src="/logo-com-qr.png"
               alt="Logo PULACATRACA"
-              className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
+              className="h-16 sm:h-24 md:h-32 lg:h-40 w-auto mx-auto mb-4 sm:mb-6"
             />
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Cadastro de Organizador</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Cadastro de Organizador</h1>
             <p className="text-gray-600">
               Crie sua conta para organizar eventos na plataforma
             </p>
           </div>
           {/* Progress Bar */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700">
                 Etapa {currentStep} de 4: {getStepTitle()}

@@ -67,8 +67,8 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center py-4 px-4 sm:py-12 overflow-auto">
+      <div className="max-w-md w-full my-auto flex flex-col justify-center min-h-0">
         {/* Logo */}
         <Link
           to="/"
@@ -77,14 +77,14 @@ const RegisterPage = () => {
           <img
             src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
             alt="Logo PULACATRACA"
-            className="h-24 md:h-32 lg:h-40 w-auto mx-auto mb-6"
+            className="h-16 sm:h-24 md:h-32 lg:h-40 w-auto mx-auto mb-4 sm:mb-6"
           />
         </Link>
 
         {/* Register Card */}
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Criar Conta</h1>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 w-full max-h-screen overflow-y-auto">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Criar Conta</h1>
             <p className="text-gray-600">
               Crie sua conta para acessar os melhores eventos
             </p>
