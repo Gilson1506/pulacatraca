@@ -58,10 +58,7 @@ const CheckInPage = () => {
   const qrScannerRef = useRef<QrScanner | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  useEffect(() => {
-    console.log('🚀 CheckInPage V2.0 - Melhorias de câmera carregadas!');
-  console.log('🌐 URL Atual:', window.location.href);
-  console.log('👤 Usuário:', user);
+    useEffect(() => {
     if (user) {
       fetchCurrentEvent();
     }
@@ -703,7 +700,7 @@ const CheckInPage = () => {
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border-l-4 border-pink-500">
               <div className="flex items-center space-x-2 mb-4">
                 <QrCode className="h-6 w-6 text-pink-600" />
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Scanner QR Code 🚀 V2.0</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Scanner QR Code</h2>
               </div>
               
               <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg p-3 sm:p-6 text-center mb-4 border border-pink-200">

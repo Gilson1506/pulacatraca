@@ -9,7 +9,6 @@ import EventPage from './pages/EventPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
 import CheckInPage from './pages/CheckInPage';
-import CheckInTestPage from './pages/CheckInTestPage';
 import OrganizerRegisterPage from './pages/OrganizerRegisterPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import TicketPage from './pages/TicketPage';
@@ -36,7 +35,6 @@ const AppRoutes = () => {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/profile/*" element={<ProfilePage />} />
           <Route path="/checkin" element={<CheckInPage />} />
-          <Route path="/checkin-test" element={<CheckInTestPage />} />
           <Route path="/organizer-register" element={<OrganizerRegisterPage />} />
           <Route path="/organizer-dashboard/*" element={<OrganizerDashboardPage />} />
         </Routes>

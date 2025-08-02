@@ -10,25 +10,7 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // DEBUG: Indicador de versão para verificar deploy
-  useEffect(() => {
-    const timestamp = new Date().toISOString();
-    console.log('🏠 HomePage V2.0 - Deploy funcionando!', timestamp);
-    console.log('📍 URL atual:', window.location.href);
-    console.log('🕐 Timestamp build:', timestamp);
-    
-    // Mostrar um alert visível para debug
-    const debugInfo = `✅ DEPLOY V2.0 FUNCIONANDO!\n\nTimestamp: ${timestamp}\nURL: ${window.location.href}`;
-    
-    // Só mostrar o alert na primeira vez (evitar loop)
-    const alreadyShown = sessionStorage.getItem('debug_alert_shown');
-    if (!alreadyShown) {
-      setTimeout(() => {
-        alert(debugInfo);
-        sessionStorage.setItem('debug_alert_shown', 'true');
-      }, 1000);
-    }
-  }, []);
+
 
   // Eventos estáticos como fallback
   const fallbackEvents = [
@@ -199,11 +181,7 @@ const HomePage = () => {
         <EventCarousel />
       </div>
 
-      {/* DEBUG: Banner de versão visível */}
-      <div className="bg-green-500 text-white text-center py-2 px-4">
-        <p className="font-semibold">🚀 DEPLOY V2.0 FUNCIONANDO! - {new Date().toLocaleString('pt-BR')}</p>
-        <p className="text-sm">Check-in melhorado disponível em: /checkin-test</p>
-      </div>
+
 
       {/* Events Section */}
       <div className="container mx-auto px-4 py-12">
