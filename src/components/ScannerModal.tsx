@@ -288,14 +288,15 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         {/* Scanner Area */}
         <div className="p-4">
           {/* Elemento de vídeo sempre presente no DOM (oculto quando necessário) */}
-          <div className="relative mx-auto max-w-xs">
+          <div className="relative mx-auto max-w-xs sm:max-w-sm">
             <video 
               ref={videoRef}
               className={`w-full aspect-square rounded-lg shadow-lg border-2 border-pink-300 object-cover ${
-                error || isInitializing ? 'hidden' : 'block'
+                error || isInitializing ? 'opacity-0 pointer-events-none' : 'opacity-100'
               }`}
               playsInline
               muted
+              autoPlay
             />
             
             {/* Indicador de velocidade - só quando ativo */}
@@ -321,30 +322,34 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
           {/* Estados de UI sobrepostos */}
           {error && (
-            // Erro
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <X className="h-8 w-8 text-red-600" />
+            // Erro - Overlay absoluto
+            <div className="absolute inset-0 bg-white bg-opacity-95 flex items-center justify-center rounded-lg">
+              <div className="text-center py-4 px-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <X className="h-6 w-6 text-red-600" />
+                </div>
+                <p className="text-red-600 font-medium mb-2">Erro de Câmera</p>
+                <p className="text-xs text-gray-600 mb-4">{error}</p>
+                <button
+                  onClick={startScanner}
+                  className="bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                >
+                  Tentar Novamente
+                </button>
               </div>
-              <p className="text-red-600 font-medium mb-2">Erro de Câmera</p>
-              <p className="text-sm text-gray-600 mb-4">{error}</p>
-              <button
-                onClick={startScanner}
-                className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Tentar Novamente
-              </button>
             </div>
           )}
 
           {isInitializing && (
-            // Carregando
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="w-8 h-8 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
+            // Carregando - Overlay absoluto
+            <div className="absolute inset-0 bg-white bg-opacity-95 flex items-center justify-center rounded-lg">
+              <div className="text-center py-4">
+                <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <div className="w-6 h-6 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="text-pink-600 font-medium mb-1">Inicializando Câmera</p>
+                <p className="text-xs text-gray-600">Aguarde um momento...</p>
               </div>
-              <p className="text-pink-600 font-medium mb-2">Inicializando Câmera</p>
-              <p className="text-sm text-gray-600">Aguarde um momento...</p>
             </div>
           )}
 
