@@ -317,8 +317,14 @@ const CheckInPage = () => {
         }
         
         // Se for erro de tabela ou coluna, mostrar erro específico
-        if (error.message?.includes('relation') && error.message?.includes('checkins') && error.message?.includes('does not exist')) {
-          showModal('error', 'Erro: a função ainda está usando a tabela "checkins" (plural). Execute fix_search_participants_checkin_table.sql no Supabase para corrigir.');
+        if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+          if (error.message?.includes('checkins')) {
+            showModal('error', 'Erro: a função ainda está usando a tabela "checkins" (plural). Execute fix_search_participants_checkin_table.sql no Supabase para corrigir.');
+          } else if (error.message?.includes('checkin')) {
+            showModal('error', 'Erro: tabela "checkin" não encontrada. Execute fix_checkin_table_and_functions.sql no Supabase para criar a tabela.');
+          } else {
+            showModal('error', 'Erro: tabela não encontrada. Execute os scripts SQL necessários no Supabase.');
+          }
           setIsLoading(false);
           setIsSearching(false);
           return;
