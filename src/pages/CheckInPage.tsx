@@ -606,7 +606,7 @@ const CheckInPage = () => {
 
 
           {/* Event Info - Melhorado com imagem e estatísticas */}
-          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
               {/* Imagem do Evento */}
               {currentEvent.image && (
@@ -621,12 +621,12 @@ const CheckInPage = () => {
               
               {/* Informações principais */}
               <div className="flex-grow">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2">
                   <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
                       🎯 {currentEvent.title}
                     </h1>
-                    <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
+                    <p className="text-sm text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
                   
                   {/* Layout mobile será grid quadrado, desktop normal */}
@@ -650,13 +650,13 @@ const CheckInPage = () => {
                   </div>
                 </div>
                 
-                {/* Layout Mobile: Grid Micro Compacto (50% menor) | Desktop: Layout Completo */}
+                {/* Layout Mobile: Grid Horizontal Organizado | Desktop: Layout Completo */}
                 <div className="sm:hidden">
-                  {/* Mobile: Grid 2x2 micro (50% do tamanho original) */}
-                  <div className="grid grid-cols-2 gap-1" style={{ transform: 'scale(0.5)', transformOrigin: 'center' }}>
+                  {/* Mobile: Grid horizontal 4 colunas sem espaços vazios */}
+                  <div className="grid grid-cols-4 gap-1">
                     {/* Data */}
-                    <div className="bg-blue-50 p-1 rounded border border-blue-200 aspect-square flex flex-col items-center justify-center text-center">
-                      <Calendar className="h-3 w-3 text-blue-600 mb-0.5" />
+                    <div className="bg-blue-50 p-2 rounded border border-blue-200 flex flex-col items-center justify-center text-center">
+                      <Calendar className="h-4 w-4 text-blue-600 mb-1" />
                       <div className="text-xs font-medium text-blue-900">Data</div>
                       <div className="text-xs text-blue-800 font-semibold">
                         {new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
@@ -667,8 +667,8 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Check-ins */}
-                    <div className="bg-green-50 p-1 rounded border border-green-200 aspect-square flex flex-col items-center justify-center text-center">
-                      <CheckCircle className="h-3 w-3 text-green-600 mb-0.5" />
+                    <div className="bg-green-50 p-2 rounded border border-green-200 flex flex-col items-center justify-center text-center">
+                      <CheckCircle className="h-4 w-4 text-green-600 mb-1" />
                       <div className="text-xs font-medium text-green-900">Check-ins</div>
                       <div className="text-xs text-green-800 font-bold">
                         {checkinStats.checked_in}/{checkinStats.total_participants}
@@ -677,51 +677,36 @@ const CheckInPage = () => {
                     </div>
 
                     {/* Som */}
-                    <div className="bg-purple-50 p-1 rounded border border-purple-200 aspect-square flex flex-col items-center justify-center">
+                    <div className="bg-purple-50 p-2 rounded border border-purple-200 flex flex-col items-center justify-center">
                       <button
                         onClick={toggleSound}
                         className="flex flex-col items-center justify-center h-full w-full"
                         title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
                       >
                         {soundEnabled ? (
-                          <Volume2 className="h-3 w-3 text-purple-600 mb-0.5" />
+                          <Volume2 className="h-4 w-4 text-purple-600 mb-1" />
                         ) : (
-                          <VolumeX className="h-3 w-3 text-purple-400 mb-0.5" />
+                          <VolumeX className="h-4 w-4 text-purple-400 mb-1" />
                         )}
                         <div className="text-xs font-medium text-purple-900">Som</div>
                         <div className="text-xs text-purple-600">{soundEnabled ? 'ON' : 'OFF'}</div>
                       </button>
                     </div>
 
-                    {/* Status/Local */}
-                    <div className="bg-orange-50 p-1 rounded border border-orange-200 aspect-square flex flex-col items-center justify-center text-center">
-                      <MapPin className="h-3 w-3 text-orange-600 mb-0.5" />
-                      <div className="text-xs font-medium text-orange-900">
-                        {currentEvent.location ? 'Local' : 'Status'}
-                      </div>
-                      <div className="text-xs text-orange-800 font-semibold">
-                        {currentEvent.location ? (
-                          <div className="truncate max-w-full">{currentEvent.location}</div>
-                        ) : (
-                          'Ativo'
-                        )}
-                      </div>
+                    {/* Scanner */}
+                    <div className="bg-pink-50 p-2 rounded border border-pink-200 flex flex-col items-center justify-center">
+                      <button
+                        onClick={() => setShowScannerModal(true)}
+                        className="flex flex-col items-center justify-center h-full w-full"
+                        title="Abrir scanner QR"
+                      >
+                        <Camera className="h-4 w-4 text-pink-600 mb-1" />
+                        <div className="text-xs font-medium text-pink-900">Scanner</div>
+                        <div className="text-xs text-pink-600">QR</div>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Imagem do evento se disponível - Mobile */}
-                  {currentEvent.image_url && (
-                    <div className="w-full h-20 rounded-lg overflow-hidden border border-gray-200 mt-3">
-                      <img 
-                        src={currentEvent.image_url} 
-                        alt={currentEvent.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* Desktop: Layout detalhado original */}

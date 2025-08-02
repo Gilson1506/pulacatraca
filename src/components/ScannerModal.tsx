@@ -144,43 +144,48 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error(`❌ Erro ao configurar vídeo: ${error.message}. Tente fechar e abrir o scanner novamente.`);
       }
 
-      // Configuração otimizada para máxima velocidade
+      // Configuração ULTRA-RÁPIDA para leitura instantânea
       const qrScanner = new QrScannerLib(
         videoRef.current,
         (result) => {
           try {
             const qrData = typeof result === 'string' ? result : (result.data || result);
-            console.log('⚡ QR detectado:', qrData);
+            console.log('⚡ QR DETECTADO INSTANTANEAMENTE:', qrData);
             
-            // Parar scanner imediatamente
+            // Parar scanner IMEDIATAMENTE (sem delay)
             qrScanner.stop();
+            qrScanner.destroy();
             
-            // Processar QR
+            // Processar QR instantaneamente
             onScan(qrData);
             
-            // Fechar modal
+            // Fechar modal instantaneamente
             onClose();
           } catch (error) {
             console.error('Erro ao processar QR:', error);
           }
         },
         {
-          // Configurações para velocidade e confiabilidade
+          // CONFIGURAÇÕES ULTRA-RÁPIDAS
           preferredCamera: 'environment',
-          highlightScanRegion: false,      // Desabilitar para performance
-          highlightCodeOutline: false,     // Desabilitar para performance  
-          maxScansPerSecond: 20,           // Velocidade otimizada
-          returnDetailedScanResult: false, // Resultado simples
-          // Área de scan otimizada
+          highlightScanRegion: false,      // Performance máxima
+          highlightCodeOutline: false,     // Performance máxima
+          maxScansPerSecond: 60,           // TRIPLICADO: 60 scans/segundo
+          returnDetailedScanResult: false, // Resultado direto
+          // Área de scan AMPLIADA para captura mais fácil
           calculateScanRegion: (video) => {
-            const size = Math.min(video.videoWidth, video.videoHeight) * 0.6;
+            const size = Math.min(video.videoWidth, video.videoHeight) * 0.8; // Aumentado para 80%
             return {
               x: (video.videoWidth - size) / 2,
               y: (video.videoHeight - size) / 2,
               width: size,
               height: size,
             };
-          }
+          },
+          // SUPORTE AVANÇADO DE LEITURA
+          onDecodeError: () => {
+            // Silencioso - não logar erros de decode para máxima performance
+          },
         }
       );
 
@@ -299,13 +304,13 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
               autoPlay
             />
             
-            {/* Indicador de velocidade - só quando ativo */}
-            {!error && !isInitializing && (
-              <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
-                <Zap className="h-3 w-3" />
-                <span>Rápido & Confiável</span>
-              </div>
-            )}
+                          {/* Indicador de velocidade - só quando ativo */}
+              {!error && !isInitializing && (
+                <div className="absolute top-2 left-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg animate-pulse">
+                  <Zap className="h-3 w-3" />
+                  <span>ULTRA-RÁPIDO</span>
+                </div>
+              )}
 
             {/* Área de scan visual - só quando ativo */}
             {!error && !isInitializing && (
@@ -362,7 +367,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                   Aponte a câmera para o QR code do ingresso
                 </p>
                 <p className="text-xs text-gray-500">
-                  Detecção automática otimizada (20 scans/segundo)
+                  Leitura ultra-rápida (60 scans/segundo) + área ampliada
                 </p>
               </div>
 
