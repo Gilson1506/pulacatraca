@@ -24,10 +24,13 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   // Inicializar scanner quando modal abrir
   useEffect(() => {
     if (isOpen) {
-      // Delay para garantir que o DOM esteja pronto
+      // Delay progressivo para garantir DOM pronto
       const timer = setTimeout(() => {
-        startScanner();
-      }, 100);
+        // Verificar se ainda está aberto antes de iniciar
+        if (isOpen) {
+          startScanner();
+        }
+      }, 200); // Aumentado para 200ms
       
       return () => {
         clearTimeout(timer);
@@ -53,19 +56,34 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log('🚀 Iniciando scanner ultra-rápido...');
 
-      // Aguardar elemento de vídeo com mais tempo e tentativas
+      // Aguardar elemento de vídeo com estratégia robusta
       let attempts = 0;
-      const maxAttempts = 20;
+      const maxAttempts = 30;
       
-      while (!videoRef.current && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+      while (attempts < maxAttempts) {
+        if (videoRef.current) {
+          console.log(`✅ Elemento de vídeo encontrado na tentativa ${attempts + 1}`);
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 150));
         attempts++;
         console.log(`🔍 Aguardando elemento de vídeo... (${attempts}/${maxAttempts})`);
+        
+        // Forçar re-render verificando o DOM
+        if (attempts % 5 === 0) {
+          const videoElement = document.querySelector('video');
+          if (videoElement && !videoRef.current) {
+            console.log('🔄 Tentando reconectar referência do vídeo...');
+          }
+        }
       }
 
       if (!videoRef.current) {
-        throw new Error('Elemento de vídeo não encontrado após aguardar');
+        throw new Error(`Elemento de vídeo não encontrado após ${maxAttempts} tentativas (4.5s)`);
       }
+
+      console.log('🎥 Elemento de vídeo confirmado e pronto');
 
       // Verificar suporte à câmera
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -130,15 +148,35 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error('Não foi possível acessar nenhuma câmera');
       }
 
-      // Verificar novamente se o elemento de vídeo ainda existe
+      // Aguardar um pouco antes de configurar o stream
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verificar múltiplas vezes se o elemento ainda existe
+      let videoCheckAttempts = 0;
+      while (videoCheckAttempts < 5) {
+        if (videoRef.current) {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+        videoCheckAttempts++;
+      }
+      
       if (!videoRef.current) {
         // Parar o stream se o elemento não existir mais
         stream.getTracks().forEach(track => track.stop());
-        throw new Error('Elemento de vídeo perdido durante a configuração');
+        throw new Error('Elemento de vídeo perdido durante configuração (verificação dupla falhou)');
       }
 
-      // Configurar o vídeo com stream
-      videoRef.current.srcObject = stream;
+      console.log('🔗 Configurando stream no elemento de vídeo...');
+      
+      // Configurar o vídeo com stream de forma segura
+      try {
+        videoRef.current.srcObject = stream;
+        console.log('✅ Stream configurado com sucesso');
+      } catch (error) {
+        stream.getTracks().forEach(track => track.stop());
+        throw new Error(`Erro ao definir srcObject: ${error.message}`);
+      }
       
       // Aguardar vídeo carregar com verificações adicionais
       await new Promise((resolve, reject) => {

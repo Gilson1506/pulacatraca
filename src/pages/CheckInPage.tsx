@@ -77,23 +77,7 @@ const CheckInPage = () => {
     }
   }, [currentEvent]);
 
-  useEffect(() => {
-    return () => {
-      // Cleanup QR Scanner
-      if (qrScannerRef.current) {
-        try {
-          qrScannerRef.current.destroy();
-        } catch (e) {}
-      }
-      
-      // Cleanup ZXING Scanner
-      if (zxingReaderRef.current) {
-        try {
-          zxingReaderRef.current.reset();
-        } catch (e) {}
-      }
-    };
-  }, []);
+  // Cleanup automático já é feito pelo ScannerModal
 
   // Função para tocar sons de notificação
   const playNotificationSound = (type: 'success' | 'already_checked' | 'error') => {
@@ -411,7 +395,6 @@ const CheckInPage = () => {
     }
 
     try {
-      setIsScanning(true);
       console.log('🎯 Realizando check-in...', {
         ticket_user_id: ticketUserId,
         event_id: currentEvent.id,
@@ -430,7 +413,6 @@ const CheckInPage = () => {
         // Se a função RPC não existir, mostrar erro específico
         if (error.message?.includes('function') && error.message?.includes('does not exist')) {
           showModal('error', 'Função de check-in não encontrada. Execute o script SQL para criar as funções necessárias.');
-          setIsScanning(false);
           return;
         }
         
@@ -443,7 +425,6 @@ const CheckInPage = () => {
       if (!Array.isArray(data) || data.length === 0) {
         console.error('❌ Dados de retorno inválidos:', data);
         showModal('error', 'Resposta inválida do servidor durante o check-in.');
-        setIsScanning(false);
         return;
       }
       
@@ -492,8 +473,6 @@ const CheckInPage = () => {
     } catch (error) {
       console.error('❌ Erro ao processar check-in:', error);
       showModal('error', `Erro ao processar check-in: ${error.message || 'Erro desconhecido'}`);
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -550,12 +529,12 @@ const CheckInPage = () => {
       // Processamento imediato com feedback sonoro
       if (result.success) {
         console.log('✅ Check-in OK');
-        soundEnabled && playSound('success');
+        soundEnabled && playNotificationSound('success');
         showModal('success', result.message, result.participant_info);
         fetchParticipants(searchQuery); // Atualizar sem aguardar
       } else {
         const isAlreadyChecked = result.message?.includes('já foi realizado') || result.message?.includes('anteriormente');
-        soundEnabled && playSound(isAlreadyChecked ? 'already_checked' : 'error');
+        soundEnabled && playNotificationSound(isAlreadyChecked ? 'already_checked' : 'error');
         showModal(isAlreadyChecked ? 'already_checked' : 'error', result.message, {
           ...result.participant_info,
           qr_code: trimmedQR
@@ -644,29 +623,106 @@ const CheckInPage = () => {
                     <p className="text-sm sm:text-base text-gray-600">Sistema de check-in em tempo real</p>
                   </div>
                   
-                  {/* Botão de som compacto */}
-                  <button
-                    onClick={toggleSound}
-                    className={`mt-2 sm:mt-0 p-1.5 sm:p-2 rounded-lg transition-all duration-200 ${
-                      soundEnabled 
-                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                    }`}
-                    title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
-                  >
-                    {soundEnabled ? (
-                      <Volume2 className="h-3 w-3" />
-                    ) : (
-                      <VolumeX className="h-3 w-3" />
-                    )}
-                  </button>
+                  {/* Layout mobile será grid quadrado, desktop normal */}
+                  <div className="hidden sm:block">
+                    {/* Botão de som desktop */}
+                    <button
+                      onClick={toggleSound}
+                      className={`p-2 rounded-lg transition-all duration-200 ${
+                        soundEnabled 
+                          ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                      title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+                    >
+                      {soundEnabled ? (
+                        <Volume2 className="h-4 w-4" />
+                      ) : (
+                        <VolumeX className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 
-                {/* Detalhes completos do evento */}
-                <div className="space-y-3 sm:space-y-4">
+                {/* Layout Mobile: Grid Quadrados | Desktop: Layout Completo */}
+                <div className="sm:hidden">
+                  {/* Mobile: Grid 2x2 de quadrados compactos */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Data */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 aspect-square flex flex-col items-center justify-center text-center">
+                      <Calendar className="h-6 w-6 text-blue-600 mb-2" />
+                      <div className="text-xs font-medium text-blue-900 mb-1">Data</div>
+                      <div className="text-xs text-blue-800 font-semibold">
+                        {new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
+                          day: '2-digit', 
+                          month: '2-digit' 
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Check-ins */}
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200 aspect-square flex flex-col items-center justify-center text-center">
+                      <CheckCircle className="h-6 w-6 text-green-600 mb-2" />
+                      <div className="text-xs font-medium text-green-900 mb-1">Check-ins</div>
+                      <div className="text-xs text-green-800 font-bold">
+                        {checkinStats.checked_in}/{checkinStats.total_participants}
+                      </div>
+                      <div className="text-xs text-green-600 mt-1">{checkinStats.percentage}%</div>
+                    </div>
+
+                    {/* Som */}
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 aspect-square flex flex-col items-center justify-center">
+                      <button
+                        onClick={toggleSound}
+                        className="flex flex-col items-center justify-center h-full w-full"
+                        title={soundEnabled ? 'Desativar sons' : 'Ativar sons'}
+                      >
+                        {soundEnabled ? (
+                          <Volume2 className="h-6 w-6 text-purple-600 mb-2" />
+                        ) : (
+                          <VolumeX className="h-6 w-6 text-purple-400 mb-2" />
+                        )}
+                        <div className="text-xs font-medium text-purple-900">Som</div>
+                        <div className="text-xs text-purple-600">{soundEnabled ? 'ON' : 'OFF'}</div>
+                      </button>
+                    </div>
+
+                    {/* Status/Local */}
+                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-200 aspect-square flex flex-col items-center justify-center text-center">
+                      <MapPin className="h-6 w-6 text-orange-600 mb-2" />
+                      <div className="text-xs font-medium text-orange-900 mb-1">
+                        {currentEvent.location ? 'Local' : 'Status'}
+                      </div>
+                      <div className="text-xs text-orange-800 font-semibold">
+                        {currentEvent.location ? (
+                          <div className="truncate max-w-full">{currentEvent.location}</div>
+                        ) : (
+                          'Ativo'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Imagem do evento se disponível - Mobile */}
+                  {currentEvent.image_url && (
+                    <div className="w-full h-20 rounded-lg overflow-hidden border border-gray-200 mt-3">
+                      <img 
+                        src={currentEvent.image_url} 
+                        alt={currentEvent.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop: Layout detalhado original */}
+                <div className="hidden sm:block space-y-4">
                   {/* Imagem do evento se disponível */}
                   {currentEvent.image_url && (
-                    <div className="w-full h-24 sm:h-32 rounded-lg overflow-hidden border border-gray-200">
+                    <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200">
                       <img 
                         src={currentEvent.image_url} 
                         alt={currentEvent.title}
@@ -678,8 +734,8 @@ const CheckInPage = () => {
                     </div>
                   )}
 
-                  {/* Grid de informações compacto */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                  {/* Grid de informações desktop */}
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {/* Data e Horário */}
                     <div className="bg-blue-50 p-2 sm:p-3 rounded-lg border border-blue-200">
                       <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
@@ -883,20 +939,12 @@ const CheckInPage = () => {
                             ) : (
                               <button
                                 onClick={() => performCheckIn(participant.ticket_user_id)}
-                                disabled={isScanning}
-                                className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none font-semibold"
+                                className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-pink-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
                               >
-                                {isScanning ? (
-                                  <div className="flex items-center space-x-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Processando...</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center space-x-2">
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span>Fazer Check-in</span>
-                                  </div>
-                                )}
+                                <div className="flex items-center space-x-2">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span>Fazer Check-in</span>
+                                </div>
                               </button>
                             )}
                           </div>
