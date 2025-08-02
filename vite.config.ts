@@ -5,37 +5,17 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    exclude: ['lucide-react', 'qr-scanner'],
-    force: true, // Force re-optimization
-  },
-  define: {
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    exclude: ['lucide-react'],
   },
   build: {
-    // Clear output directory completely
-    emptyOutDir: true,
-    // Generate unique hash for each build
+    outDir: 'dist',
+    // Force unique build
     rollupOptions: {
       output: {
-        // Aggressive cache busting with unique timestamps
-        entryFileNames: `assets/[name]-${Date.now()}-[hash].js`,
-        chunkFileNames: `assets/[name]-${Date.now()}-[hash].js`,
-        assetFileNames: (assetInfo) => {
-          // Special handling for worker files
-          if (assetInfo.name?.includes('worker')) {
-            return `assets/worker-${Date.now()}-[hash].[ext]`;
-          }
-          return `assets/[name]-${Date.now()}-[hash].[ext]`;
-        }
+        entryFileNames: `assets/[name]-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-${Date.now()}.[ext]`
       }
-    }
-  },
-  // Force disable all caching during dev
-  server: {
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
     }
   }
 });

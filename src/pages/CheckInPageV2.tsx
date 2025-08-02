@@ -4,8 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
-// Dynamic import to avoid worker caching issues
-// import QrScannerLib from 'qr-scanner';
+import QrScannerLib from 'qr-scanner';
 
 interface Event {
   id: string;
@@ -76,7 +75,7 @@ const CheckInPageV2 = () => {
   });
   
   const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<any>(null);
+  const qrScannerRef = useRef<QrScannerLib | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
     useEffect(() => {
@@ -499,11 +498,7 @@ const CheckInPageV2 = () => {
         throw new Error('Permissão de câmera negada. Por favor, permita o acesso à câmera e tente novamente.');
       }
       
-      // Dynamic import to avoid worker caching
-      const QrScannerLib = await import('qr-scanner');
-      const QrScanner = QrScannerLib.default;
-      
-      qrScannerRef.current = new QrScanner(
+      qrScannerRef.current = new QrScannerLib(
         videoRef.current,
         result => {
           console.log('📸 QR Code detectado:', result.data);
