@@ -5,9 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
-import ImprovedQRScanner from '../components/ImprovedQRScanner';
-import SimplifiedQRScanner from '../components/SimplifiedQRScanner';
-import UltraRobustQRScanner from '../components/UltraRobustQRScanner';
+import FinalQRScanner from '../components/FinalQRScanner';
 import CameraDiagnostic from '../components/CameraDiagnostic';
 
 interface Event {
@@ -41,9 +39,7 @@ const CheckInPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
-  const [showScannerModal, setShowScannerModal] = useState(false);
-  const [showSimplifiedScanner, setShowSimplifiedScanner] = useState(false);
-  const [showUltraRobustScanner, setShowUltraRobustScanner] = useState(false);
+  const [showFinalScanner, setShowFinalScanner] = useState(false);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
@@ -851,36 +847,14 @@ const CheckInPage = () => {
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
-                  {/* Botão Scanner QR - Modal Otimizado */}
+                  {/* Botão Scanner QR Final */}
                   <button
-                    onClick={() => setShowScannerModal(true)}
-                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-pink-100 text-pink-600 hover:bg-pink-200 text-xs sm:text-sm"
-                    title="Abrir Scanner QR"
+                    onClick={() => setShowFinalScanner(true)}
+                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-purple-100 text-purple-600 hover:bg-purple-200 text-xs sm:text-sm"
+                    title="Scanner QR Final (@zxing/browser)"
                   >
                     <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Scanner</span>
-                  </button>
-
-                  {/* Botão Scanner Simplificado */}
-                  <button
-                    onClick={() => setShowSimplifiedScanner(true)}
-                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-green-100 text-green-600 hover:bg-green-200 text-xs sm:text-sm"
-                    title="Scanner Simplificado (Debug)"
-                  >
-                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Simples</span>
-                    <span className="sm:hidden">S</span>
-                  </button>
-
-                  {/* Botão Scanner Ultra-Robusto */}
-                  <button
-                    onClick={() => setShowUltraRobustScanner(true)}
-                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 text-xs sm:text-sm"
-                    title="Scanner Ultra-Robusto (MutationObserver)"
-                  >
-                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Ultra</span>
-                    <span className="sm:hidden">U</span>
+                    <span>Scanner QR</span>
                   </button>
 
                   {/* Botão Diagnóstico de Câmera */}
@@ -1064,26 +1038,10 @@ const CheckInPage = () => {
         data={modalState.data}
       />
 
-      {/* Modal do Scanner QR */}
-      <ImprovedQRScanner
-        isOpen={showScannerModal}
-        onClose={() => setShowScannerModal(false)}
-        onSuccess={handleQRCodeScan}
-        eventId={currentEvent?.id}
-      />
-
-      {/* Modal do Scanner Simplificado */}
-      <SimplifiedQRScanner
-        isOpen={showSimplifiedScanner}
-        onClose={() => setShowSimplifiedScanner(false)}
-        onSuccess={handleQRCodeScan}
-        eventId={currentEvent?.id}
-      />
-
-      {/* Modal do Scanner Ultra-Robusto */}
-      <UltraRobustQRScanner
-        isOpen={showUltraRobustScanner}
-        onClose={() => setShowUltraRobustScanner(false)}
+      {/* Modal do Scanner QR Final */}
+      <FinalQRScanner
+        isOpen={showFinalScanner}
+        onClose={() => setShowFinalScanner(false)}
         onSuccess={handleQRCodeScan}
         eventId={currentEvent?.id}
       />
