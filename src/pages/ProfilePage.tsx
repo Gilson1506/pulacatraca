@@ -98,101 +98,166 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
         return;
       }
 
-      // Tentar buscar via ticket_users primeiro (histórico de pedidos)
-      console.log('🔄 Tentando buscar histórico via ticket_users...');
-      const { data: ordersFromTicketUsers, error: ticketUsersError } = await supabase
-        .from('ticket_users')
-        .select(`
-          id,
-          status,
-          quantity,
-          unit_price,
-          total_price,
-          purchase_date,
-          payment_method,
-          payment_status,
-          created_at,
-          ticket:tickets(
+      console.log('👤 Usuário ID:', user.id);
+      let foundOrders = false;
+
+      // 1. Tentar buscar via ticket_users primeiro (histórico de pedidos)
+      try {
+        console.log('🔄 1. Tentando buscar histórico via ticket_users...');
+        const { data: ordersFromTicketUsers, error: ticketUsersError } = await supabase
+          .from('ticket_users')
+          .select(`
             id,
             name,
-            area,
-            ticket_type
-          ),
-          event:events(
-            title,
-            description,
-            start_date,
-            location,
-            image,
-            price
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (!ticketUsersError && ordersFromTicketUsers && ordersFromTicketUsers.length > 0) {
-        console.log('✅ Histórico encontrado via ticket_users:', ordersFromTicketUsers.length);
-        setUserOrders(ordersFromTicketUsers);
-        return;
-      }
-
-      // Fallback: buscar diretamente da tabela tickets
-      let ordersData = null;
-      let error = null;
-
-      console.log('🔄 Fallback: Tentando buscar com buyer_id...');
-      const { data: ticketsData, error: ticketsError } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          event:events(title, description, start_date, location, image, price)
-        `)
-        .eq('buyer_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (ticketsError) {
-        console.log('⚠️ buyer_id não existe, tentando com user_id...');
-        // Fallback: buscar por user_id se buyer_id não existir
-        const { data: userTicketsData, error: userTicketsError } = await supabase
-          .from('tickets')
-          .select(`
-            *,
-            event:events(title, description, start_date, location, image, price)
+            email,
+            document,
+            created_at,
+            tickets!inner(
+              id,
+              qr_code,
+              price,
+              status,
+              ticket_type,
+              events!inner(
+                id,
+                title,
+                description,
+                start_date,
+                location,
+                image
+              )
+            )
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (userTicketsError) {
-          console.log('⚠️ Tentando buscar de transactions...');
-          // Fallback final: buscar de transactions
-          const { data: transactionsData, error: transactionsError } = await supabase
-            .from('transactions')
+        if (!ticketUsersError && ordersFromTicketUsers && ordersFromTicketUsers.length > 0) {
+          console.log('✅ Histórico encontrado via ticket_users:', ordersFromTicketUsers.length);
+          setUserOrders(ordersFromTicketUsers);
+          foundOrders = true;
+          return;
+        } else if (ticketUsersError) {
+          console.log('⚠️ Erro ticket_users:', ticketUsersError.message);
+        } else {
+          console.log('ℹ️ Nenhum dado encontrado em ticket_users');
+        }
+      } catch (err) {
+        console.log('⚠️ Erro ao acessar ticket_users:', err);
+      }
+
+      // 2. Fallback: buscar diretamente da tabela tickets com buyer_id
+      if (!foundOrders) {
+        try {
+          console.log('🔄 2. Tentando buscar tickets com buyer_id...');
+          const { data: ticketsData, error: ticketsError } = await supabase
+            .from('tickets')
             .select(`
               *,
-              event:events(title, description, start_date, location, image, price)
+              events!inner(title, description, start_date, location, image)
             `)
             .eq('buyer_id', user.id)
             .order('created_at', { ascending: false });
 
-          ordersData = transactionsData;
-          error = transactionsError;
-        } else {
-          ordersData = userTicketsData;
+          if (!ticketsError && ticketsData && ticketsData.length > 0) {
+            console.log('✅ Pedidos encontrados via tickets (buyer_id):', ticketsData.length);
+            setUserOrders(ticketsData);
+            foundOrders = true;
+            return;
+          } else if (ticketsError) {
+            console.log('⚠️ Erro tickets buyer_id:', ticketsError.message);
+          }
+        } catch (err) {
+          console.log('⚠️ Erro ao acessar tickets (buyer_id):', err);
         }
-      } else {
-        ordersData = ticketsData;
       }
 
-      if (error) {
-        console.error('❌ Erro ao buscar pedidos:', error);
-        return;
+      // 3. Fallback: buscar tickets com user_id
+      if (!foundOrders) {
+        try {
+          console.log('🔄 3. Tentando buscar tickets com user_id...');
+          const { data: userTicketsData, error: userTicketsError } = await supabase
+            .from('tickets')
+            .select(`
+              *,
+              events!inner(title, description, start_date, location, image)
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (!userTicketsError && userTicketsData && userTicketsData.length > 0) {
+            console.log('✅ Pedidos encontrados via tickets (user_id):', userTicketsData.length);
+            setUserOrders(userTicketsData);
+            foundOrders = true;
+            return;
+          } else if (userTicketsError) {
+            console.log('⚠️ Erro tickets user_id:', userTicketsError.message);
+          }
+        } catch (err) {
+          console.log('⚠️ Erro ao acessar tickets (user_id):', err);
+        }
       }
 
-      console.log('✅ Pedidos encontrados:', ordersData?.length || 0);
-      setUserOrders(ordersData || []);
+      // 4. Fallback: verificar se a tabela transactions existe e buscar
+      if (!foundOrders) {
+        try {
+          console.log('🔄 4. Tentando buscar de transactions...');
+          
+          // Primeiro, teste simples para ver se a tabela existe
+          const { data: transactionsTest, error: testError } = await supabase
+            .from('transactions')
+            .select('id')
+            .limit(1);
+
+          if (testError) {
+            console.log('⚠️ Tabela transactions não existe ou sem acesso:', testError.message);
+          } else {
+            console.log('✅ Tabela transactions acessível');
+            
+            // Buscar transações do usuário
+            const { data: transactionsData, error: transactionsError } = await supabase
+              .from('transactions')
+              .select(`
+                id,
+                amount,
+                status,
+                payment_method,
+                created_at,
+                notes,
+                events!inner(
+                  id,
+                  title,
+                  description,
+                  start_date,
+                  location,
+                  image
+                )
+              `)
+              .eq('buyer_id', user.id)
+              .order('created_at', { ascending: false });
+
+            if (!transactionsError && transactionsData && transactionsData.length > 0) {
+              console.log('✅ Pedidos encontrados via transactions:', transactionsData.length);
+              setUserOrders(transactionsData);
+              foundOrders = true;
+              return;
+            } else if (transactionsError) {
+              console.log('⚠️ Erro ao buscar transactions:', transactionsError.message);
+            }
+          }
+        } catch (err) {
+          console.log('⚠️ Erro ao acessar transactions:', err);
+        }
+      }
+
+      // Se chegou até aqui, não encontrou pedidos
+      if (!foundOrders) {
+        console.log('ℹ️ Nenhum pedido encontrado em nenhuma tabela');
+        setUserOrders([]);
+      }
 
     } catch (error) {
       console.error('❌ Erro inesperado ao buscar pedidos:', error);
+      setUserOrders([]);
     } finally {
       setIsLoading(false);
     }
