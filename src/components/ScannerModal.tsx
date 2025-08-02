@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { X, Camera, Zap } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 import QrScannerLib from 'qr-scanner';
 
 interface ScannerModalProps {
@@ -87,14 +87,21 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log(`📷 ${videoDevices.length} câmera(s) encontrada(s)`);
 
-      // Configurações de câmera simplificadas e mais compatíveis
+      // Configurações de câmera otimizadas para velocidade
       const cameraConfigs = [
-        // Configuração 1: Básica (mais compatível)
+        // Configuração 1: Câmera traseira otimizada
+        { 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+          } 
+        },
+        // Configuração 2: Básica
         { video: { facingMode: 'environment' } },
-        // Configuração 2: Qualquer câmera
-        { video: true },
-        // Configuração 3: Câmera frontal
-        { video: { facingMode: 'user' } }
+        // Configuração 3: Qualquer câmera
+        { video: true }
       ];
 
       let stream = null;
@@ -148,32 +155,27 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
       const qrScanner = new QrScannerLib(
         videoRef.current,
         (result) => {
-          try {
-            const qrData = typeof result === 'string' ? result : (result.data || result);
-            console.log('🔥 QR LIDO INSTANTANEAMENTE:', qrData);
-            
-            // Parar TUDO imediatamente
-            qrScanner.stop();
-            if (qrScanner.destroy) qrScanner.destroy();
-            
-            // Vibrar para feedback (se suportado)
-            if (navigator.vibrate) {
-              navigator.vibrate(100);
-            }
-            
-            // Processar e fechar IMEDIATAMENTE
-            onScan(qrData);
-            onClose();
-          } catch (error) {
-            console.error('Erro ao processar QR:', error);
-          }
+          // Processamento ultra-rápido do QR
+          const qrData = typeof result === 'string' ? result : (result.data || result);
+          console.log('⚡ QR DETECTADO:', qrData);
+          
+          // Parar scanner imediatamente
+          qrScanner.stop();
+          qrScanner.destroy?.();
+          
+          // Feedback instantâneo
+          navigator.vibrate?.(50);
+          
+          // Executar callbacks
+          onScan(qrData);
+          onClose();
         },
         {
-          // CONFIGURAÇÕES MÁXIMA PERFORMANCE
+          // CONFIGURAÇÕES ULTRA PERFORMANCE
           preferredCamera: 'environment',
           highlightScanRegion: false,      
           highlightCodeOutline: false,     
-          maxScansPerSecond: 120,          // MÁXIMO ABSOLUTO: 120 scans/segundo!!!
+          maxScansPerSecond: 300,          // MÁXIMO ULTRA: 300 scans/segundo!!!
           returnDetailedScanResult: false, 
           // TELA INTEIRA para máxima sensibilidade
           calculateScanRegion: (video) => {
@@ -215,7 +217,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         }
         
         setIsInitializing(false);
-        console.log('🔥 SCANNER EXTREMAMENTE RÁPIDO ATIVO - 120 scans/segundo + tela inteira!');
+        console.log('🚀 SCANNER ULTRA RÁPIDO ATIVO - 300 scans/segundo!');
         
         // Feedback visual que está ativo
         setScanCount(0);
@@ -332,31 +334,17 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
               autoPlay
             />
             
-                          {/* Indicador de velocidade - só quando ativo */}
-              {!error && !isInitializing && (
-                <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 text-white px-2 py-1 rounded-full text-xs font-black flex items-center space-x-1 shadow-lg animate-bounce">
-                  <Zap className="h-3 w-3" />
-                  <span>EXTREMO</span>
-                </div>
-              )}
 
-                          {/* Indicador de área ativa - tela inteira */}
+
+              {/* Indicador de área de scan - minimalista */}
               {!error && !isInitializing && (
                 <div className="absolute inset-0 pointer-events-none">
-                  {/* Border da tela inteira para mostrar que toda área é sensível */}
-                  <div className="absolute inset-1 border-2 border-green-400 rounded-lg shadow-lg animate-pulse">
-                    {/* Cantos indicadores em cada canto da tela */}
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
-                    
-                    {/* Texto central indicando área ativa */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-green-500 bg-opacity-90 text-white px-3 py-1 rounded-full text-xs font-bold">
-                        TELA INTEIRA ATIVA
-                      </div>
-                    </div>
+                  <div className="absolute inset-4 border-2 border-green-400 rounded-lg opacity-60">
+                    {/* Cantos indicadores */}
+                    <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-green-500"></div>
+                    <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-green-500"></div>
+                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-green-500"></div>
+                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-green-500"></div>
                   </div>
                 </div>
               )}
@@ -400,11 +388,8 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
             <div className="space-y-4 mt-4">
               {/* Instruções */}
               <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">
-                  Aponte a câmera para qualquer parte da tela com QR
-                </p>
-                <p className="text-xs text-green-600 font-medium">
-                  🔥 EXTREMAMENTE RÁPIDO: 120 scans/segundo + tela inteira sensível
+                <p className="text-sm text-gray-600">
+                  Posicione o QR code dentro da área indicada
                 </p>
               </div>
 
