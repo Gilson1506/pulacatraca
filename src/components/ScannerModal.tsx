@@ -42,37 +42,66 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       console.log('🚀 Iniciando scanner ultra-rápido...');
 
-      // Aguardar elemento de vídeo
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Aguardar elemento de vídeo com mais tempo e tentativas
+      let attempts = 0;
+      const maxAttempts = 20;
+      
+      while (!videoRef.current && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        attempts++;
+        console.log(`🔍 Aguardando elemento de vídeo... (${attempts}/${maxAttempts})`);
+      }
 
       if (!videoRef.current) {
-        throw new Error('Elemento de vídeo não encontrado');
+        throw new Error('Elemento de vídeo não encontrado após aguardar');
       }
+
+      // Solicitar acesso à câmera primeiro
+      console.log('📷 Solicitando acesso à câmera...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 640 },
+          height: { ideal: 640 }
+        }
+      });
+
+      // Configurar o vídeo
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      
+      console.log('📹 Vídeo configurado, iniciando scanner...');
 
       // Configuração otimizada para máxima velocidade
       const qrScanner = new QrScannerLib(
         videoRef.current,
         (result) => {
-          const qrData = result.data || result;
-          console.log('⚡ QR detectado:', qrData);
-          
-          // Processar imediatamente
-          onScan(qrData);
-          
-          // Fechar modal após scan bem-sucedido
-          onClose();
+          try {
+            const qrData = typeof result === 'string' ? result : (result.data || result);
+            console.log('⚡ QR detectado:', qrData);
+            
+            // Parar scanner imediatamente
+            qrScanner.stop();
+            
+            // Processar QR
+            onScan(qrData);
+            
+            // Fechar modal
+            onClose();
+          } catch (error) {
+            console.error('Erro ao processar QR:', error);
+          }
         },
         {
-          // Configurações para velocidade máxima
+          // Configurações para velocidade e confiabilidade
           preferredCamera: 'environment',
           highlightScanRegion: false,      // Desabilitar para performance
           highlightCodeOutline: false,     // Desabilitar para performance  
-          maxScansPerSecond: 25,           // Máxima velocidade possível
+          maxScansPerSecond: 20,           // Velocidade otimizada
           returnDetailedScanResult: false, // Resultado simples
-          // Área de scan otimizada para velocidade
+          // Área de scan otimizada
           calculateScanRegion: (video) => {
-            // Área menor = processamento mais rápido
-            const size = Math.min(video.videoWidth, video.videoHeight) * 0.5;
+            const size = Math.min(video.videoWidth, video.videoHeight) * 0.6;
             return {
               x: (video.videoWidth - size) / 2,
               y: (video.videoHeight - size) / 2,
@@ -85,7 +114,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
       qrScannerRef.current = qrScanner;
 
-      // Iniciar com configurações otimizadas
+      // Iniciar scanner
       await qrScanner.start();
 
       setIsInitializing(false);
@@ -179,7 +208,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                 {/* Indicador de velocidade */}
                 <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
                   <Zap className="h-3 w-3" />
-                  <span>Ultra-rápido</span>
+                  <span>Rápido & Confiável</span>
                 </div>
 
                 {/* Área de scan visual */}
@@ -199,7 +228,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                   Aponte a câmera para o QR code do ingresso
                 </p>
                 <p className="text-xs text-gray-500">
-                  Detecção automática em alta velocidade (25 scans/segundo)
+                  Detecção automática otimizada (20 scans/segundo)
                 </p>
               </div>
 

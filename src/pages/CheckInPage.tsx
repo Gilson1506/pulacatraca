@@ -662,26 +662,124 @@ const CheckInPage = () => {
                   </button>
                 </div>
                 
-                {/* Informações básicas do evento com dados reais */}
-                <div className="text-sm text-gray-600 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span>Data: {new Date(currentEvent.start_date).toLocaleDateString('pt-BR')}</span>
-                    {currentEvent.location && (
-                      <span className="truncate ml-4">📍 {currentEvent.location}</span>
-                    )}
+                {/* Detalhes completos do evento */}
+                <div className="space-y-4">
+                  {/* Imagem do evento se disponível */}
+                  {currentEvent.image_url && (
+                    <div className="w-full h-32 sm:h-40 rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={currentEvent.image_url} 
+                        alt={currentEvent.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Grid de informações */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Data e Horário */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900">Data & Horário</span>
+                      </div>
+                      <div className="text-sm text-blue-800">
+                        <div>{new Date(currentEvent.start_date).toLocaleDateString('pt-BR', { 
+                          weekday: 'long', 
+                          day: '2-digit', 
+                          month: 'long',
+                          year: 'numeric'
+                        })}</div>
+                        <div className="text-xs text-blue-600 mt-1">
+                          {new Date(currentEvent.start_date).toLocaleTimeString('pt-BR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                          {currentEvent.end_date && ` - ${new Date(currentEvent.end_date).toLocaleTimeString('pt-BR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Check-ins */}
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-900">Check-ins</span>
+                      </div>
+                      <div className="text-sm text-green-800">
+                        <div className="flex items-center justify-between">
+                          <span>Realizados:</span>
+                          <span className="font-bold text-green-600">{checkinStats.checked_in}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Total:</span>
+                          <span className="font-bold">{checkinStats.total_participants}</span>
+                        </div>
+                        <div className="mt-2 bg-green-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${checkinStats.percentage}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-green-600 mt-1 text-center">
+                          {checkinStats.percentage}% concluído
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Localização ou Status */}
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 sm:col-span-2 lg:col-span-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <MapPin className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-medium text-purple-900">
+                          {currentEvent.location ? 'Localização' : 'Status'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-purple-800">
+                        {currentEvent.location ? (
+                          <>
+                            <div className="font-medium">{currentEvent.location}</div>
+                            {currentEvent.address && (
+                              <div className="text-xs text-purple-600 mt-1">{currentEvent.address}</div>
+                            )}
+                          </>
+                        ) : (
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="font-medium">Evento Ativo</span>
+                            </div>
+                            <div className="text-xs text-purple-600 mt-1">
+                              Sistema de check-in operacional
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>✅ Check-ins: <strong>{checkinStats.checked_in}</strong> / {checkinStats.total_participants}</span>
-                    <span className="text-green-600 font-semibold">{checkinStats.percentage}% concluído</span>
-                  </div>
+
+                  {/* Último check-in */}
                   {checkinStats.last_checkin && (
-                    <div className="text-xs text-gray-500">
-                      Último check-in: {new Date(checkinStats.last_checkin).toLocaleString('pt-BR', { 
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
+                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">
+                          <strong>Último check-in:</strong> {new Date(checkinStats.last_checkin).toLocaleString('pt-BR', { 
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                        <span className="text-gray-500 text-xs">
+                          {checkinStats.pending} pendentes
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
