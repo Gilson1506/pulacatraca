@@ -228,11 +228,11 @@ const CheckInPage = () => {
         search_term: searchTerm || 'null'
       });
       
-      // Tentar chamar a função RPC
-      const { data, error } = await supabase.rpc('search_event_participants', {
+      // Tentar chamar a função RPC de busca de participantes
+      const { data, error } = await supabase.rpc('search_participants_by_text', {
+        p_search_text: searchTerm || '',
         p_event_id: currentEvent.id,
-        p_organizer_id: user.id,
-        p_search_term: searchTerm || null
+        p_organizer_id: user.id
       });
 
       if (error) {
@@ -265,7 +265,7 @@ const CheckInPage = () => {
       
       // Calcular estatísticas
       const total = participantsList.length;
-      const checkedIn = participantsList.filter(p => p.already_checked_in).length;
+      const checkedIn = participantsList.filter(p => p.is_checked_in).length;
       
       setTotalParticipants(total);
       setCheckedInCount(checkedIn);
@@ -394,31 +394,49 @@ const CheckInPage = () => {
 
     try {
       setIsScanning(true);
+      console.log('🔍 Escaneando QR Code:', qrData);
       
       const { data, error } = await supabase.rpc('checkin_by_qr_code', {
-        p_qr_code: qrData,
+        p_qr_code: qrData.trim(),
         p_event_id: currentEvent.id,
         p_organizer_id: user.id
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na função RPC:', error);
+        throw error;
+      }
 
-      const result = data[0] as CheckInResult;
+      console.log('📊 Resultado da busca:', data);
+
+      if (!data || data.length === 0) {
+        showModal('error', 'Nenhum resultado retornado do banco de dados', {
+          qr_code: qrData,
+          event_id: currentEvent.id
+        });
+        return;
+      }
+
+      const result = data[0];
       
       if (result.success) {
         showModal('success', result.message, result.participant_info);
         await fetchParticipants(searchQuery);
       } else {
-        if (result.message.includes('já foi realizado')) {
+        if (result.message.includes('já foi realizado') || result.message.includes('anteriormente')) {
           showModal('already_checked', result.message, result.participant_info);
         } else {
-          showModal('error', result.message);
+          showModal('error', result.message, result.participant_info);
         }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao processar QR code:', error);
-      showModal('error', 'Erro ao processar QR code');
+      const errorMessage = error?.message || 'Erro desconhecido ao processar QR code';
+      showModal('error', errorMessage, {
+        qr_code: qrData,
+        error_details: error?.details || 'Nenhum detalhe disponível'
+      });
     } finally {
       setIsScanning(false);
     }
@@ -751,7 +769,7 @@ const CheckInPage = () => {
                             </div>
                           </div>
                           <div className="text-right ml-4">
-                            {participant.already_checked_in ? (
+                            {participant.is_checked_in ? (
                               <div className="flex flex-col items-end space-y-2">
                                 <div className="flex items-center space-x-2 bg-green-100 px-3 py-2 rounded-full">
                                   <CheckCircle className="h-5 w-5 text-green-600" />

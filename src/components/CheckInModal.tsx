@@ -12,6 +12,12 @@ interface CheckInModalProps {
     ticket_type?: string;
     event_title?: string;
     checkin_date?: string;
+    qr_code?: string;
+    event_id?: string;
+    error_details?: string;
+    search_attempted?: string;
+    status?: string;
+    ticket_id?: string;
   };
   message: string;
 }
@@ -227,6 +233,65 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
                 <div className="flex items-center justify-center mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
                   <AlertTriangle className={`w-5 h-5 ${styles.text} mr-2`} />
                   <p className={`font-bold ${styles.text} text-lg`}>⚠️ JÁ REGISTRADO</p>
+                </div>
+              )}
+
+              {/* Informações de erro detalhadas */}
+              {type === 'error' && (
+                <div className="mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
+                  <div className="flex items-center mb-2">
+                    <XCircle className={`w-5 h-5 ${styles.text} mr-2`} />
+                    <p className={`font-bold ${styles.text} text-lg`}>❌ ERRO DETECTADO</p>
+                  </div>
+                  
+                  {/* QR Code tentado */}
+                  {data?.qr_code && (
+                    <div className="mb-2">
+                      <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>QR Code Escaneado</p>
+                      <p className={`font-mono text-sm ${styles.text} bg-black bg-opacity-20 p-2 rounded`}>
+                        {data.qr_code.length > 30 ? `${data.qr_code.substring(0, 30)}...` : data.qr_code}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Status específico */}
+                  {data?.status === 'user_not_defined' && (
+                    <div className="mb-2 p-2 bg-orange-500 bg-opacity-30 rounded">
+                      <p className={`text-xs ${styles.text} font-semibold`}>
+                        ⚠️ Ingresso encontrado mas usuário não foi definido. 
+                        O proprietário precisa preencher os dados primeiro.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Detalhes técnicos */}
+                  {data?.error_details && (
+                    <div className="mb-2">
+                      <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Detalhes Técnicos</p>
+                      <p className={`text-xs ${styles.text} bg-black bg-opacity-20 p-2 rounded font-mono`}>
+                        {data.error_details}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Busca tentada */}
+                  {data?.search_attempted && (
+                    <div className="mb-2">
+                      <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Busca Realizada</p>
+                      <p className={`text-xs ${styles.text}`}>{data.search_attempted}</p>
+                    </div>
+                  )}
+
+                  {/* Sugestões de solução */}
+                  <div className="mt-3 p-2 bg-blue-500 bg-opacity-30 rounded">
+                    <p className={`text-xs ${styles.text} font-semibold mb-1`}>💡 Possíveis Soluções:</p>
+                    <ul className={`text-xs ${styles.text} space-y-1`}>
+                      <li>• Verifique se o QR code está correto</li>
+                      <li>• Confirme que o ingresso pertence a este evento</li>
+                      <li>• Verifique se o usuário foi definido no ingresso</li>
+                      <li>• Execute os scripts SQL no Supabase se necessário</li>
+                    </ul>
+                  </div>
                 </div>
               )}
             </div>

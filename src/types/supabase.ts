@@ -144,9 +144,9 @@ export interface ParticipantSearchResult {
   name: string;
   email: string;
   document?: string;
-  ticket_id: string;
   ticket_type: string;
-  already_checked_in: boolean;
+  qr_code: string;
+  is_checked_in: boolean;
   checkin_date?: string;
 }
 
