@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
 import ImprovedQRScanner from '../components/ImprovedQRScanner';
+import SimplifiedQRScanner from '../components/SimplifiedQRScanner';
 import CameraDiagnostic from '../components/CameraDiagnostic';
 
 interface Event {
@@ -40,6 +41,7 @@ const CheckInPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showSimplifiedScanner, setShowSimplifiedScanner] = useState(false);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
@@ -846,15 +848,26 @@ const CheckInPage = () => {
                   <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-700">Busca Manual</h2>
                 </div>
                 
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   {/* Botão Scanner QR - Modal Otimizado */}
                   <button
                     onClick={() => setShowScannerModal(true)}
-                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-pink-100 text-pink-600 hover:bg-pink-200 text-xs sm:text-sm"
+                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-pink-100 text-pink-600 hover:bg-pink-200 text-xs sm:text-sm"
                     title="Abrir Scanner QR"
                   >
                     <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Scanner QR</span>
+                    <span>Scanner</span>
+                  </button>
+
+                  {/* Botão Scanner Simplificado */}
+                  <button
+                    onClick={() => setShowSimplifiedScanner(true)}
+                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-green-100 text-green-600 hover:bg-green-200 text-xs sm:text-sm"
+                    title="Scanner Simplificado (Debug)"
+                  >
+                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Simples</span>
+                    <span className="sm:hidden">S</span>
                   </button>
 
                   {/* Botão Diagnóstico de Câmera */}
@@ -865,6 +878,7 @@ const CheckInPage = () => {
                   >
                     <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Diagnóstico</span>
+                    <span className="sm:hidden">D</span>
                   </button>
                 </div>
               </div>
@@ -1041,6 +1055,14 @@ const CheckInPage = () => {
       <ImprovedQRScanner
         isOpen={showScannerModal}
         onClose={() => setShowScannerModal(false)}
+        onSuccess={handleQRCodeScan}
+        eventId={currentEvent?.id}
+      />
+
+      {/* Modal do Scanner Simplificado */}
+      <SimplifiedQRScanner
+        isOpen={showSimplifiedScanner}
+        onClose={() => setShowSimplifiedScanner(false)}
         onSuccess={handleQRCodeScan}
         eventId={currentEvent?.id}
       />
