@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
-import ScannerModal from '../components/ScannerModal';
+import ModernQRScanner from '../components/ModernQRScanner';
 
 interface Event {
   id: string;
@@ -483,7 +483,7 @@ const CheckInPage = () => {
     }
   };
 
-  const handleQRCodeScan = async (qrData: string) => {
+  const handleQRCodeScan = async (qrData: string, ticketData?: any) => {
     // Validação rápida
     const trimmedQR = qrData?.trim();
     if (!trimmedQR || !user || !currentEvent) {
@@ -1024,11 +1024,11 @@ const CheckInPage = () => {
       />
 
       {/* Modal do Scanner QR */}
-      <ScannerModal
+      <ModernQRScanner
         isOpen={showScannerModal}
         onClose={() => setShowScannerModal(false)}
-        onScan={handleQRCodeScan}
-        title="Scanner QR - Check-in"
+        onSuccess={handleQRCodeScan}
+        eventId={currentEvent?.id}
       />
     </div>
   );
