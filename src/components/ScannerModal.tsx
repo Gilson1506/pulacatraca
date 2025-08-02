@@ -24,15 +24,26 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   // Inicializar scanner quando modal abrir
   useEffect(() => {
     if (isOpen) {
-      startScanner();
+      // Delay para garantir que o DOM esteja pronto
+      const timer = setTimeout(() => {
+        startScanner();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        stopScanner();
+      };
     } else {
       stopScanner();
     }
+  }, [isOpen]);
 
+  // Cleanup ao desmontar componente
+  useEffect(() => {
     return () => {
       stopScanner();
     };
-  }, [isOpen]);
+  }, []);
 
   const startScanner = async () => {
     try {
@@ -119,17 +130,43 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         throw new Error('Não foi possível acessar nenhuma câmera');
       }
 
+      // Verificar novamente se o elemento de vídeo ainda existe
+      if (!videoRef.current) {
+        // Parar o stream se o elemento não existir mais
+        stream.getTracks().forEach(track => track.stop());
+        throw new Error('Elemento de vídeo perdido durante a configuração');
+      }
+
       // Configurar o vídeo com stream
       videoRef.current.srcObject = stream;
       
-      // Aguardar vídeo carregar
+      // Aguardar vídeo carregar com verificações adicionais
       await new Promise((resolve, reject) => {
-        videoRef.current!.onloadedmetadata = () => {
-          videoRef.current!.play()
-            .then(resolve)
-            .catch(reject);
+        if (!videoRef.current) {
+          reject(new Error('Elemento de vídeo não disponível'));
+          return;
+        }
+        
+        const video = videoRef.current;
+        
+        video.onloadedmetadata = () => {
+          if (video && video.play) {
+            video.play()
+              .then(resolve)
+              .catch(reject);
+          } else {
+            reject(new Error('Método play não disponível'));
+          }
         };
-        videoRef.current!.onerror = reject;
+        
+        video.onerror = (e) => {
+          reject(new Error('Erro ao carregar vídeo'));
+        };
+        
+        // Timeout de segurança
+        setTimeout(() => {
+          reject(new Error('Timeout ao carregar vídeo'));
+        }, 10000);
       });
       
       console.log('📹 Vídeo configurado e reproduzindo');
@@ -210,21 +247,47 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
   const stopScanner = () => {
     try {
+      console.log('⏹️ Parando scanner...');
+      
+      // Parar QR Scanner
       if (qrScannerRef.current) {
-        qrScannerRef.current.stop();
-        qrScannerRef.current.destroy();
+        try {
+          qrScannerRef.current.stop();
+          qrScannerRef.current.destroy();
+        } catch (err) {
+          console.warn('Erro ao parar QR scanner:', err);
+        }
         qrScannerRef.current = null;
       }
 
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
+      // Parar stream de vídeo
+      if (videoRef.current) {
+        try {
+          if (videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            if (stream && stream.getTracks) {
+              stream.getTracks().forEach(track => {
+                try {
+                  track.stop();
+                } catch (err) {
+                  console.warn('Erro ao parar track:', err);
+                }
+              });
+            }
+            videoRef.current.srcObject = null;
+          }
+          
+          // Limpar eventos
+          videoRef.current.onloadedmetadata = null;
+          videoRef.current.onerror = null;
+        } catch (err) {
+          console.warn('Erro ao limpar vídeo:', err);
+        }
       }
 
-      console.log('⏹️ Scanner parado');
+      console.log('✅ Scanner parado com sucesso');
     } catch (error) {
-      console.error('Erro ao parar scanner:', error);
+      console.error('❌ Erro ao parar scanner:', error);
     }
   };
 
