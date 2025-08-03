@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ParticipantSearchResult } from '../types/supabase';
 import CheckInModal from '../components/CheckInModal';
 import FinalQRScanner from '../components/FinalQRScanner';
-import CameraDiagnostic from '../components/CameraDiagnostic';
+
 
 interface Event {
   id: string;
@@ -40,7 +40,7 @@ const CheckInPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
   const [showFinalScanner, setShowFinalScanner] = useState(false);
-  const [showDiagnostic, setShowDiagnostic] = useState(false);
+
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [checkedInCount, setCheckedInCount] = useState(0);
   const [checkinStats, setCheckinStats] = useState({
@@ -721,7 +721,7 @@ const CheckInPage = () => {
                     {/* Scanner */}
                     <div className="bg-pink-50 p-2 rounded border border-pink-200 flex flex-col items-center justify-center">
                       <button
-                        onClick={() => setShowScannerModal(true)}
+                        onClick={() => setShowFinalScanner(true)}
                         className="flex flex-col items-center justify-center h-full w-full"
                         title="Abrir scanner QR"
                       >
@@ -871,28 +871,7 @@ const CheckInPage = () => {
                   <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-700">Busca Manual</h2>
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
-                  {/* Botão Scanner QR Final */}
-                  <button
-                    onClick={() => setShowFinalScanner(true)}
-                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-purple-100 text-purple-600 hover:bg-purple-200 text-xs sm:text-sm"
-                    title="Scanner QR HTML5 Nativo"
-                  >
-                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Scanner QR</span>
-                  </button>
 
-                  {/* Botão Diagnóstico de Câmera */}
-                  <button
-                    onClick={() => setShowDiagnostic(true)}
-                    className="flex items-center space-x-1 px-2 sm:px-3 py-2 rounded-lg font-medium transition-all duration-200 bg-blue-100 text-blue-600 hover:bg-blue-200 text-xs sm:text-sm"
-                    title="Diagnóstico de Câmera"
-                  >
-                    <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Diagnóstico</span>
-                    <span className="sm:hidden">D</span>
-                  </button>
-                </div>
               </div>
               
               <div className="space-y-3 sm:space-y-4">
@@ -1071,11 +1050,7 @@ const CheckInPage = () => {
         eventId={currentEvent?.id}
       />
 
-      {/* Modal de Diagnóstico de Câmera */}
-      <CameraDiagnostic
-        isOpen={showDiagnostic}
-        onClose={() => setShowDiagnostic(false)}
-      />
+
     </div>
   );
 };

@@ -47,7 +47,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [scanResult, setScanResult] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>('');
+
   const [domReady, setDomReady] = useState(false);
   
   // Refs DOM seguros
@@ -57,11 +57,10 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const readerId = "qr-reader-element";
 
   /**
-   * Debug info helper
+   * Debug desabilitado para produção
    */
   const addDebugInfo = (info: string) => {
-    console.log(`[FinalQRScanner] ${info}`);
-    setDebugInfo(prev => prev + `\n${new Date().toLocaleTimeString()}: ${info}`);
+    // Debug desabilitado
   };
 
   /**
@@ -559,7 +558,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    */
   const restartScanner = useCallback(() => {
     addDebugInfo('=== REINICIANDO SCANNER ===');
-    setDebugInfo(''); // Limpa debug info
+
     stopScanner();
     setTimeout(() => {
       isMountedRef.current = true;
@@ -705,14 +704,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               </p>
             </div>
             
-            {/* Debug Info */}
-            {debugInfo && (
-              <div className="bg-gray-100 rounded p-2">
-                <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
-                  {debugInfo.split('\n').slice(-6).join('\n')}
-                </p>
-              </div>
-            )}
+
             
             {/* Manual Controls */}
             <div className="flex space-x-3">
@@ -736,14 +728,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro do Scanner</h3>
               <p className="text-red-600 text-sm mb-4">{error}</p>
               
-              {/* Debug Info */}
-              {debugInfo && (
-                <div className="bg-gray-100 rounded p-2 mb-4 text-left">
-                  <p className="text-xs font-mono text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto">
-                    {debugInfo}
-                  </p>
-                </div>
-              )}
+
               
               <button
                 onClick={restartScanner}
