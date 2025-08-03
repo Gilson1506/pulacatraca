@@ -145,7 +145,9 @@ ORDER BY tu.updated_at DESC;
 -- ===================================
 
 -- Testar especificamente o QR PLKTK909538
-SELECT checkin_by_qr_code('PLKTK909538') as '7A_TESTE_PLKTK909538';
+SELECT 
+    '7A_TESTE_PLKTK909538' as passo,
+    checkin_by_qr_code('PLKTK909538') as resultado;
 
 -- Testar todos os QRs que tinham problema
 DO $$
