@@ -290,21 +290,31 @@ const OrganizerEvents = () => {
 
       if (error) throw error;
 
-      const formattedEvents: Event[] = (eventsData as any[])?.map(event => ({
-        id: event.id,
-        name: event.title,
-        date: new Date(event.start_date).toISOString().split('T')[0],
-        time: new Date(event.start_date).toTimeString().split(':').slice(0,2).join(':'),
-        location: event.location,
-        description: event.description,
-        status: event.status,
-        ticketsSold: ticketCounts[event.id] || 0,
-        totalTickets: event.total_tickets || 0,
-        revenue: 0, // TODO: Implementar cálculo de receita separadamente
-        category: event.category,
-        price: event.price || 0, // ✅ INCLUIR PREÇO DO EVENTO
-        image: event.image || event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo='
-      }));
+      const formattedEvents: Event[] = (eventsData as any[])?.map(event => {
+        // Debug das imagens
+        console.log(`🖼️ Evento ${event.title}:`, {
+          image: event.image,
+          banner_url: event.banner_url,
+          hasImage: !!event.image,
+          hasBanner: !!event.banner_url
+        });
+
+        return {
+          id: event.id,
+          name: event.title,
+          date: new Date(event.start_date).toISOString().split('T')[0],
+          time: new Date(event.start_date).toTimeString().split(':').slice(0,2).join(':'),
+          location: event.location,
+          description: event.description,
+          status: event.status,
+          ticketsSold: ticketCounts[event.id] || 0,
+          totalTickets: event.total_tickets || 0,
+          revenue: 0, // TODO: Implementar cálculo de receita separadamente
+          category: event.category,
+          price: event.price || 0, // ✅ INCLUIR PREÇO DO EVENTO
+          image: event.image || event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo='
+        };
+      });
 
       setEvents(formattedEvents);
     } catch (error) {
@@ -590,13 +600,27 @@ const OrganizerEvents = () => {
         {filteredEvents.map(event => (
           <div key={event.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             <div className="aspect-video bg-gradient-to-br from-pink-500 to-purple-600 relative">
-              {event.image ? (
+              {event.image && event.image !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=' ? (
                 <img 
                   src={event.image} 
                   alt={event.name}
                   className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => {
+                    console.log(`❌ Erro ao carregar imagem para ${event.name}:`, event.image);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log(`✅ Imagem carregada para ${event.name}:`, event.image);
+                  }}
                 />
-              ) : null}
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <div className="text-4xl mb-2">🎭</div>
+                    <div className="text-sm font-medium">Sem Imagem</div>
+                  </div>
+                </div>
+              )}
               <div className="absolute inset-0 bg-black bg-opacity-20"></div>
               <div className="absolute top-4 left-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(event.status)}`}>
