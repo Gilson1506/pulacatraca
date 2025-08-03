@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Camera, AlertTriangle, CheckCircle, User, Calendar, RotateCcw } from 'lucide-react';
+import { X, Camera, AlertTriangle, CheckCircle, User, Calendar, RotateCcw, QrCode, AlertCircle } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '../lib/supabase';
 import ProfessionalLoader from './ProfessionalLoader';
@@ -58,47 +58,12 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const isMountedRef = useRef(true);
   const readerId = "qr-reader-element";
 
-  /**
-   * Debug ativo para verificação RPC
-   */
+  // Debug removido para produção
   const addDebugInfo = (info: string) => {
-    console.log(`[SCANNER DEBUG] ${info}`);
+    // Debug silenciado
   };
 
-  /**
-   * Teste manual da RPC function
-   */
-  const testRPCFunction = async () => {
-    try {
-      console.log('🧪 INICIANDO TESTE MANUAL DA RPC FUNCTION');
-      
-      // Testar primeiro se a função existe
-      const { data: functionExists, error: testError } = await supabase
-        .rpc('checkin_by_qr_code', {
-          p_qr_code: 'TEST_QR_CODE_123'
-        });
 
-      console.log('📋 Resultado do teste:', functionExists);
-      console.log('❌ Erro do teste:', testError);
-      
-      if (testError) {
-        if (testError.message.includes('function') && testError.message.includes('does not exist')) {
-          alert('❌ RPC Function não existe!\n\nExecute o SQL no Supabase:\ncheckin_rpc_function.sql');
-          console.error('🚨 RPC FUNCTION NÃO ENCONTRADA - Execute o SQL no Supabase!');
-        } else {
-          alert(`❌ Erro RPC: ${testError.message}\n\nCódigo: ${testError.code}`);
-          console.error('🚨 Erro na RPC:', testError);
-        }
-      } else {
-        alert('✅ RPC Function está funcionando!\n\nVerifique o console para detalhes.');
-        console.log('✅ RPC FUNCTION FUNCIONANDO - Resposta:', functionExists);
-      }
-      
-    } catch (error) {
-      console.error('💥 Erro no teste RPC:', error);
-      alert(`💥 Erro crítico: ${error.message}`);
-    }
-  };
 
     /**
    * Busca rápida e otimizada em ticket_users
@@ -173,91 +138,35 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     const startTime = performance.now();
     
     try {
-      console.log('🚀 RPC DEBUG - INICIANDO PROCESSO');
-      console.log(`📋 QR Code: ${qrCode}`);
-      console.log(`⏱️ Tempo inicial: ${new Date().toISOString()}`);
-      addDebugInfo(`🚀 [RPC] Iniciando processamento para QR: ${qrCode}`);
-
-      console.log('🔗 Verificando conexão Supabase...');
-      const { data: authUser } = await supabase.auth.getUser();
-      console.log('👤 Usuário autenticado:', authUser.user?.id || 'Não logado');
-      addDebugInfo(`🔗 [RPC] Conexão Supabase OK - User: ${authUser.user?.id || 'Anonymous'}`);
-
-      console.log('📞 Chamando função RPC checkin_by_qr_code...');
+      addDebugInfo(`🚀 [RPC] Processando QR: ${qrCode}`);
       const { data: rpcResult, error: rpcError } = await supabase
         .rpc('checkin_by_qr_code', {
           p_qr_code: qrCode
         });
 
-      const rpcTime = performance.now() - startTime;
-      console.log(`⏱️ Tempo RPC: ${rpcTime.toFixed(2)}ms`);
-      addDebugInfo(`⏱️ [RPC] Tempo de execução: ${rpcTime.toFixed(2)}ms`);
-
       if (rpcError) {
-        console.error('❌ ERRO RPC DETECTADO:', rpcError);
-        console.error('📋 Detalhes do erro:', {
-          message: rpcError.message,
-          details: rpcError.details,
-          hint: rpcError.hint,
-          code: rpcError.code
-        });
-        addDebugInfo(`❌ [RPC] ERRO: ${rpcError.message} | Code: ${rpcError.code}`);
+        addDebugInfo(`❌ [RPC] ERRO: ${rpcError.message}`);
         throw new Error(`RPC Error: ${rpcError.message} (${rpcError.code})`);
       }
-
-      // ===== VERIFICAR RESPOSTA RPC =====
-      console.log('📦 RPC Result Raw:', rpcResult);
-      console.log('📊 RPC Result Type:', typeof rpcResult);
-      console.log('📊 RPC Result Keys:', rpcResult ? Object.keys(rpcResult) : 'null');
-      addDebugInfo(`📦 [RPC] Resposta recebida: ${JSON.stringify(rpcResult).substring(0, 200)}...`);
       
-      // ===== VERIFICAR ESTRUTURA =====
-      if (!rpcResult) {
-        console.error('❌ RPC retornou null/undefined');
-        addDebugInfo('❌ [RPC] Resposta vazia ou null');
-        throw new Error('RPC function retornou resposta vazia');
+      if (!rpcResult || typeof rpcResult !== 'object') {
+        addDebugInfo('❌ [RPC] Resposta inválida');
+        throw new Error('RPC function retornou resposta inválida');
       }
 
-      if (typeof rpcResult !== 'object') {
-        console.error('❌ RPC não retornou objeto válido:', typeof rpcResult);
-        addDebugInfo(`❌ [RPC] Tipo inválido: ${typeof rpcResult}`);
-        throw new Error(`RPC retornou tipo inválido: ${typeof rpcResult}`);
-      }
-
-      // ===== VERIFICAR SUCCESS =====
-      console.log('✅ Verificando campo success:', rpcResult.success);
       if (!rpcResult.success) {
-        console.error('❌ RPC indicou falha:', rpcResult.message);
-        addDebugInfo(`❌ [RPC] Falha: ${rpcResult.message} | Error: ${rpcResult.error}`);
+        addDebugInfo(`❌ [RPC] Falha: ${rpcResult.message}`);
         throw new Error(rpcResult.message || 'RPC function indicou falha');
       }
 
-      // ===== VERIFICAR AÇÃO =====
-      console.log('🎯 Ação RPC:', rpcResult.action);
-      console.log('💬 Mensagem RPC:', rpcResult.message);
-      addDebugInfo(`🎯 [RPC] Ação: ${rpcResult.action} | Mensagem: ${rpcResult.message}`);
-
-      // ===== VERIFICAR DADOS =====
       const rpcData = rpcResult.data;
-      console.log('📋 Dados RPC:', rpcData);
-      console.log('📋 Estrutura dos dados:', {
-        hasData: !!rpcData,
-        hasName: !!rpcData?.name,
-        hasEmail: !!rpcData?.email,
-        hasEventTitle: !!rpcData?.event_title,
-        hasTicketType: !!rpcData?.ticket_type,
-        hasStatus: !!rpcData?.status,
-        dataKeys: rpcData ? Object.keys(rpcData) : 'null'
-      });
       
       if (!rpcData) {
-        console.error('❌ RPC não retornou dados');
         addDebugInfo('❌ [RPC] Sem dados na resposta');
         throw new Error('RPC retornou sem dados');
       }
 
-      console.log('✅ Dados RPC encontrados - convertendo para TicketData...');
-      addDebugInfo('✅ [RPC] Dados encontrados - convertendo');
+      addDebugInfo('✅ [RPC] Convertendo dados');
 
       // ===== CONVERTER PARA TICKETDATA - ESTRUTURA CORRIGIDA =====
       const ticketData: TicketData = {
@@ -279,13 +188,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         checked_in_at: rpcData.checked_in_at || (rpcResult.action === 'CHECK_IN_COMPLETED' ? new Date().toISOString() : null),
       };
 
-      console.log('✅ TicketData convertido:', ticketData);
-      addDebugInfo('✅ [RPC] Conversão completa - dados prontos');
-
-      const totalTime = performance.now() - startTime;
-      console.log('🎉 RPC PROCESSO COMPLETO COM SUCESSO!');
-      console.log(`⏱️ Tempo total: ${totalTime.toFixed(2)}ms`);
-      addDebugInfo(`🎉 [RPC] SUCESSO! Tempo total: ${totalTime.toFixed(2)}ms`);
+      addDebugInfo('✅ [RPC] Check-in processado com sucesso');
 
       return { 
         ticketData, 
@@ -294,13 +197,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       };
 
     } catch (error) {
-      const totalTime = performance.now() - startTime;
-      console.error('💥 ERRO COMPLETO NO PROCESSO RPC:');
-      console.error('📋 Detalhes do erro:', error instanceof Error ? error.message : String(error));
-      console.error('📊 Stack trace:', error instanceof Error ? error.stack : 'N/A');
-      console.log(`⏱️ Tempo até erro: ${totalTime.toFixed(2)}ms`);
-      addDebugInfo(`💥 [RPC] ERRO FATAL: ${error instanceof Error ? error.message : String(error)}`);
-      addDebugInfo(`⏱️ [RPC] Tempo até erro: ${totalTime.toFixed(2)}ms`);
+      addDebugInfo(`💥 [RPC] Erro: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   };
@@ -372,14 +269,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     }
     
     try {
-      // ===== LOG PRIORITÁRIO - QR DETECTADO =====
-      console.log('🎯 ====== QR DETECTADO - ENVIANDO PARA RPC ======');
-      console.log(`📱 QR Code Capturado: "${decodedText}"`);
-      console.log(`📏 Tamanho do QR: ${decodedText.length} caracteres`);
-      console.log(`🔍 QR Primeiro/Últimos chars: ${decodedText.substring(0, 10)}...${decodedText.substring(decodedText.length - 10)}`);
-      console.log('🚀 INICIANDO ENVIO PARA RPC FUNCTION...');
-      
-      addDebugInfo(`📱 [QR DETECTED] QR: "${decodedText}" | Enviando para RPC...`);
+      addDebugInfo(`📱 QR detectado: ${decodedText}`);
       setScanned(true);
       
       // Para o scanner
@@ -420,13 +310,8 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         }
         
       } catch (rpcError) {
-        console.error('💥 ====== ERRO AO PROCESSAR QR ======');
-        console.error(`📱 QR que causou erro: "${decodedText}"`);
-        console.error(`❌ Erro: ${rpcError.message}`);
-        console.error(`📊 Stack: ${rpcError.stack}`);
-        
-        addDebugInfo(`❌ [QR ERROR] QR: "${decodedText}" | Erro: ${rpcError.message}`);
-        setError(`Erro ao processar QR "${decodedText}": ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
+        addDebugInfo(`❌ Erro: ${rpcError.message}`);
+        setError(`Erro ao processar QR: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
         setScanResult(null);
       }
     } catch (error) {
@@ -682,109 +567,73 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             <X className="h-5 w-5" />
           </button>
           
-          <div className="flex items-center space-x-3">
-            <div className="bg-white bg-opacity-20 rounded-full p-3">
-              <Camera className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Scanner QR</h2>
-              <div className="flex items-center gap-2">
-                <p className="text-pink-100 text-sm">RPC Function Ativa</p>
-                <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <QrCode className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Scanner QR</h2>
+                <p className="text-pink-100 text-sm">
+                  {scanned ? 'Processando...' : 'Posicione o QR code na área de leitura'}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] bg-white">
-          
-          {/* QR Reader Container - SEMPRE PRESENTE NO DOM */}
-          <div className="space-y-4 mb-6">
-            <div className="relative">
-              <div
-                id={readerId}
-                ref={handleRefCallback}
-                className="w-full min-h-[300px] border-2 border-dashed border-pink-300 rounded-lg bg-pink-50 flex items-center justify-center"
-              />
-              
-              {/* Status DOM */}
-              {!domReady && (
-                <div className="absolute inset-0 bg-pink-50 bg-opacity-90 flex items-center justify-center">
-                  <p className="text-pink-600 text-sm font-medium">Preparando DOM...</p>
+        {/* Área do Scanner */}
+        <div className="p-6 bg-white">
+          <div className="relative bg-gray-100 rounded-xl overflow-hidden mb-6" style={{ aspectRatio: '1' }}>
+            {!scannerActive ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 text-sm">Iniciando câmera...</p>
                 </div>
-              )}
-              
-              {/* Loading Overlay */}
-              {isLoading && (
-                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center">
-                  <div className="text-center">
-                    <ProfessionalLoader size="lg" className="mb-4" />
-                    <p className="text-gray-600">Inicializando scanner...</p>
-                    <p className="text-xs text-gray-500 mt-2">Aguardando DOM + setTimeout</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Status Overlay */}
-              {isScanning && (
-                <div className="absolute top-2 left-2 bg-pink-500 text-white px-2 py-1 rounded text-xs font-medium">
-                  ATIVO
-                </div>
-              )}
-              
-              {/* Scanning Indicator */}
-              {isScanning && (
-                <div className="absolute inset-0 border-2 border-pink-500 rounded-lg animate-pulse pointer-events-none"></div>
-              )}
-            </div>
+              </div>
+            ) : null}
             
-            {/* Instructions */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">
-                Aponte a câmera para o código QR do ticket
-              </p>
-              <p className="text-xs text-gray-500">
-                🚀 RPC Function Ativa - Processamento Ultra-Rápido
-              </p>
-              
-              {/* Teste RPC Manual */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-400 mb-2">Debug RPC:</p>
-                <button
-                  onClick={() => testRPCFunction()}
-                  className="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded hover:bg-pink-200 transition-colors"
-                >
-                  🧪 Testar RPC com QR Exemplo
-                </button>
+            <div
+              id="qr-reader-element"
+              className="w-full h-full"
+              style={{ minHeight: '300px' }}
+            />
+            
+            {/* Overlay de scanning */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-4 border-2 border-pink-500 rounded-lg opacity-60">
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-pink-500 rounded-tl-lg"></div>
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-pink-500 rounded-tr-lg"></div>
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-pink-500 rounded-bl-lg"></div>
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-pink-500 rounded-br-lg"></div>
               </div>
             </div>
           </div>
-          
-          {/* Error State */}
-          {error && (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro do Scanner</h3>
-              <p className="text-red-600 text-sm mb-4">{error}</p>
-              
 
-              
-              <button
-                onClick={restartScanner}
-                className="w-full bg-pink-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors flex items-center justify-center space-x-2 shadow-md"
-              >
-                <RotateCcw className="h-4 w-4" />
-                <span>Tentar Novamente</span>
-              </button>
+          {/* Status */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <div>
+                  <p className="text-red-800 font-medium text-sm">Erro</p>
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              </div>
             </div>
           )}
 
-
+          {/* Botões */}
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-gray-200 text-gray-800 px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Modal de Check-in Separado */}
       <CheckInModal

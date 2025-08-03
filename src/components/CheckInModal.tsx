@@ -77,18 +77,26 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-50 rounded-2xl shadow-2xl border border-gray-200 max-w-md w-full mx-4 overflow-hidden">
         
-        {/* Header Rosa */}
-        <div className="bg-gradient-to-r from-pink-500 to-pink-600 p-4 text-white relative">
+        {/* Header - Rosa para pendente, Verde para sucesso */}
+        <div className={`p-4 text-white relative ${
+          checkInComplete || ticketData.is_checked_in 
+            ? 'bg-gradient-to-r from-green-500 to-green-600' 
+            : 'bg-gradient-to-r from-pink-500 to-pink-600'
+        }`}>
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 text-white hover:bg-pink-400 rounded-full p-2 transition-colors"
+            className={`absolute top-4 right-4 text-white rounded-full p-2 transition-colors ${
+              checkInComplete || ticketData.is_checked_in
+                ? 'hover:bg-green-400'
+                : 'hover:bg-pink-400'
+            }`}
           >
             <X className="h-5 w-5" />
           </button>
           
           <div className="flex items-center space-x-3">
             <div className="bg-white bg-opacity-20 rounded-full p-3">
-              {checkInComplete ? (
+              {checkInComplete || ticketData.is_checked_in ? (
                 <CheckCircle className="h-6 w-6 text-white" />
               ) : (
                 <User className="h-6 w-6 text-white" />
@@ -97,11 +105,15 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
             <div>
               <h2 className="text-lg font-bold">
                 {checkInComplete ? 'Check-in Realizado!' : 
-                 ticketData.is_checked_in ? 'Já fez Check-in' : 'Confirmar Check-in'}
+                 ticketData.is_checked_in ? 'Check-in Confirmado' : 'Dados do Participante'}
               </h2>
-              <p className="text-pink-100 text-sm">
-                {checkInComplete ? 'Participante confirmado' : 
-                 ticketData.is_checked_in ? 'Check-in anterior' : 'Dados do participante'}
+              <p className={`text-sm ${
+                checkInComplete || ticketData.is_checked_in 
+                  ? 'text-green-100' 
+                  : 'text-pink-100'
+              }`}>
+                {checkInComplete ? 'Participante confirmado com sucesso' : 
+                 ticketData.is_checked_in ? 'Check-in já realizado anteriormente' : 'Informações do ticket'}
               </p>
             </div>
           </div>
