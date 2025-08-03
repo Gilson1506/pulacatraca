@@ -132,6 +132,66 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   };
 
   /**
+   * Busca via RPC function - Ultra rápida e robusta
+   */
+  const processQRCodeViaRPC = async (qrCode: string) => {
+    try {
+      addDebugInfo(`🚀 Chamando RPC para QR: ${qrCode}`);
+      
+      // Chamar função RPC que faz tudo
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('checkin_by_qr_code', {
+          p_qr_code: qrCode
+        });
+
+      if (rpcError) {
+        addDebugInfo(`❌ Erro RPC: ${rpcError.message}`);
+        throw new Error(`Erro na função RPC: ${rpcError.message}`);
+      }
+
+      addDebugInfo(`✅ RPC Result: ${JSON.stringify(rpcResult)}`);
+      
+      // Verificar se RPC retornou sucesso
+      if (!rpcResult.success) {
+        throw new Error(rpcResult.message || 'Erro desconhecido na função RPC');
+      }
+
+      // Converter resultado RPC para formato TicketData
+      const rpcData = rpcResult.data;
+      const ticketData: TicketData = {
+        id: rpcData.participant.id,
+        name: rpcData.participant.name,
+        email: rpcData.participant.email,
+        event_title: rpcData.event.title,
+        event_date: rpcData.event.start_date,
+        event_location: rpcData.event.location,
+        ticket_type: rpcData.ticket.type || 'Padrão',
+        ticket_price: rpcData.ticket.price || 0,
+        qr_code: rpcData.participant.qr_code,
+        purchased_at: new Date().toISOString(), // RPC não retorna essa data
+        ticket_id: rpcData.ticket.id,
+        event_id: rpcData.event.id,
+        organizer_id: rpcData.event.organizer_id || '',
+        ticket_user_id: rpcData.participant.id,
+        is_checked_in: rpcResult.action === 'ALREADY_CHECKED_IN' || rpcResult.action === 'NEW_CHECKIN',
+        checked_in_at: rpcData.checkin.checked_in_at,
+        source: 'rpc'
+      };
+
+      // Retornar dados formatados + info do RPC
+      return {
+        ticketData,
+        rpcAction: rpcResult.action,
+        rpcMessage: rpcResult.message
+      };
+
+    } catch (error) {
+      addDebugInfo(`❌ Erro processQRCodeViaRPC: ${error}`);
+      throw error;
+    }
+  };
+
+  /**
    * Realiza o check-in do participante
    */
   const performCheckin = async (ticketData: TicketData): Promise<boolean> => {
@@ -216,24 +276,26 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         navigator.vibrate([100, 50, 100]);
       }
 
-      // Busca dados do ticket
-      const ticketData = await fetchTicketData(decodedText);
-      
-      if (ticketData) {
-        addDebugInfo('✅ Ticket encontrado - abrindo modal de check-in');
+      // USAR RPC FUNCTION - Ultra rápida e robusta
+      try {
+        addDebugInfo('🚀 Usando RPC function para processamento completo');
+        const rpcResult = await processQRCodeViaRPC(decodedText);
+        
+        addDebugInfo(`✅ RPC Success: ${rpcResult.rpcAction} - ${rpcResult.rpcMessage}`);
         
         // Mostra dados no modal de check-in
-        setScanResult(ticketData);
+        setScanResult(rpcResult.ticketData);
         setShowCheckInModal(true);
         setError(null);
         
         if (onSuccess) {
-          onSuccess(decodedText, ticketData);
+          onSuccess(decodedText, rpcResult.ticketData);
         }
-      } else {
-        setError('Código QR inválido ou ticket não encontrado');
+        
+      } catch (rpcError) {
+        addDebugInfo(`❌ RPC Error: ${rpcError}`);
+        setError(`Erro: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
         setScanResult(null);
-        addDebugInfo('❌ Ticket não encontrado');
       }
     } catch (error) {
       addDebugInfo(`❌ Erro handleQRResult: ${error}`);

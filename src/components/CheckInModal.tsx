@@ -185,25 +185,7 @@ const CheckInModal: React.FC<CheckInModalProps> = ({
               {checkInComplete ? 'Concluir' : 'Cancelar'}
             </button>
             
-            {!ticketData.is_checked_in && !checkInComplete && (
-              <button
-                onClick={handleCheckIn}
-                disabled={processing}
-                className="flex-1 bg-pink-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {processing ? (
-                  <>
-                    <ProfessionalLoader size="sm" />
-                    <span>Processando...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Confirmar Check-in</span>
-                  </>
-                )}
-              </button>
-            )}
+            {/* Botão de fechar sempre visível - RPC já fez tudo */}
           </div>
         </div>
       </div>
