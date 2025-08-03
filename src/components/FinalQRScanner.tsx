@@ -3,6 +3,7 @@ import { X, Camera, AlertTriangle, CheckCircle, User, Calendar, RotateCcw } from
 import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '../lib/supabase';
 import ProfessionalLoader from './ProfessionalLoader';
+import CheckInModal from './CheckInModal';
 
 interface FinalQRScannerProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [scanResult, setScanResult] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const [domReady, setDomReady] = useState(false);
   
@@ -64,11 +66,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   };
 
     /**
-   * Busca dados do ticket apenas em ticket_users
+   * Busca rápida e otimizada em ticket_users
    */
   const fetchTicketData = async (qrCode: string): Promise<TicketData | null> => {
     try {
-      // Buscar apenas em ticket_users com query otimizada
+      // Query única e otimizada com relacionamentos
       const { data: ticketUserData, error: ticketUserError } = await supabase
         .from('ticket_users')
         .select(`
@@ -77,40 +79,32 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           email,
           qr_code,
           created_at,
-          tickets(
+          tickets!inner(
             id,
             price,
             ticket_type,
             event_id,
-            events(
+            events!inner(
               id,
               title,
               start_date,
               location,
               user_id
             )
+          ),
+          checkin(
+            id,
+            checked_in_at
           )
         `)
         .eq('qr_code', qrCode)
         .maybeSingle();
 
-      if (ticketUserError || !ticketUserData) {
+      if (ticketUserError || !ticketUserData?.tickets?.events) {
         return null;
       }
 
-      // Verificar se tem dados do ticket e evento
-      if (!ticketUserData.tickets || !ticketUserData.tickets.events) {
-        return null;
-      }
-
-      // Verificar check-in existente
-      const { data: existingCheckin } = await supabase
-        .from('checkin')
-        .select('id, checked_in_at')
-        .eq('ticket_user_id', ticketUserData.id)
-        .maybeSingle();
-
-      const isAlreadyCheckedIn = !!existingCheckin;
+      const isAlreadyCheckedIn = ticketUserData.checkin && ticketUserData.checkin.length > 0;
 
       return {
         id: ticketUserData.id,
@@ -128,7 +122,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         organizer_id: ticketUserData.tickets.events.user_id,
         ticket_user_id: ticketUserData.id,
         is_checked_in: isAlreadyCheckedIn,
-        checked_in_at: existingCheckin?.checked_in_at || null,
+        checked_in_at: ticketUserData.checkin?.[0]?.checked_in_at || null,
         source: 'ticket_users'
       };
 
@@ -226,43 +220,20 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       const ticketData = await fetchTicketData(decodedText);
       
       if (ticketData) {
-        addDebugInfo('✅ Ticket encontrado - processando check-in...');
+        addDebugInfo('✅ Ticket encontrado - abrindo modal de check-in');
         
-        // Realiza o check-in automaticamente
-        try {
-          const checkinSuccess = await performCheckin(ticketData);
-          
-          if (checkinSuccess) {
-            // Atualiza status para mostrar check-in realizado
-            const updatedTicketData = {
-              ...ticketData,
-              is_checked_in: true,
-              checked_in_at: new Date().toISOString()
-            };
-            
-            setScanResult(updatedTicketData);
-            setError(null);
-            addDebugInfo('🎉 Check-in realizado com sucesso!');
-            
-            if (onSuccess) {
-              onSuccess(decodedText, updatedTicketData);
-            }
-          } else {
-            setError('Erro ao realizar check-in. Tente novamente.');
-            setScanResult(null);
-            addDebugInfo('❌ Falha no check-in');
-          }
-        } catch (checkinError) {
-          addDebugInfo(`❌ Erro no check-in: ${checkinError}`);
-          setError('Erro ao realizar check-in. Tente novamente.');
-          setScanResult(null);
+        // Mostra dados no modal de check-in
+        setScanResult(ticketData);
+        setShowCheckInModal(true);
+        setError(null);
+        
+        if (onSuccess) {
+          onSuccess(decodedText, ticketData);
         }
       } else {
         setError('Código QR inválido ou ticket não encontrado');
         setScanResult(null);
-        addDebugInfo('❌ Ticket não encontrado - parando scanner');
-        
-        // NÃO reinicia automaticamente após erro - usuário deve clicar em "Tentar Novamente"
+        addDebugInfo('❌ Ticket não encontrado');
       }
     } catch (error) {
       addDebugInfo(`❌ Erro handleQRResult: ${error}`);
@@ -574,25 +545,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             {/* Instructions */}
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">
-                Aponte a câmera para o código QR
+                Aponte a câmera para o código QR do ticket
               </p>
               <p className="text-xs text-gray-500">
-                Scanner com setTimeout fix - DOM: {domReady ? '✅' : '⏳'}
+                Scanner ativo - Busca rápida automática
               </p>
-            </div>
-            
-
-            
-            {/* Manual Controls */}
-            <div className="flex space-x-3">
-              <button
-                onClick={restartScanner}
-                disabled={!domReady}
-                className="flex-1 text-sm text-pink-600 hover:text-pink-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RotateCcw className="h-4 w-4" />
-                <span>Reiniciar</span>
-              </button>
             </div>
           </div>
           
@@ -617,115 +574,25 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
           )}
 
-          {/* Success State */}
-          {scanResult && (
-            <div className="text-center py-6">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                scanResult.is_checked_in ? 'bg-green-100' : 'bg-yellow-100'
-              }`}>
-                <CheckCircle className={`h-8 w-8 ${
-                  scanResult.is_checked_in ? 'text-green-600' : 'text-yellow-600'
-                }`} />
-              </div>
-              
-              <h3 className={`text-lg font-semibold mb-2 ${
-                scanResult.is_checked_in ? 'text-green-900' : 'text-yellow-900'
-              }`}>
-                {scanResult.is_checked_in ? '✅ Check-in Realizado!' : '⚠️ Já tinha Check-in'}
-              </h3>
-              
-              <p className={`text-sm mb-2 ${
-                scanResult.is_checked_in ? 'text-green-700' : 'text-yellow-700'
-              }`}>
-                {scanResult.is_checked_in ? 'Participante confirmado no evento' : 'Check-in já foi feito anteriormente'}
-              </p>
-              
-              {/* Info da fonte */}
-              <p className="text-xs text-gray-500 mb-4">
-                📊 Dados encontrados em: {scanResult.source === 'ticket_users' ? 'Usuários de Tickets' : 'Tickets'} • 
-                QR: {scanResult.qr_code}
-              </p>
-              
-              <div className="bg-gray-50 rounded-lg p-4 text-left space-y-3">
-                {/* Participante */}
-                <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5 text-gray-600" />
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">Participante</p>
-                    <p className="font-semibold text-gray-900">{scanResult.name}</p>
-                    <p className="text-xs text-gray-500">{scanResult.email}</p>
-                  </div>
-                </div>
-                
-                {/* Evento */}
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-5 w-5 text-gray-600" />
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">Evento</p>
-                    <p className="font-semibold text-gray-900">{scanResult.event_title}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(scanResult.event_date).toLocaleDateString('pt-BR')} • {scanResult.event_location}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Tipo de Ingresso */}
-                <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
-                    <div className="w-2 h-2 bg-blue-600 rounded"></div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">Tipo de Ingresso</p>
-                    <p className="font-semibold text-gray-900">{scanResult.ticket_type}</p>
-                    <p className="text-xs text-gray-500">
-                      R$ {scanResult.ticket_price?.toFixed(2) || '0,00'}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Status Check-in */}
-                <div className="flex items-center space-x-3">
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${
-                    scanResult.is_checked_in ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    <div className={`w-2 h-2 rounded ${
-                      scanResult.is_checked_in ? 'bg-green-600' : 'bg-red-600'
-                    }`}></div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">Status</p>
-                    <p className={`font-semibold ${
-                      scanResult.is_checked_in ? 'text-green-900' : 'text-red-900'
-                    }`}>
-                      {scanResult.is_checked_in ? 'Check-in Confirmado' : 'Pendente'}
-                    </p>
-                    {scanResult.checked_in_at && (
-                      <p className="text-xs text-gray-500">
-                        {new Date(scanResult.checked_in_at).toLocaleString('pt-BR')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={restartScan}
-                  className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
-                >
-                  Escanear Outro
-                </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors shadow-md"
-                >
-                  Concluir
-                </button>
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
+
+      {/* Modal de Check-in Separado */}
+      <CheckInModal
+        isOpen={showCheckInModal}
+        onClose={() => {
+          setShowCheckInModal(false);
+          setScanned(false);
+          startScanner();
+        }}
+        ticketData={scanResult}
+        onSuccess={() => {
+          setShowCheckInModal(false);
+          setScanned(false);
+          startScanner();
+        }}
+      />
     </div>
   );
 };

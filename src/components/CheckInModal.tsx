@@ -1,322 +1,210 @@
-import React, { useEffect, useState } from 'react';
-import { X, CheckCircle, XCircle, AlertTriangle, Calendar, User, Mail, FileText, Clock, Ticket, MapPin, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, User, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import ProfessionalLoader from './ProfessionalLoader';
+
+interface TicketData {
+  id: string;
+  name: string;
+  email: string;
+  event_title: string;
+  event_date: string;
+  event_location: string;
+  ticket_type: string;
+  ticket_price: number;
+  qr_code: string;
+  purchased_at: string;
+  is_checked_in: boolean;
+  checked_in_at: string | null;
+  ticket_id: string;
+  event_id: string;
+  organizer_id: string;
+  ticket_user_id?: string | null;
+  user_id?: string | null;
+}
 
 interface CheckInModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'success' | 'already_checked' | 'error';
-  data?: {
-    participant_name?: string;
-    participant_email?: string;
-    participant_document?: string;
-    ticket_type?: string;
-    event_title?: string;
-    checkin_date?: string;
-    qr_code?: string;
-    event_id?: string;
-    error_details?: string;
-    search_attempted?: string;
-    status?: string;
-    ticket_id?: string;
-  };
-  message: string;
+  ticketData: TicketData | null;
+  onSuccess?: () => void;
 }
 
 const CheckInModal: React.FC<CheckInModalProps> = ({
   isOpen,
   onClose,
-  type,
-  data,
-  message
+  ticketData,
+  onSuccess
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [checkInComplete, setCheckInComplete] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setIsVisible(true);
-      setTimeout(() => setIsAnimating(true), 50);
-    } else {
-      setIsAnimating(false);
-      setTimeout(() => setIsVisible(false), 300);
+  const handleCheckIn = async () => {
+    if (!ticketData || ticketData.is_checked_in) return;
+
+    setProcessing(true);
+    try {
+      // Realizar check-in
+      const { error } = await supabase
+        .from('checkin')
+        .insert({
+          ticket_user_id: ticketData.ticket_user_id,
+          ticket_id: ticketData.ticket_id,
+          event_id: ticketData.event_id,
+          checked_in_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      setCheckInComplete(true);
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error('Erro no check-in:', error);
+      alert('Erro ao realizar check-in. Tente novamente.');
+    } finally {
+      setProcessing(false);
     }
-  }, [isOpen]);
+  };
 
   const handleClose = () => {
-    setIsAnimating(false);
-    setTimeout(() => {
-      onClose();
-    }, 300);
+    setCheckInComplete(false);
+    onClose();
   };
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  };
-
-  if (!isVisible) return null;
-
-  const getModalStyles = () => {
-    switch (type) {
-      case 'success':
-        return {
-          background: 'bg-gradient-to-br from-green-400 via-green-500 to-green-600',
-          border: 'border-green-300',
-          text: 'text-white',
-          icon: CheckCircle,
-          iconColor: 'text-white',
-          // animation: 'animate-pulse' // Removido
-        };
-      case 'already_checked':
-        return {
-          background: 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600',
-          border: 'border-yellow-300',
-          text: 'text-white',
-          icon: AlertTriangle,
-          iconColor: 'text-white',
-          animation: ''
-        };
-      case 'error':
-        return {
-          background: 'bg-gradient-to-br from-red-400 via-red-500 to-red-600',
-          border: 'border-red-300',
-          text: 'text-white',
-          icon: XCircle,
-          iconColor: 'text-white',
-          animation: ''
-        };
-      default:
-        return {
-          background: 'bg-white',
-          border: 'border-gray-300',
-          text: 'text-gray-900',
-          icon: CheckCircle,
-          iconColor: 'text-green-500',
-          animation: ''
-        };
-    }
-  };
-
-  const styles = getModalStyles();
-  const IconComponent = styles.icon;
+  if (!isOpen || !ticketData) return null;
 
   return (
-    <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300 ${
-        isAnimating ? 'opacity-100' : 'opacity-0'
-      }`}
-      onClick={handleOverlayClick}
-    >
-      <div 
-        className={`relative w-full max-w-sm sm:max-w-md mx-4 ${styles.background} ${styles.border} border-2 rounded-xl sm:rounded-2xl shadow-2xl transform transition-all duration-300 ${
-          isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
-        } ${styles.animation} max-h-[90vh] overflow-y-auto`}
-      >
-        {/* Header */}
-        <div className="relative p-4 sm:p-6 pb-3 sm:pb-4">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-50 rounded-2xl shadow-2xl border border-gray-200 max-w-md w-full mx-4 overflow-hidden">
+        
+        {/* Header Rosa */}
+        <div className="bg-gradient-to-r from-pink-500 to-pink-600 p-4 text-white relative">
           <button
             onClick={handleClose}
-            className={`absolute top-4 right-4 p-1 rounded-full hover:bg-black hover:bg-opacity-20 transition-colors ${styles.text}`}
+            className="absolute top-4 right-4 text-white hover:bg-pink-400 rounded-full p-2 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
-
-          {/* Ícone principal com animação */}
-          <div className="flex justify-center mb-3 sm:mb-4">
-            <div className={`p-3 sm:p-4 rounded-full bg-white bg-opacity-20`}>
-              <IconComponent className={`w-8 h-8 sm:w-12 sm:h-12 ${styles.iconColor}`} />
+          
+          <div className="flex items-center space-x-3">
+            <div className="bg-white bg-opacity-20 rounded-full p-3">
+              {checkInComplete ? (
+                <CheckCircle className="h-6 w-6 text-white" />
+              ) : (
+                <User className="h-6 w-6 text-white" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">
+                {checkInComplete ? 'Check-in Realizado!' : 
+                 ticketData.is_checked_in ? 'Já fez Check-in' : 'Confirmar Check-in'}
+              </h2>
+              <p className="text-pink-100 text-sm">
+                {checkInComplete ? 'Participante confirmado' : 
+                 ticketData.is_checked_in ? 'Check-in anterior' : 'Dados do participante'}
+              </p>
             </div>
           </div>
-
-          {/* Título */}
-          <h2 className={`text-lg sm:text-2xl font-bold text-center mb-2 ${styles.text}`}>
-            {type === 'success' && '🎉 Check-in Realizado!'}
-            {type === 'already_checked' && '⚠️ Já Registrado'}
-            {type === 'error' && '❌ Erro no Check-in'}
-          </h2>
-
-          {/* Mensagem */}
-          <p className={`text-center text-sm sm:text-lg ${styles.text} opacity-90`}>
-            {message}
-          </p>
         </div>
 
-        {/* Detalhes do participante */}
-        {data && (
-          <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-            <div className="bg-white bg-opacity-20 rounded-lg sm:rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
-              <h3 className={`font-bold text-base sm:text-lg ${styles.text} mb-2 sm:mb-3 flex items-center`}>
-                <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Detalhes do Ingresso
-              </h3>
-              
-              {/* Nome do participante */}
-              {data.participant_name && (
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <User className={`w-3 h-3 sm:w-4 sm:h-4 ${styles.text} opacity-70 flex-shrink-0`} />
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Nome</p>
-                    <p className={`font-semibold text-sm sm:text-base ${styles.text} truncate`}>{data.participant_name}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Email */}
-              {data.participant_email && (
-                <div className="flex items-center space-x-3">
-                  <Mail className={`w-4 h-4 ${styles.text} opacity-70`} />
-                  <div>
-                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Email</p>
-                    <p className={`font-semibold ${styles.text}`}>{data.participant_email}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Documento */}
-              {data.participant_document && (
-                <div className="flex items-center space-x-3">
-                  <FileText className={`w-4 h-4 ${styles.text} opacity-70`} />
-                  <div>
-                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Documento</p>
-                    <p className={`font-semibold ${styles.text}`}>{data.participant_document}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Tipo de ingresso */}
-              {data.ticket_type && (
-                <div className="flex items-center space-x-3">
-                  <Ticket className={`w-4 h-4 ${styles.text} opacity-70`} />
-                  <div>
-                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Tipo de Ingresso</p>
-                    <p className={`font-semibold ${styles.text}`}>{data.ticket_type}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Nome do evento */}
-              {data.event_title && (
-                <div className="flex items-center space-x-3">
-                  <MapPin className={`w-4 h-4 ${styles.text} opacity-70`} />
-                  <div>
-                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Evento</p>
-                    <p className={`font-semibold ${styles.text}`}>{data.event_title}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Data do check-in */}
-              {data.checkin_date && (
-                <div className="flex items-center space-x-3">
-                  <Clock className={`w-4 h-4 ${styles.text} opacity-70`} />
-                  <div>
-                    <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>
-                      {type === 'success' ? 'Check-in Realizado' : 'Check-in Anterior'}
-                    </p>
-                    <p className={`font-semibold ${styles.text}`}>
-                      {new Date(data.checkin_date).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Status do check-in */}
-              {type === 'success' && (
-                <div className="flex items-center justify-center mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
-                  <Sparkles className={`w-5 h-5 ${styles.text} mr-2`} />
-                  <p className={`font-bold ${styles.text} text-lg`}>✅ CHECK-IN CONFIRMADO</p>
-                </div>
-              )}
-
-              {type === 'already_checked' && (
-                <div className="flex items-center justify-center mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
-                  <AlertTriangle className={`w-5 h-5 ${styles.text} mr-2`} />
-                  <p className={`font-bold ${styles.text} text-lg`}>⚠️ JÁ REGISTRADO</p>
-                </div>
-              )}
-
-              {/* Informações de erro detalhadas */}
-              {type === 'error' && (
-                <div className="mt-4 p-3 bg-white bg-opacity-30 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <XCircle className={`w-5 h-5 ${styles.text} mr-2`} />
-                    <p className={`font-bold ${styles.text} text-lg`}>❌ ERRO DETECTADO</p>
-                  </div>
-                  
-                  {/* QR Code tentado */}
-                  {data?.qr_code && (
-                    <div className="mb-2">
-                      <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>QR Code Escaneado</p>
-                      <p className={`font-mono text-sm ${styles.text} bg-black bg-opacity-20 p-2 rounded`}>
-                        {data.qr_code.length > 30 ? `${data.qr_code.substring(0, 30)}...` : data.qr_code}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Status específico */}
-                  {data?.status === 'user_not_defined' && (
-                    <div className="mb-2 p-2 bg-orange-500 bg-opacity-30 rounded">
-                      <p className={`text-xs ${styles.text} font-semibold`}>
-                        ⚠️ Ingresso encontrado mas usuário não foi definido. 
-                        O proprietário precisa preencher os dados primeiro.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Detalhes técnicos */}
-                  {data?.error_details && (
-                    <div className="mb-2">
-                      <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Detalhes Técnicos</p>
-                      <p className={`text-xs ${styles.text} bg-black bg-opacity-20 p-2 rounded font-mono`}>
-                        {data.error_details}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Busca tentada */}
-                  {data?.search_attempted && (
-                    <div className="mb-2">
-                      <p className={`text-xs ${styles.text} opacity-70 uppercase tracking-wide`}>Busca Realizada</p>
-                      <p className={`text-xs ${styles.text}`}>{data.search_attempted}</p>
-                    </div>
-                  )}
-
-                  {/* Sugestões de solução */}
-                  <div className="mt-3 p-2 bg-blue-500 bg-opacity-30 rounded">
-                    <p className={`text-xs ${styles.text} font-semibold mb-1`}>💡 Possíveis Soluções:</p>
-                    <ul className={`text-xs ${styles.text} space-y-1`}>
-                      {data?.camera_error ? (
-                        <>
-                          <li>• Permita acesso à câmera nas configurações do navegador</li>
-                          <li>• Verifique se outra aba/app não está usando a câmera</li>
-                          <li>• Tente recarregar a página e permitir acesso</li>
-                          <li>• Use a busca manual como alternativa</li>
-                        </>
-                      ) : (
-                        <>
-                          <li>• Verifique se o QR code está correto</li>
-                          <li>• Confirme que o ingresso pertence a este evento</li>
-                          <li>• Verifique se o usuário foi definido no ingresso</li>
-                          <li>• Execute os scripts SQL no Supabase se necessário</li>
-                        </>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              )}
+        {/* Content */}
+        <div className="p-6 bg-white">
+          
+          {/* Info do Participante */}
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4 mb-6">
+            
+            {/* Participante */}
+            <div className="flex items-center space-x-3">
+              <User className="h-5 w-5 text-gray-600" />
+              <div className="flex-1">
+                <p className="text-sm text-gray-600">Participante</p>
+                <p className="font-semibold text-gray-900">{ticketData.name}</p>
+                <p className="text-xs text-gray-500">{ticketData.email}</p>
+              </div>
+            </div>
+            
+            {/* Evento */}
+            <div className="flex items-center space-x-3">
+              <Calendar className="h-5 w-5 text-gray-600" />
+              <div className="flex-1">
+                <p className="text-sm text-gray-600">Evento</p>
+                <p className="font-semibold text-gray-900">{ticketData.event_title}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(ticketData.event_date).toLocaleDateString('pt-BR')} • {ticketData.event_location}
+                </p>
+              </div>
+            </div>
+            
+            {/* Tipo de Ingresso */}
+            <div className="flex items-center space-x-3">
+              <div className="w-5 h-5 bg-pink-100 rounded flex items-center justify-center">
+                <div className="w-2 h-2 bg-pink-600 rounded"></div>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-600">Tipo de Ingresso</p>
+                <p className="font-semibold text-gray-900">{ticketData.ticket_type}</p>
+                <p className="text-xs text-gray-500">
+                  R$ {ticketData.ticket_price?.toFixed(2) || '0,00'}
+                </p>
+              </div>
+            </div>
+            
+            {/* Status Check-in */}
+            <div className="flex items-center space-x-3">
+              <div className={`w-5 h-5 rounded flex items-center justify-center ${
+                ticketData.is_checked_in || checkInComplete ? 'bg-green-100' : 'bg-yellow-100'
+              }`}>
+                <div className={`w-2 h-2 rounded ${
+                  ticketData.is_checked_in || checkInComplete ? 'bg-green-600' : 'bg-yellow-600'
+                }`}></div>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-gray-600">Status</p>
+                <p className={`font-semibold ${
+                  ticketData.is_checked_in || checkInComplete ? 'text-green-900' : 'text-yellow-900'
+                }`}>
+                  {checkInComplete ? 'Check-in Realizado Agora!' :
+                   ticketData.is_checked_in ? 'Check-in Anterior' : 'Pendente'}
+                </p>
+                {(ticketData.checked_in_at || checkInComplete) && (
+                  <p className="text-xs text-gray-500">
+                    {checkInComplete ? 'Agora' : 
+                     new Date(ticketData.checked_in_at!).toLocaleString('pt-BR')}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        )}
-
-        {/* Botão de fechar */}
-        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-          <button
-            onClick={handleClose}
-            className={`w-full py-2 sm:py-3 px-3 sm:px-4 bg-white bg-opacity-20 hover:bg-opacity-30 ${styles.text} font-semibold rounded-lg sm:rounded-xl transition-all duration-200 border border-white border-opacity-30 text-sm sm:text-base`}
-          >
-            Fechar
-          </button>
+          
+          {/* Botões */}
+          <div className="flex space-x-3">
+            <button
+              onClick={handleClose}
+              className="flex-1 bg-gray-200 text-gray-800 px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+            >
+              {checkInComplete ? 'Concluir' : 'Cancelar'}
+            </button>
+            
+            {!ticketData.is_checked_in && !checkInComplete && (
+              <button
+                onClick={handleCheckIn}
+                disabled={processing}
+                className="flex-1 bg-pink-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {processing ? (
+                  <>
+                    <ProfessionalLoader size="sm" />
+                    <span>Processando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Confirmar Check-in</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
