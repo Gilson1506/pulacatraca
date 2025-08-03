@@ -173,19 +173,16 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     const startTime = performance.now();
     
     try {
-      // ===== DEBUG INICIAL =====
       console.log('🚀 RPC DEBUG - INICIANDO PROCESSO');
       console.log(`📋 QR Code: ${qrCode}`);
       console.log(`⏱️ Tempo inicial: ${new Date().toISOString()}`);
       addDebugInfo(`🚀 [RPC] Iniciando processamento para QR: ${qrCode}`);
-      
-      // ===== VERIFICAR CONEXÃO SUPABASE =====
+
       console.log('🔗 Verificando conexão Supabase...');
       const { data: authUser } = await supabase.auth.getUser();
       console.log('👤 Usuário autenticado:', authUser.user?.id || 'Não logado');
       addDebugInfo(`🔗 [RPC] Conexão Supabase OK - User: ${authUser.user?.id || 'Anonymous'}`);
-      
-      // ===== CHAMAR FUNÇÃO RPC =====
+
       console.log('📞 Chamando função RPC checkin_by_qr_code...');
       const { data: rpcResult, error: rpcError } = await supabase
         .rpc('checkin_by_qr_code', {
@@ -196,7 +193,6 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       console.log(`⏱️ Tempo RPC: ${rpcTime.toFixed(2)}ms`);
       addDebugInfo(`⏱️ [RPC] Tempo de execução: ${rpcTime.toFixed(2)}ms`);
 
-      // ===== VERIFICAR ERRO RPC =====
       if (rpcError) {
         console.error('❌ ERRO RPC DETECTADO:', rpcError);
         console.error('📋 Detalhes do erro:', {
@@ -244,68 +240,67 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       // ===== VERIFICAR DADOS =====
       const rpcData = rpcResult.data;
       console.log('📋 Dados RPC:', rpcData);
+      console.log('📋 Estrutura dos dados:', {
+        hasData: !!rpcData,
+        hasName: !!rpcData?.name,
+        hasEmail: !!rpcData?.email,
+        hasEventTitle: !!rpcData?.event_title,
+        hasTicketType: !!rpcData?.ticket_type,
+        hasStatus: !!rpcData?.status,
+        dataKeys: rpcData ? Object.keys(rpcData) : 'null'
+      });
       
-      if (!rpcData || !rpcData.participant || !rpcData.event || !rpcData.ticket) {
-        console.error('❌ Estrutura de dados RPC incompleta:', {
-          hasData: !!rpcData,
-          hasParticipant: !!rpcData?.participant,
-          hasEvent: !!rpcData?.event,
-          hasTicket: !!rpcData?.ticket,
-          hasCheckin: !!rpcData?.checkin
-        });
-        addDebugInfo('❌ [RPC] Estrutura de dados incompleta');
-        throw new Error('RPC retornou dados incompletos');
+      if (!rpcData) {
+        console.error('❌ RPC não retornou dados');
+        addDebugInfo('❌ [RPC] Sem dados na resposta');
+        throw new Error('RPC retornou sem dados');
       }
 
-      console.log('✅ Estrutura RPC válida - convertendo para TicketData...');
-      addDebugInfo('✅ [RPC] Estrutura válida - convertendo dados');
+      console.log('✅ Dados RPC encontrados - convertendo para TicketData...');
+      addDebugInfo('✅ [RPC] Dados encontrados - convertendo');
 
-      // ===== CONVERTER PARA TICKETDATA =====
+      // ===== CONVERTER PARA TICKETDATA - ESTRUTURA CORRIGIDA =====
       const ticketData: TicketData = {
-        id: rpcData.participant.id,
-        name: rpcData.participant.name,
-        email: rpcData.participant.email,
-        event_title: rpcData.event.title,
-        event_date: rpcData.event.start_date,
-        event_location: rpcData.event.location,
-        ticket_type: rpcData.ticket.type || 'Padrão',
-        ticket_price: rpcData.ticket.price || 0,
-        qr_code: rpcData.participant.qr_code,
+        id: rpcData.qr_code || qrCode, // Usar QR como ID se não tiver ID específico
+        name: rpcData.name || 'Participante',
+        email: rpcData.email || '',
+        event_title: rpcData.event_title || 'Evento',
+        event_date: new Date().toISOString(), // Data atual como fallback
+        event_location: 'Local do Evento', // Fallback
+        ticket_type: rpcData.ticket_type || 'Ingresso',
+        ticket_price: 0, // Fallback
+        qr_code: qrCode,
         purchased_at: new Date().toISOString(),
-        ticket_id: rpcData.ticket.id,
-        event_id: rpcData.event.id,
-        organizer_id: rpcData.event.organizer_id || '',
-        ticket_user_id: rpcData.participant.id,
-        is_checked_in: rpcResult.action === 'ALREADY_CHECKED_IN' || rpcResult.action === 'NEW_CHECKIN',
-        checked_in_at: rpcData.checkin.checked_in_at,
-        source: 'rpc'
+        ticket_id: 'ticket-' + qrCode,
+        event_id: 'event-' + qrCode,
+        organizer_id: rpcData.organizer_id || '',
+        ticket_user_id: rpcData.qr_code || qrCode,
+        is_checked_in: rpcResult.action === 'ALREADY_CHECKED_IN',
+        checked_in_at: rpcData.checked_in_at || (rpcResult.action === 'CHECK_IN_COMPLETED' ? new Date().toISOString() : null),
       };
 
-      // ===== DEBUG FINAL =====
+      console.log('✅ TicketData convertido:', ticketData);
+      addDebugInfo('✅ [RPC] Conversão completa - dados prontos');
+
       const totalTime = performance.now() - startTime;
       console.log('🎉 RPC PROCESSO COMPLETO COM SUCESSO!');
       console.log(`⏱️ Tempo total: ${totalTime.toFixed(2)}ms`);
-      console.log('📋 TicketData gerado:', ticketData);
       addDebugInfo(`🎉 [RPC] SUCESSO! Tempo total: ${totalTime.toFixed(2)}ms`);
-      addDebugInfo(`👤 [RPC] Participante: ${ticketData.name} | Evento: ${ticketData.event_title}`);
 
-      // ===== RETORNAR RESULTADO =====
-      return {
-        ticketData,
-        rpcAction: rpcResult.action,
-        rpcMessage: rpcResult.message
+      return { 
+        ticketData, 
+        rpcAction: rpcResult.action, 
+        rpcMessage: rpcResult.message 
       };
 
     } catch (error) {
       const totalTime = performance.now() - startTime;
       console.error('💥 ERRO COMPLETO NO PROCESSO RPC:');
-      console.error('⏱️ Tempo até erro:', totalTime.toFixed(2) + 'ms');
-      console.error('📋 Detalhes do erro:', error);
-      console.error('📊 Stack trace:', error instanceof Error ? error.stack : 'No stack');
-      
+      console.error('📋 Detalhes do erro:', error instanceof Error ? error.message : String(error));
+      console.error('📊 Stack trace:', error instanceof Error ? error.stack : 'N/A');
+      console.log(`⏱️ Tempo até erro: ${totalTime.toFixed(2)}ms`);
       addDebugInfo(`💥 [RPC] ERRO FATAL: ${error instanceof Error ? error.message : String(error)}`);
       addDebugInfo(`⏱️ [RPC] Tempo até erro: ${totalTime.toFixed(2)}ms`);
-      
       throw error;
     }
   };
