@@ -59,10 +59,45 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const readerId = "qr-reader-element";
 
   /**
-   * Debug desabilitado para produção
+   * Debug ativo para verificação RPC
    */
   const addDebugInfo = (info: string) => {
-    // Debug desabilitado
+    console.log(`[SCANNER DEBUG] ${info}`);
+  };
+
+  /**
+   * Teste manual da RPC function
+   */
+  const testRPCFunction = async () => {
+    try {
+      console.log('🧪 INICIANDO TESTE MANUAL DA RPC FUNCTION');
+      
+      // Testar primeiro se a função existe
+      const { data: functionExists, error: testError } = await supabase
+        .rpc('checkin_by_qr_code', {
+          p_qr_code: 'TEST_QR_CODE_123'
+        });
+
+      console.log('📋 Resultado do teste:', functionExists);
+      console.log('❌ Erro do teste:', testError);
+      
+      if (testError) {
+        if (testError.message.includes('function') && testError.message.includes('does not exist')) {
+          alert('❌ RPC Function não existe!\n\nExecute o SQL no Supabase:\ncheckin_rpc_function.sql');
+          console.error('🚨 RPC FUNCTION NÃO ENCONTRADA - Execute o SQL no Supabase!');
+        } else {
+          alert(`❌ Erro RPC: ${testError.message}\n\nCódigo: ${testError.code}`);
+          console.error('🚨 Erro na RPC:', testError);
+        }
+      } else {
+        alert('✅ RPC Function está funcionando!\n\nVerifique o console para detalhes.');
+        console.log('✅ RPC FUNCTION FUNCIONANDO - Resposta:', functionExists);
+      }
+      
+    } catch (error) {
+      console.error('💥 Erro no teste RPC:', error);
+      alert(`💥 Erro crítico: ${error.message}`);
+    }
   };
 
     /**
@@ -135,29 +170,97 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    * Busca via RPC function - Ultra rápida e robusta
    */
   const processQRCodeViaRPC = async (qrCode: string) => {
+    const startTime = performance.now();
+    
     try {
-      addDebugInfo(`🚀 Chamando RPC para QR: ${qrCode}`);
+      // ===== DEBUG INICIAL =====
+      console.log('🚀 RPC DEBUG - INICIANDO PROCESSO');
+      console.log(`📋 QR Code: ${qrCode}`);
+      console.log(`⏱️ Tempo inicial: ${new Date().toISOString()}`);
+      addDebugInfo(`🚀 [RPC] Iniciando processamento para QR: ${qrCode}`);
       
-      // Chamar função RPC que faz tudo
+      // ===== VERIFICAR CONEXÃO SUPABASE =====
+      console.log('🔗 Verificando conexão Supabase...');
+      const { data: authUser } = await supabase.auth.getUser();
+      console.log('👤 Usuário autenticado:', authUser.user?.id || 'Não logado');
+      addDebugInfo(`🔗 [RPC] Conexão Supabase OK - User: ${authUser.user?.id || 'Anonymous'}`);
+      
+      // ===== CHAMAR FUNÇÃO RPC =====
+      console.log('📞 Chamando função RPC checkin_by_qr_code...');
       const { data: rpcResult, error: rpcError } = await supabase
         .rpc('checkin_by_qr_code', {
           p_qr_code: qrCode
         });
 
+      const rpcTime = performance.now() - startTime;
+      console.log(`⏱️ Tempo RPC: ${rpcTime.toFixed(2)}ms`);
+      addDebugInfo(`⏱️ [RPC] Tempo de execução: ${rpcTime.toFixed(2)}ms`);
+
+      // ===== VERIFICAR ERRO RPC =====
       if (rpcError) {
-        addDebugInfo(`❌ Erro RPC: ${rpcError.message}`);
-        throw new Error(`Erro na função RPC: ${rpcError.message}`);
+        console.error('❌ ERRO RPC DETECTADO:', rpcError);
+        console.error('📋 Detalhes do erro:', {
+          message: rpcError.message,
+          details: rpcError.details,
+          hint: rpcError.hint,
+          code: rpcError.code
+        });
+        addDebugInfo(`❌ [RPC] ERRO: ${rpcError.message} | Code: ${rpcError.code}`);
+        throw new Error(`RPC Error: ${rpcError.message} (${rpcError.code})`);
       }
 
-      addDebugInfo(`✅ RPC Result: ${JSON.stringify(rpcResult)}`);
+      // ===== VERIFICAR RESPOSTA RPC =====
+      console.log('📦 RPC Result Raw:', rpcResult);
+      console.log('📊 RPC Result Type:', typeof rpcResult);
+      console.log('📊 RPC Result Keys:', rpcResult ? Object.keys(rpcResult) : 'null');
+      addDebugInfo(`📦 [RPC] Resposta recebida: ${JSON.stringify(rpcResult).substring(0, 200)}...`);
       
-      // Verificar se RPC retornou sucesso
-      if (!rpcResult.success) {
-        throw new Error(rpcResult.message || 'Erro desconhecido na função RPC');
+      // ===== VERIFICAR ESTRUTURA =====
+      if (!rpcResult) {
+        console.error('❌ RPC retornou null/undefined');
+        addDebugInfo('❌ [RPC] Resposta vazia ou null');
+        throw new Error('RPC function retornou resposta vazia');
       }
 
-      // Converter resultado RPC para formato TicketData
+      if (typeof rpcResult !== 'object') {
+        console.error('❌ RPC não retornou objeto válido:', typeof rpcResult);
+        addDebugInfo(`❌ [RPC] Tipo inválido: ${typeof rpcResult}`);
+        throw new Error(`RPC retornou tipo inválido: ${typeof rpcResult}`);
+      }
+
+      // ===== VERIFICAR SUCCESS =====
+      console.log('✅ Verificando campo success:', rpcResult.success);
+      if (!rpcResult.success) {
+        console.error('❌ RPC indicou falha:', rpcResult.message);
+        addDebugInfo(`❌ [RPC] Falha: ${rpcResult.message} | Error: ${rpcResult.error}`);
+        throw new Error(rpcResult.message || 'RPC function indicou falha');
+      }
+
+      // ===== VERIFICAR AÇÃO =====
+      console.log('🎯 Ação RPC:', rpcResult.action);
+      console.log('💬 Mensagem RPC:', rpcResult.message);
+      addDebugInfo(`🎯 [RPC] Ação: ${rpcResult.action} | Mensagem: ${rpcResult.message}`);
+
+      // ===== VERIFICAR DADOS =====
       const rpcData = rpcResult.data;
+      console.log('📋 Dados RPC:', rpcData);
+      
+      if (!rpcData || !rpcData.participant || !rpcData.event || !rpcData.ticket) {
+        console.error('❌ Estrutura de dados RPC incompleta:', {
+          hasData: !!rpcData,
+          hasParticipant: !!rpcData?.participant,
+          hasEvent: !!rpcData?.event,
+          hasTicket: !!rpcData?.ticket,
+          hasCheckin: !!rpcData?.checkin
+        });
+        addDebugInfo('❌ [RPC] Estrutura de dados incompleta');
+        throw new Error('RPC retornou dados incompletos');
+      }
+
+      console.log('✅ Estrutura RPC válida - convertendo para TicketData...');
+      addDebugInfo('✅ [RPC] Estrutura válida - convertendo dados');
+
+      // ===== CONVERTER PARA TICKETDATA =====
       const ticketData: TicketData = {
         id: rpcData.participant.id,
         name: rpcData.participant.name,
@@ -168,7 +271,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         ticket_type: rpcData.ticket.type || 'Padrão',
         ticket_price: rpcData.ticket.price || 0,
         qr_code: rpcData.participant.qr_code,
-        purchased_at: new Date().toISOString(), // RPC não retorna essa data
+        purchased_at: new Date().toISOString(),
         ticket_id: rpcData.ticket.id,
         event_id: rpcData.event.id,
         organizer_id: rpcData.event.organizer_id || '',
@@ -178,7 +281,15 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         source: 'rpc'
       };
 
-      // Retornar dados formatados + info do RPC
+      // ===== DEBUG FINAL =====
+      const totalTime = performance.now() - startTime;
+      console.log('🎉 RPC PROCESSO COMPLETO COM SUCESSO!');
+      console.log(`⏱️ Tempo total: ${totalTime.toFixed(2)}ms`);
+      console.log('📋 TicketData gerado:', ticketData);
+      addDebugInfo(`🎉 [RPC] SUCESSO! Tempo total: ${totalTime.toFixed(2)}ms`);
+      addDebugInfo(`👤 [RPC] Participante: ${ticketData.name} | Evento: ${ticketData.event_title}`);
+
+      // ===== RETORNAR RESULTADO =====
       return {
         ticketData,
         rpcAction: rpcResult.action,
@@ -186,7 +297,15 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       };
 
     } catch (error) {
-      addDebugInfo(`❌ Erro processQRCodeViaRPC: ${error}`);
+      const totalTime = performance.now() - startTime;
+      console.error('💥 ERRO COMPLETO NO PROCESSO RPC:');
+      console.error('⏱️ Tempo até erro:', totalTime.toFixed(2) + 'ms');
+      console.error('📋 Detalhes do erro:', error);
+      console.error('📊 Stack trace:', error instanceof Error ? error.stack : 'No stack');
+      
+      addDebugInfo(`💥 [RPC] ERRO FATAL: ${error instanceof Error ? error.message : String(error)}`);
+      addDebugInfo(`⏱️ [RPC] Tempo até erro: ${totalTime.toFixed(2)}ms`);
+      
       throw error;
     }
   };
@@ -556,7 +675,10 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold">Scanner QR</h2>
-              <p className="text-pink-100 text-sm">Escaneie o código QR do ticket</p>
+              <div className="flex items-center gap-2">
+                <p className="text-pink-100 text-sm">RPC Function Ativa</p>
+                <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -610,8 +732,19 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                 Aponte a câmera para o código QR do ticket
               </p>
               <p className="text-xs text-gray-500">
-                Scanner ativo - Busca rápida automática
+                🚀 RPC Function Ativa - Processamento Ultra-Rápido
               </p>
+              
+              {/* Teste RPC Manual */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-400 mb-2">Debug RPC:</p>
+                <button
+                  onClick={() => testRPCFunction()}
+                  className="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded hover:bg-pink-200 transition-colors"
+                >
+                  🧪 Testar RPC com QR Exemplo
+                </button>
+              </div>
             </div>
           </div>
           
