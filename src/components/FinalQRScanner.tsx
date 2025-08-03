@@ -63,16 +63,12 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     // Debug desabilitado
   };
 
-  /**
-   * Busca dados do ticket e verifica check-in
-   * Busca em ticket_users primeiro, depois em tickets como fallback
+    /**
+   * Busca dados do ticket apenas em ticket_users
    */
   const fetchTicketData = async (qrCode: string): Promise<TicketData | null> => {
     try {
-      addDebugInfo(`🔍 Buscando ticket com QR: ${qrCode}`);
-      
-      // 1. Tentar buscar em ticket_users primeiro (sem relacionamentos múltiplos)
-      addDebugInfo('🔄 1. Buscando em ticket_users...');
+      // Buscar apenas em ticket_users com query otimizada
       const { data: ticketUserData, error: ticketUserError } = await supabase
         .from('ticket_users')
         .select(`
@@ -80,183 +76,64 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           name,
           email,
           qr_code,
-          created_at
+          created_at,
+          tickets(
+            id,
+            price,
+            ticket_type,
+            event_id,
+            events(
+              id,
+              title,
+              start_date,
+              location,
+              user_id
+            )
+          )
         `)
         .eq('qr_code', qrCode)
         .maybeSingle();
 
-      let foundData = null;
-      let isFromTicketUsers = false;
-
-      if (!ticketUserError && ticketUserData) {
-        addDebugInfo(`✅ ticket_users encontrado: ${ticketUserData.name}`);
-        
-        // Buscar dados do ticket separadamente
-        const { data: ticketData } = await supabase
-          .from('tickets')
-          .select(`
-            id,
-            price,
-            ticket_type,
-            event_id
-          `)
-          .eq('qr_code', qrCode)
-          .maybeSingle();
-
-        if (ticketData) {
-          // Buscar dados do evento separadamente
-          const { data: eventData } = await supabase
-            .from('events')
-            .select(`
-              id,
-              title,
-              start_date,
-              location,
-              user_id
-            `)
-            .eq('id', ticketData.event_id)
-            .maybeSingle();
-
-          if (eventData) {
-            foundData = {
-              id: ticketUserData.id,
-              name: ticketUserData.name,
-              email: ticketUserData.email,
-              event_title: eventData.title,
-              event_date: eventData.start_date,
-              event_location: eventData.location,
-              ticket_type: ticketData.ticket_type || 'Padrão',
-              ticket_price: ticketData.price || 0,
-              qr_code: ticketUserData.qr_code,
-              purchased_at: ticketUserData.created_at,
-              ticket_id: ticketData.id,
-              event_id: eventData.id,
-              organizer_id: eventData.user_id,
-              ticket_user_id: ticketUserData.id
-            };
-            isFromTicketUsers = true;
-            addDebugInfo('✅ Dados completos carregados via ticket_users');
-          }
-        }
-             }
-
-      if (!foundData) {
-        addDebugInfo(`⚠️ Não encontrado em ticket_users: ${ticketUserError?.message || 'Sem dados'}`);
-        
-        // 2. Fallback: buscar diretamente em tickets (sem relacionamento múltiplo)
-        addDebugInfo('🔄 2. Buscando em tickets...');
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select(`
-            id,
-            qr_code,
-            price,
-            ticket_type,
-            created_at,
-            event_id,
-            user_id
-          `)
-          .eq('qr_code', qrCode)
-          .maybeSingle();
-
-        if (!ticketError && ticketData) {
-          addDebugInfo(`✅ ticket encontrado: ID ${ticketData.id}`);
-          
-          // Buscar dados do evento separadamente
-          const { data: eventData } = await supabase
-            .from('events')
-            .select(`
-              id,
-              title,
-              start_date,
-              location,
-              user_id
-            `)
-            .eq('id', ticketData.event_id)
-            .maybeSingle();
-
-          if (eventData) {
-            foundData = {
-              id: `ticket_${ticketData.id}`, // ID artificial para tickets diretos
-              name: 'Usuário do Ticket',
-              email: 'nao-informado@ticket.com',
-              event_title: eventData.title,
-              event_date: eventData.start_date,
-              event_location: eventData.location,
-              ticket_type: ticketData.ticket_type || 'Padrão',
-              ticket_price: ticketData.price || 0,
-              qr_code: ticketData.qr_code,
-              purchased_at: ticketData.created_at,
-              ticket_id: ticketData.id,
-              event_id: eventData.id,
-              organizer_id: eventData.user_id,
-              ticket_user_id: null, // Não tem ticket_user associado
-              user_id: ticketData.user_id
-            };
-            isFromTicketUsers = false;
-            addDebugInfo('✅ Dados completos carregados via tickets');
-          } else {
-            addDebugInfo('❌ Evento não encontrado para o ticket');
-            return null;
-          }
-        } else {
-          addDebugInfo(`❌ Não encontrado em tickets: ${ticketError?.message || 'Sem dados'}`);
-          addDebugInfo('❌ QR Code não encontrado em nenhuma tabela');
-          return null;
-        }
-      }
-
-      if (!foundData) {
-        addDebugInfo('❌ Nenhum ticket encontrado');
+      if (ticketUserError || !ticketUserData) {
         return null;
       }
 
-      // Verifica se já foi feito check-in
-      addDebugInfo('🔄 Verificando status de check-in...');
-      let existingCheckin = null;
-      
-      if (isFromTicketUsers && foundData.ticket_user_id) {
-        // Para ticket_users, busca por ticket_user_id
-        const { data: checkinData, error: checkinError } = await supabase
-          .from('checkin')
-          .select('id, checked_in_at')
-          .eq('ticket_user_id', foundData.ticket_user_id)
-          .maybeSingle();
-        
-        if (!checkinError) {
-          existingCheckin = checkinData;
-        } else {
-          addDebugInfo(`⚠️ Erro ao verificar check-in por ticket_user_id: ${checkinError.message}`);
-        }
-      } else {
-        // Para tickets diretos, busca por event_id + user_id (ou ticket_id se disponível)
-        const { data: checkinData, error: checkinError } = await supabase
-          .from('checkin')
-          .select('id, checked_in_at')
-          .eq('event_id', foundData.event_id)
-          .eq('user_id', foundData.user_id || foundData.ticket_id)
-          .maybeSingle();
-        
-        if (!checkinError) {
-          existingCheckin = checkinData;
-        } else {
-          addDebugInfo(`⚠️ Erro ao verificar check-in por event_id+user_id: ${checkinError.message}`);
-        }
+      // Verificar se tem dados do ticket e evento
+      if (!ticketUserData.tickets || !ticketUserData.tickets.events) {
+        return null;
       }
 
+      // Verificar check-in existente
+      const { data: existingCheckin } = await supabase
+        .from('checkin')
+        .select('id, checked_in_at')
+        .eq('ticket_user_id', ticketUserData.id)
+        .maybeSingle();
+
       const isAlreadyCheckedIn = !!existingCheckin;
-      addDebugInfo(isAlreadyCheckedIn ? '⚠️ Já fez check-in anteriormente' : '✅ Pode fazer check-in');
 
       return {
-        ...foundData,
+        id: ticketUserData.id,
+        name: ticketUserData.name,
+        email: ticketUserData.email,
+        event_title: ticketUserData.tickets.events.title,
+        event_date: ticketUserData.tickets.events.start_date,
+        event_location: ticketUserData.tickets.events.location,
+        ticket_type: ticketUserData.tickets.ticket_type || 'Padrão',
+        ticket_price: ticketUserData.tickets.price || 0,
+        qr_code: ticketUserData.qr_code,
+        purchased_at: ticketUserData.created_at,
+        ticket_id: ticketUserData.tickets.id,
+        event_id: ticketUserData.tickets.events.id,
+        organizer_id: ticketUserData.tickets.events.user_id,
+        ticket_user_id: ticketUserData.id,
         is_checked_in: isAlreadyCheckedIn,
         checked_in_at: existingCheckin?.checked_in_at || null,
-        source: isFromTicketUsers ? 'ticket_users' : 'tickets'
+        source: 'ticket_users'
       };
 
     } catch (error) {
-      addDebugInfo(`❌ Erro geral fetchTicketData: ${error}`);
-      throw error;
+      return null;
     }
   };
 
