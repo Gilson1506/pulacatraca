@@ -405,21 +405,21 @@ const TicketPage = () => {
               </div>
 
               {/* Mobile: Logo à esquerda na mesma linha horizontal */}
-              <div className="sm:hidden flex items-center gap-3">
-                {/* Logo à esquerda */}
+              <div className="sm:hidden flex items-center gap-4">
+                {/* Logo à esquerda - maior */}
                 <div className="flex-shrink-0">
                   <img 
                     src="/logo2.png" 
                     alt="Logo PULACATRACA"
-                    className="h-16 w-auto object-contain opacity-90"
+                    className="h-20 w-auto object-contain opacity-90"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
                   />
                 </div>
                 
-                {/* Dados do evento e ingresso */}
-                <div className="flex-1 min-w-0">
+                {/* Dados do evento e ingresso - mais afastados */}
+                <div className="flex-1 min-w-0 ml-2">
                   <div className="flex justify-between items-start gap-2">
                     {/* Dados do evento */}
                     <div className="flex-1 min-w-0">
