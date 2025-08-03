@@ -377,7 +377,14 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     }
     
     try {
-      addDebugInfo(`QR detectado: ${decodedText}`);
+      // ===== LOG PRIORITÁRIO - QR DETECTADO =====
+      console.log('🎯 ====== QR DETECTADO - ENVIANDO PARA RPC ======');
+      console.log(`📱 QR Code Capturado: "${decodedText}"`);
+      console.log(`📏 Tamanho do QR: ${decodedText.length} caracteres`);
+      console.log(`🔍 QR Primeiro/Últimos chars: ${decodedText.substring(0, 10)}...${decodedText.substring(decodedText.length - 10)}`);
+      console.log('🚀 INICIANDO ENVIO PARA RPC FUNCTION...');
+      
+      addDebugInfo(`📱 [QR DETECTED] QR: "${decodedText}" | Enviando para RPC...`);
       setScanned(true);
       
       // Para o scanner
@@ -397,10 +404,16 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
 
       // USAR RPC FUNCTION - Ultra rápida e robusta
       try {
+        console.log(`🚀 ENVIANDO QR "${decodedText}" PARA RPC FUNCTION...`);
         addDebugInfo('🚀 Usando RPC function para processamento completo');
         const rpcResult = await processQRCodeViaRPC(decodedText);
         
-        addDebugInfo(`✅ RPC Success: ${rpcResult.rpcAction} - ${rpcResult.rpcMessage}`);
+        console.log('✅ ====== RPC PROCESSOU QR COM SUCESSO ======');
+        console.log(`🎯 Ação da RPC: ${rpcResult.rpcAction}`);
+        console.log(`💬 Mensagem da RPC: ${rpcResult.rpcMessage}`);
+        console.log(`👤 Participante encontrado: ${rpcResult.ticketData.name}`);
+        
+        addDebugInfo(`✅ [QR SUCCESS] RPC retornou: ${rpcResult.rpcMessage}`);
         
         // Mostra dados no modal de check-in
         setScanResult(rpcResult.ticketData);
@@ -412,8 +425,13 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         }
         
       } catch (rpcError) {
-        addDebugInfo(`❌ RPC Error: ${rpcError}`);
-        setError(`Erro: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
+        console.error('💥 ====== ERRO AO PROCESSAR QR ======');
+        console.error(`📱 QR que causou erro: "${decodedText}"`);
+        console.error(`❌ Erro: ${rpcError.message}`);
+        console.error(`📊 Stack: ${rpcError.stack}`);
+        
+        addDebugInfo(`❌ [QR ERROR] QR: "${decodedText}" | Erro: ${rpcError.message}`);
+        setError(`Erro ao processar QR "${decodedText}": ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
         setScanResult(null);
       }
     } catch (error) {
