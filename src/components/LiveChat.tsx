@@ -218,9 +218,9 @@ const LiveChat: React.FC = () => {
 
       {/* Chat Window */}
       {open && (
-        <div className="w-80 max-w-[95vw] h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fadeInUp">
-          {/* Header */}
-          <div className="flex items-center justify-between bg-gradient-to-r from-pink-500 to-purple-600 px-4 py-3">
+        <div className="w-80 max-w-[95vw] h-[500px] bg-gray-50 rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-fadeInUp">
+          {/* Header Rosa */}
+          <div className="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-4 py-3">
             <div className="flex items-center gap-3">
               <img 
                 src={LOGO_URL} 
@@ -230,7 +230,7 @@ const LiveChat: React.FC = () => {
               <div>
                 <span className="text-white font-bold text-sm block">Suporte PulaCatraca</span>
                 <div className="flex items-center gap-1">
-                  <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-300' : 'bg-yellow-300'}`}></div>
                   <span className="text-pink-100 text-xs">
                     {connected ? 'Online' : 'Conectando...'}
                   </span>
@@ -239,7 +239,7 @@ const LiveChat: React.FC = () => {
             </div>
             <button 
               onClick={() => setOpen(false)} 
-              className="text-white hover:text-pink-200 text-xl font-bold w-8 h-8 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center"
+              className="text-white hover:text-pink-100 text-xl font-bold w-8 h-8 rounded-full hover:bg-pink-400 transition-all duration-200 flex items-center justify-center"
               aria-label="Fechar chat"
             >
               ×
@@ -247,7 +247,7 @@ const LiveChat: React.FC = () => {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 px-4 py-3 overflow-y-auto bg-gradient-to-b from-pink-50/30 to-purple-50/30">
+          <div className="flex-1 px-4 py-3 overflow-y-auto bg-white">
                           {loading ? (
                 <div className="flex items-center justify-center h-full">
                   <ProfessionalLoader size="md" />
@@ -259,7 +259,7 @@ const LiveChat: React.FC = () => {
                   <p className="text-red-600 text-sm mb-3">{error}</p>
                   <button
                     onClick={initializeChat}
-                    className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors"
+                    className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors shadow-md"
                   >
                     Tentar Novamente
                   </button>
@@ -272,8 +272,8 @@ const LiveChat: React.FC = () => {
                     <div className="max-w-[80%]">
                       <div className={`rounded-xl px-4 py-2 text-sm shadow-sm ${
                         isUserMessage(msg) 
-                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-br-none' 
-                          : 'bg-white text-gray-800 rounded-bl-none border border-gray-200'
+                          ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-br-none' 
+                          : 'bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200'
                       }`}>
                         <p className="whitespace-pre-wrap">{msg.message}</p>
                       </div>
@@ -292,10 +292,10 @@ const LiveChat: React.FC = () => {
           </div>
 
           {/* Input Area */}
-          <form onSubmit={handleSend} className="flex items-center gap-2 px-4 py-3 bg-white border-t border-gray-100">
+          <form onSubmit={handleSend} className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-t border-gray-200">
             <input
               type="text"
-              className="flex-1 border border-gray-200 rounded-full px-4 py-2 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 text-sm transition-all duration-200"
+              className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 text-sm transition-all duration-200 bg-white"
               placeholder={connected ? "Digite sua mensagem..." : "Conectando..."}
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -306,7 +306,7 @@ const LiveChat: React.FC = () => {
             <button
               type="submit"
               disabled={!input.trim() || !connected || sending}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full w-11 h-11 flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+              className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-full w-11 h-11 flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
               aria-label="Enviar mensagem"
             >
               {sending ? (
