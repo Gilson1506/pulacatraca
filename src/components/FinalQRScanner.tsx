@@ -506,13 +506,13 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden max-h-[90vh]">
+      <div className="bg-gray-50 rounded-2xl shadow-2xl border border-gray-200 max-w-md w-full mx-4 overflow-hidden max-h-[90vh]">
         
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white relative">
+        {/* Header Rosa */}
+        <div className="bg-gradient-to-r from-pink-500 to-pink-600 p-4 text-white relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+            className="absolute top-4 right-4 text-white hover:bg-pink-400 rounded-full p-2 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -523,13 +523,13 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold">Scanner QR</h2>
-              <p className="text-green-100 text-sm">HTML5 com setTimeout Fix</p>
+              <p className="text-pink-100 text-sm">Escaneie o código QR do ticket</p>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] bg-white">
           
           {/* QR Reader Container - SEMPRE PRESENTE NO DOM */}
           <div className="space-y-4 mb-6">
@@ -537,13 +537,13 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               <div
                 id={readerId}
                 ref={handleRefCallback}
-                className="w-full min-h-[300px] border-2 border-dashed border-green-300 rounded-lg bg-green-50 flex items-center justify-center"
+                className="w-full min-h-[300px] border-2 border-dashed border-pink-300 rounded-lg bg-pink-50 flex items-center justify-center"
               />
               
               {/* Status DOM */}
               {!domReady && (
-                <div className="absolute inset-0 bg-green-50 bg-opacity-90 flex items-center justify-center">
-                  <p className="text-green-600 text-sm font-medium">Preparando DOM...</p>
+                <div className="absolute inset-0 bg-pink-50 bg-opacity-90 flex items-center justify-center">
+                  <p className="text-pink-600 text-sm font-medium">Preparando DOM...</p>
                 </div>
               )}
               
@@ -560,14 +560,14 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               
               {/* Status Overlay */}
               {isScanning && (
-                <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
+                <div className="absolute top-2 left-2 bg-pink-500 text-white px-2 py-1 rounded text-xs font-medium">
                   ATIVO
                 </div>
               )}
               
               {/* Scanning Indicator */}
               {isScanning && (
-                <div className="absolute inset-0 border-2 border-green-500 rounded-lg animate-pulse pointer-events-none"></div>
+                <div className="absolute inset-0 border-2 border-pink-500 rounded-lg animate-pulse pointer-events-none"></div>
               )}
             </div>
             
@@ -588,7 +588,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               <button
                 onClick={restartScanner}
                 disabled={!domReady}
-                className="flex-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 text-sm text-pink-600 hover:text-pink-700 font-medium transition-colors flex items-center justify-center space-x-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Reiniciar</span>
@@ -609,7 +609,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               
               <button
                 onClick={restartScanner}
-                className="w-full bg-green-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                className="w-full bg-pink-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors flex items-center justify-center space-x-2 shadow-md"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Tentar Novamente</span>
@@ -717,7 +717,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                  className="flex-1 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors shadow-md"
                 >
                   Concluir
                 </button>
