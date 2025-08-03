@@ -18,11 +18,13 @@ DECLARE
     v_search_strategy TEXT;
 BEGIN
     -- ===================================
-    -- 1. BUSCAR TICKET USER PELO QR CODE
+    -- 1. BUSCAR TICKET USER PELO QR CODE (COM LIMIT PARA EVITAR DUPLICADOS)
     -- ===================================
     SELECT * INTO v_ticket_user 
     FROM ticket_users 
-    WHERE qr_code = p_qr_code;
+    WHERE qr_code = p_qr_code
+    ORDER BY created_at DESC
+    LIMIT 1;
     
     -- Se não encontrou ticket_user
     IF v_ticket_user.id IS NULL THEN
@@ -41,35 +43,43 @@ BEGIN
     -- 2. BUSCAR TICKET COM MÚLTIPLAS ESTRATÉGIAS
     -- ===================================
     
-    -- Estratégia 1: Busca direta
-    SELECT * INTO v_ticket 
-    FROM tickets 
-    WHERE id = v_ticket_user.ticket_id;
+         -- Estratégia 1: Busca direta (COM LIMIT PARA EVITAR ERRO DE MÚLTIPLAS LINHAS)
+     SELECT * INTO v_ticket 
+     FROM tickets 
+     WHERE id = v_ticket_user.ticket_id
+     ORDER BY created_at DESC
+     LIMIT 1;
     
     IF v_ticket.id IS NOT NULL THEN
         v_search_strategy := 'direct_match';
     ELSE
-        -- Estratégia 2: Cast para texto
-        SELECT * INTO v_ticket 
-        FROM tickets 
-        WHERE id::text = v_ticket_user.ticket_id::text;
+                 -- Estratégia 2: Cast para texto
+         SELECT * INTO v_ticket 
+         FROM tickets 
+         WHERE id::text = v_ticket_user.ticket_id::text
+         ORDER BY created_at DESC
+         LIMIT 1;
         
         IF v_ticket.id IS NOT NULL THEN
             v_search_strategy := 'text_cast_match';
         ELSE
-            -- Estratégia 3: Trim para remover espaços
-            SELECT * INTO v_ticket 
-            FROM tickets 
-            WHERE TRIM(id::text) = TRIM(v_ticket_user.ticket_id::text);
+                         -- Estratégia 3: Trim para remover espaços
+             SELECT * INTO v_ticket 
+             FROM tickets 
+             WHERE TRIM(id::text) = TRIM(v_ticket_user.ticket_id::text)
+             ORDER BY created_at DESC
+             LIMIT 1;
             
             IF v_ticket.id IS NOT NULL THEN
                 v_search_strategy := 'trim_match';
             ELSE
                 -- Estratégia 4: UUID cast se possível
-                BEGIN
-                    SELECT * INTO v_ticket 
-                    FROM tickets 
-                    WHERE id = v_ticket_user.ticket_id::uuid;
+                                 BEGIN
+                     SELECT * INTO v_ticket 
+                     FROM tickets 
+                     WHERE id = v_ticket_user.ticket_id::uuid
+                     ORDER BY created_at DESC
+                     LIMIT 1;
                     
                     IF v_ticket.id IS NOT NULL THEN
                         v_search_strategy := 'uuid_cast_match';
@@ -101,18 +111,22 @@ BEGIN
     END IF;
     
     -- ===================================
-    -- 3. BUSCAR DADOS DO EVENTO
+    -- 3. BUSCAR DADOS DO EVENTO (COM LIMIT PARA EVITAR DUPLICADOS)
     -- ===================================
     SELECT * INTO v_event 
     FROM events 
-    WHERE id = v_ticket.event_id;
+    WHERE id = v_ticket.event_id
+    ORDER BY created_at DESC
+    LIMIT 1;
     
     -- Se não encontrou evento, tentar estratégias alternativas
     IF v_event.id IS NULL THEN
         -- Tentar cast para texto
         SELECT * INTO v_event 
         FROM events 
-        WHERE id::text = v_ticket.event_id::text;
+        WHERE id::text = v_ticket.event_id::text
+        ORDER BY created_at DESC
+        LIMIT 1;
         
         IF v_event.id IS NULL THEN
             RETURN json_build_object(
