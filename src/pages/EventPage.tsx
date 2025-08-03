@@ -866,7 +866,12 @@ const EventPage = () => {
 
       {/* Barra Flutuante de Compra */}
       {showFloatingBar && event && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transform transition-all duration-300 ease-in-out">
+        <>
+          {/* Background Preto Transparente */}
+          <div className="fixed inset-0 bg-black bg-opacity-30 z-30 transition-opacity duration-300"></div>
+          
+          {/* Popup de Compra */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transform transition-all duration-300 ease-in-out">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             {/* Informações do Evento */}
             <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -907,7 +912,8 @@ const EventPage = () => {
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
     </div>
