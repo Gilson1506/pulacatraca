@@ -330,7 +330,7 @@ const TicketPage = () => {
         {/* Logo do App - Menor */}
         <div className="flex justify-center mb-3">
           <img 
-            src="/logo2.png" 
+            src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png" 
             alt="Logo"
             className="h-10 sm:h-12 w-auto object-contain"
             onError={(e) => {
@@ -366,28 +366,33 @@ const TicketPage = () => {
 
         <main className="bg-white p-2 sm:p-4 rounded-b-lg shadow-md">
           <div ref={ticketRef} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            {/* Header com gradiente - Compacto */}
-            <div className="bg-gradient-to-r from-pink-600 to-rose-700 text-white p-2 sm:p-3">
-              {/* Logo centralizada no topo - Menor */}
-              <div className="flex justify-center mb-2">
-                <img 
-                  src="/logo2.png" 
-                  alt="Logo PULACATRACA"
-                  className="h-8 sm:h-12 w-auto object-contain opacity-90"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </div>
+            {/* Header com gradiente - Layout horizontal com logo */}
+            <div className="bg-gradient-to-r from-pink-600 to-rose-700 text-white p-3 sm:p-4">
               
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-sm sm:text-lg font-bold truncate">{ticket.event?.name || 'EVENTO'}</h1>
-                  <p className="text-pink-100 text-xs sm:text-sm truncate">{ticket.event?.location || 'Local do evento'}</p>
+              {/* Desktop: Logo centralizada com dados nas laterais */}
+              <div className="hidden sm:flex items-center justify-between">
+                {/* Dados do evento - esquerda */}
+                <div className="flex-1 min-w-0 pr-4">
+                  <h1 className="text-lg font-bold truncate">{ticket.event?.name || 'EVENTO'}</h1>
+                  <p className="text-pink-100 text-sm truncate">{ticket.event?.location || 'Local do evento'}</p>
                 </div>
-                <div className="text-left sm:text-right flex-shrink-0">
-                  <p className="text-sm sm:text-lg font-bold">R$ {(ticket.price || 0).toFixed(2)}</p>
-                  <p className="text-pink-100 text-xs truncate max-w-[200px] sm:max-w-none">
+                
+                {/* Logo centralizada */}
+                <div className="flex-shrink-0 px-6">
+                  <img 
+                    src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png" 
+                    alt="Logo PULACATRACA"
+                    className="h-16 w-auto object-contain opacity-90"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+                
+                {/* Dados do ingresso - direita */}
+                <div className="flex-1 min-w-0 pl-4 text-right">
+                  <p className="text-lg font-bold">R$ {(ticket.price || 0).toFixed(2)}</p>
+                  <p className="text-pink-100 text-sm truncate">
                     {ticket.ticket_type_name || ticket.name || ticket.ticket_type || 'INGRESSO GERAL'}
                     {ticket.ticket_area && ticket.ticket_area !== 'Geral' && ` - ${ticket.ticket_area}`}
                   </p>
@@ -396,6 +401,46 @@ const TicketPage = () => {
                       {ticket.gender === 'masculine' ? 'Masculino' : 'Feminino'}
                     </p>
                   )}
+                </div>
+              </div>
+
+              {/* Mobile: Logo à esquerda na mesma linha horizontal */}
+              <div className="sm:hidden flex items-center gap-3">
+                {/* Logo à esquerda */}
+                <div className="flex-shrink-0">
+                  <img 
+                    src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png" 
+                    alt="Logo PULACATRACA"
+                    className="h-12 w-auto object-contain opacity-90"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+                
+                {/* Dados do evento e ingresso */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    {/* Dados do evento */}
+                    <div className="flex-1 min-w-0">
+                      <h1 className="text-sm font-bold truncate">{ticket.event?.name || 'EVENTO'}</h1>
+                      <p className="text-pink-100 text-xs truncate">{ticket.event?.location || 'Local do evento'}</p>
+                    </div>
+                    
+                    {/* Dados do ingresso */}
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-sm font-bold">R$ {(ticket.price || 0).toFixed(2)}</p>
+                      <p className="text-pink-100 text-xs truncate max-w-[120px]">
+                        {ticket.ticket_type_name || ticket.name || ticket.ticket_type || 'INGRESSO GERAL'}
+                        {ticket.ticket_area && ticket.ticket_area !== 'Geral' && ` - ${ticket.ticket_area}`}
+                      </p>
+                      {ticket.gender && ticket.gender !== 'unisex' && (
+                        <p className="text-pink-200 text-xs">
+                          {ticket.gender === 'masculine' ? 'Masculino' : 'Feminino'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
