@@ -330,7 +330,7 @@ const TicketPage = () => {
         {/* Logo do App - Menor */}
         <div className="flex justify-center mb-3">
           <img 
-            src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png" 
+            src="/logo2.png" 
             alt="Logo"
             className="h-10 sm:h-12 w-auto object-contain"
             onError={(e) => {
@@ -380,9 +380,9 @@ const TicketPage = () => {
                 {/* Logo centralizada */}
                 <div className="flex-shrink-0 px-6">
                   <img 
-                    src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png" 
+                    src="/logo2.png" 
                     alt="Logo PULACATRACA"
-                    className="h-16 w-auto object-contain opacity-90"
+                    className="h-20 w-auto object-contain opacity-90"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
@@ -409,9 +409,9 @@ const TicketPage = () => {
                 {/* Logo à esquerda */}
                 <div className="flex-shrink-0">
                   <img 
-                    src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png" 
+                    src="/logo2.png" 
                     alt="Logo PULACATRACA"
-                    className="h-12 w-auto object-contain opacity-90"
+                    className="h-16 w-auto object-contain opacity-90"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
