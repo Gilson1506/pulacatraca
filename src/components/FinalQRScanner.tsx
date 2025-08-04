@@ -635,21 +635,22 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           </div>
         </div>
 
-      {/* Modal de Check-in Separado */}
-      <CheckInModal
-        isOpen={showCheckInModal}
-        onClose={() => {
-          setShowCheckInModal(false);
-          setScanned(false);
-          startScanner();
-        }}
-        ticketData={scanResult}
-        onSuccess={() => {
-          setShowCheckInModal(false);
-          setScanned(false);
-          startScanner();
-        }}
-      />
+        {/* Modal de Check-in Separado */}
+        <CheckInModal
+          isOpen={showCheckInModal}
+          onClose={() => {
+            setShowCheckInModal(false);
+            setScanned(false);
+            startScanner();
+          }}
+          ticketData={scanResult}
+          onSuccess={() => {
+            setShowCheckInModal(false);
+            setScanned(false);
+            startScanner();
+          }}
+        />
+      </div>
     </div>
   );
 };
