@@ -47,25 +47,46 @@ mapboxgl.accessToken = 'SEU_TOKEN_AQUI';
 ✅ **Cálculo de rota**
 - Traça rota de carro entre usuário e evento
 - Linha rosa conectando os dois pontos
+- Exibe distância e tempo estimado
 
-✅ **Navegação externa**
-- Botão "Navegar" abre Google Maps
+✅ **Navegação interna turn-by-turn**
+- **Painel lateral com instruções passo a passo**
+- **Ícones visuais para cada tipo de manobra** (virar, rotatória, etc.)
+- **Controles de navegação** (anterior/próximo passo)
+- **Foco automático no mapa** para cada instrução
+- **Lista completa de passos** clicável
+
+✅ **Navegação externa (Google Maps)**
+- Botão "Google Maps" abre navegação externa
 - Funciona em mobile e desktop
-- Navegação em tempo real
+- Opção para quem prefere app nativo
 
 ✅ **Interface intuitiva**
 - Modal responsivo e moderno
+- **Layout adaptativo** (mapa expande quando navegação está inativa)
 - Controles de zoom e navegação
 - Popups informativos nos marcadores
 
 ### 4. Como Usar
 
+**Abertura do mapa:**
 1. Na página do evento, clique no **endereço do evento** (texto sublinhado)
 2. O modal do mapa abrirá automaticamente
 3. Permita o acesso à localização quando solicitado
 4. Visualize sua localização (marcador azul) e o evento (marcador rosa)
-5. A rota será calculada automaticamente
-6. Use o botão "Navegar" para abrir no Google Maps
+5. A rota será calculada automaticamente com distância e tempo
+
+**Navegação interna:**
+6. Clique no botão **"Iniciar Navegação"** (verde)
+7. O painel lateral aparecerá com instruções passo a passo
+8. Use os botões **◀ ▶** para navegar entre os passos
+9. Clique em qualquer passo da lista para focar no mapa
+10. O mapa se ajustará automaticamente para mostrar cada manobra
+
+**Opções adicionais:**
+- **"Minha Localização"** - Recentra no usuário
+- **"Parar Navegação"** - Fecha o painel e volta ao modo normal
+- **"Google Maps"** - Abre navegação externa (GPS nativo)
 
 ### 5. Tratamento de Erros
 
