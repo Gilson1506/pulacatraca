@@ -11,21 +11,28 @@
 
 ### 2. Configurar no Projeto
 
-**Opção 1: Variável de Ambiente (Recomendado)**
+**Opção 1: Variável de Ambiente (Recomendado) ✅ JÁ CONFIGURADO**
 
-Crie um arquivo `.env` na raiz do projeto:
+O projeto já está configurado para usar variáveis de ambiente!
+
+**Para desenvolvimento local:**
+1. Copie o arquivo `.env.example` para `.env`:
 ```bash
-VITE_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiU0VVX1VTVUFSSU8iLCJhIjoiU0VVX1RPS0VOIn0...
+cp .env.example .env
 ```
 
-E modifique o arquivo `src/components/EventMapModal.tsx`:
-```typescript
-// Substituir esta linha:
-mapboxgl.accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
-
-// Por esta:
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+2. Edite o arquivo `.env` e adicione seu token:
+```bash
+VITE_MAPBOX_ACCESS_TOKEN=pk.seu_token_real_aqui
 ```
+
+**Para produção (Vercel):**
+1. Acesse o painel do Vercel
+2. Vá em Settings → Environment Variables
+3. Adicione a variável:
+   - **Name**: `VITE_MAPBOX_ACCESS_TOKEN`
+   - **Value**: `pk.seu_token_real_aqui`
+   - **Environment**: Production, Preview, Development
 
 **Opção 2: Substituição Direta**
 
