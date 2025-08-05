@@ -725,7 +725,12 @@ const EventPage = () => {
               <h1 className="text-xl font-bold mb-4 leading-tight text-gray-900" style={{ fontWeight: 700 }}>
                 {event.title}
               </h1>
-              <div className="text-sm mb-2 text-gray-600">{event.address}</div>
+              <button
+                onClick={() => setShowMapModal(true)}
+                className="text-sm mb-2 text-gray-600 hover:text-pink-600 underline transition-colors text-left block"
+              >
+                {event.address}
+              </button>
               <div className="inline-block bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold mb-4">
                 {event.dateLabel}
               </div>
@@ -736,7 +741,12 @@ const EventPage = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">Local: {event.location} - {event.address}</span>
+                  <button
+                    onClick={() => setShowMapModal(true)}
+                    className="text-sm text-gray-600 hover:text-pink-600 underline transition-colors text-left"
+                  >
+                    Local: {event.location} - {event.address}
+                  </button>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-gray-400" />
