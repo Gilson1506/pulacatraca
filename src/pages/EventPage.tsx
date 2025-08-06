@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
 import TicketSelectorModal from '../components/TicketSelectorModal';
+import EventMapModal from '../components/EventMapModal';
 
 import { supabase } from '../lib/supabase';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
@@ -93,6 +94,7 @@ const EventPage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState('');
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -671,7 +673,12 @@ const EventPage = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-white/80" />
-                <span className="text-xs text-white/90">Local: {event.location} - {event.address}</span>
+                <button
+                  onClick={() => setShowMapModal(true)}
+                  className="text-xs text-white/90 hover:text-white underline transition-colors text-left"
+                >
+                  Local: {event.location} - {event.address}
+                </button>
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-white/80" />
@@ -718,7 +725,12 @@ const EventPage = () => {
               <h1 className="text-xl font-bold mb-4 leading-tight text-gray-900" style={{ fontWeight: 700 }}>
                 {event.title}
               </h1>
-              <div className="text-sm mb-2 text-gray-600">{event.address}</div>
+              <button
+                onClick={() => setShowMapModal(true)}
+                className="text-sm mb-2 text-gray-600 hover:text-pink-600 underline transition-colors text-left block"
+              >
+                {event.address}
+              </button>
               <div className="inline-block bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold mb-4">
                 {event.dateLabel}
               </div>
@@ -729,7 +741,12 @@ const EventPage = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">Local: {event.location} - {event.address}</span>
+                  <button
+                    onClick={() => setShowMapModal(true)}
+                    className="text-sm text-gray-600 hover:text-pink-600 underline transition-colors text-left"
+                  >
+                    Local: {event.location} - {event.address}
+                  </button>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-gray-400" />
@@ -914,6 +931,16 @@ const EventPage = () => {
           </div>
           </div>
         </>
+      )}
+
+      {/* Modal de Mapa */}
+      {event && (
+        <EventMapModal
+          isOpen={showMapModal}
+          onClose={() => setShowMapModal(false)}
+          eventAddress={event.address}
+          eventName={event.title}
+        />
       )}
 
     </div>

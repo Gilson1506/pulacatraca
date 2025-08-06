@@ -49,6 +49,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [scannerActive, setScannerActive] = useState(false);
 
   const [domReady, setDomReady] = useState(false);
   
@@ -431,6 +432,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           
           if (isMountedRef.current) {
             setIsScanning(true);
+            setScannerActive(true);
             setIsLoading(false);
             addDebugInfo('✅ Scanner iniciado com sucesso - TUDO OK!');
           }
@@ -440,6 +442,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           if (isMountedRef.current) {
             const errorMessage = error instanceof Error ? error.message : 'Erro ao inicializar scanner';
             setError(errorMessage);
+            setScannerActive(false);
             setIsLoading(false);
           }
         }
@@ -450,6 +453,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       if (isMountedRef.current) {
         const errorMessage = error instanceof Error ? error.message : 'Erro ao inicializar scanner';
         setError(errorMessage);
+        setScannerActive(false);
         setIsLoading(false);
       }
     }
@@ -474,6 +478,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     }
     
     setIsScanning(false);
+    setScannerActive(false);
     setScanResult(null);
     setError(null);
     setScanned(false);
@@ -513,36 +518,27 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
     }, 500);
   }, [startScanner, isOpen]);
 
-  /**
-   * Callback do ref para detectar DOM pronto
-   */
-  const handleRefCallback = useCallback((element: HTMLDivElement | null) => {
-    readerRef.current = element;
-    if (element) {
-      addDebugInfo('✅ Elemento DOM completamente renderizado via ref callback');
-      setDomReady(true);
-    } else {
-      addDebugInfo('Aguardando elemento DOM ser renderizado...');
-      setDomReady(false);
-    }
-  }, []);
 
-  // Effect principal - aguarda DOM estar pronto
+
+  // Effect principal - controla scanner baseado no modal
   useEffect(() => {
     isMountedRef.current = true;
     
-    if (isOpen && domReady) {
-      addDebugInfo('Modal aberto e DOM pronto - iniciando scanner');
+    if (isOpen) {
+      addDebugInfo('Modal aberto - iniciando scanner');
+      // Pequeno delay para garantir que o DOM esteja pronto
       const timer = setTimeout(() => {
+        setDomReady(true);
         startScanner();
-      }, 200); // Delay menor já que temos setTimeout interno
+      }, 300);
       
       return () => clearTimeout(timer);
-    } else if (!isOpen) {
+    } else {
       addDebugInfo('Modal fechado - parando scanner');
+      setDomReady(false);
       stopScanner();
     }
-  }, [isOpen, domReady, startScanner, stopScanner]);
+  }, [isOpen, startScanner, stopScanner]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -585,17 +581,27 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         {/* Área do Scanner */}
         <div className="p-6 bg-white">
           <div className="relative bg-gray-100 rounded-xl overflow-hidden mb-6" style={{ aspectRatio: '1' }}>
-            {!scannerActive ? (
-              <div className="absolute inset-0 flex items-center justify-center">
+            {(!scannerActive || isLoading) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
                 <div className="text-center">
-                  <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600 text-sm">Iniciando câmera...</p>
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-3"></div>
+                      <p className="text-gray-600 text-sm">Iniciando câmera...</p>
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-600 text-sm">Preparando scanner...</p>
+                    </>
+                  )}
                 </div>
               </div>
-            ) : null}
+            )}
             
             <div
               id="qr-reader-element"
+              ref={readerRef}
               className="w-full h-full"
               style={{ minHeight: '300px' }}
             />
