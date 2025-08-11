@@ -15,7 +15,7 @@ const Footer = () => {
             <img
               src="/logo-com-qr.png"
               alt="Logo PULAKATRACA"
-              className="h-[72px] w-auto object-contain mb-3"
+              className="h-[144px] w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               A Pulakatraka é uma plataforma de gestão e venda de ingressos que
@@ -107,7 +107,7 @@ const Footer = () => {
             <img
               src="/logo-com-qr.png"
               alt="Logo PULAKATRACA"
-              className="h-[72px] w-auto object-contain mb-3"
+              className="h-[144px] w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               A Pulakatraka é uma plataforma de gestão e venda de ingressos que
@@ -128,7 +128,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 2: Links úteis */}
-          <div className="md:mt-[72px]">
+          <div className="md:mt-[144px]">
             <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -147,7 +147,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 3: Pulakatraka */}
-          <div className="md:mt-[72px]">
+          <div className="md:mt-[144px]">
             <h3 className="text-gray-900 font-semibold mb-3">Pulakatraka</h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -166,7 +166,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 4: Fique por dentro (newsletter) */}
-          <div className="md:mt-[72px]">
+          <div className="md:mt-[144px]">
             <h3 className="text-gray-900 font-semibold mb-3">Fique por dentro</h3>
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               Se inscreva na nossa lista de e-mail e fique por dentro dos próximos eventos da sua região.
