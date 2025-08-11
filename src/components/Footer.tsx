@@ -3,7 +3,7 @@ import { Instagram, Facebook, Linkedin } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-neutral-900 text-gray-300 w-full">
+    <footer className="bg-pink-900 text-gray-300 w-full">
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Coluna 1: Logo, descrição, redes sociais */}
