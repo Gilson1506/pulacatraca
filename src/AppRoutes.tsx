@@ -14,6 +14,7 @@ import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import TicketPage from './pages/TicketPage';
 import ABTestingDashboard, { useABTestingDashboardShortcut } from './components/ABTestingDashboard';
 import FAQPage from './pages/FAQPage';
+import PolicyPage from './pages/PolicyPage';
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -39,6 +40,7 @@ const AppRoutes = () => {
           <Route path="/organizer-register" element={<OrganizerRegisterPage />} />
           <Route path="/organizer-dashboard/*" element={<OrganizerDashboardPage />} />
           <Route path="/duvidas" element={<FAQPage />} />
+          <Route path="/politica" element={<PolicyPage />} />
         </Routes>
       </main>
       {!hideFooter && <Footer />}

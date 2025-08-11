@@ -34,6 +34,18 @@ const Footer = () => {
   const handleDuvidas = () => {
     navigate('/duvidas');
   };
+
+  const handleMeusIngressos = () => {
+    if (user) {
+      navigate('/profile/tickets');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  const handlePolitica = () => {
+    navigate('/politica');
+  };
   return (
     <footer className="bg-gray-50 text-gray-700 w-full">
       {/* Faixa de sombra no topo (transição para o footer) */}
@@ -96,13 +108,13 @@ const Footer = () => {
                   <button onClick={handleDuvidas} className="hover:text-pink-600">Dúvidas</button>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-pink-600">Meus ingressos</a>
+                  <button onClick={handleMeusIngressos} className="hover:text-pink-600">Meus ingressos</button>
                 </li>
                 <li>
                   <a href="#" className="hover:text-pink-600">Termos de uso</a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-pink-600">Política de Privacidade</a>
+                  <button onClick={handlePolitica} className="hover:text-pink-600">Política de Privacidade</button>
                 </li>
               </ul>
             </div>
@@ -186,13 +198,13 @@ const Footer = () => {
                 <button onClick={handleDuvidas} className="hover:text-pink-600 transition-colors">Dúvidas</button>
               </li>
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Meus ingressos</a>
+                <button onClick={handleMeusIngressos} className="hover:text-pink-600 transition-colors">Meus ingressos</button>
               </li>
               <li>
                 <a href="#" className="hover:text-pink-600 transition-colors">Termos de uso</a>
               </li>
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Política de Privacidade</a>
+                <button onClick={handlePolitica} className="hover:text-pink-600 transition-colors">Política de Privacidade</button>
               </li>
             </ul>
           </div>
