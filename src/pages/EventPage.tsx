@@ -631,13 +631,13 @@ const EventPage = () => {
           {showImageModal && (
             <div
               ref={imageModalRef}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
               onClick={() => setShowImageModal(false)}
             >
               <img
                 src={event.image}
                 alt={event.title}
-                className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white"
+                className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white pointer-events-auto"
                 style={{ 
                   objectPosition: 'center center',
                   imageRendering: 'high-quality',
@@ -650,7 +650,7 @@ const EventPage = () => {
                 loading="eager"
               />
               <button
-                className="absolute top-4 right-4 text-white text-3xl font-bold bg-black bg-opacity-40 rounded-full px-3 py-1 hover:bg-opacity-70 transition"
+                className="absolute top-4 right-4 text-white text-3xl font-bold bg-pink-600 rounded-full px-3 py-1 hover:bg-pink-700 transition pointer-events-auto"
                 onClick={() => setShowImageModal(false)}
               >
                 &times;
@@ -885,9 +885,6 @@ const EventPage = () => {
       {/* Barra Flutuante de Compra */}
       {showFloatingBar && event && (
         <>
-          {/* Background Preto Transparente */}
-          <div className="fixed inset-0 bg-black bg-opacity-30 z-30 transition-opacity duration-300"></div>
-          
           {/* Popup de Compra */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transform transition-all duration-300 ease-in-out">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
