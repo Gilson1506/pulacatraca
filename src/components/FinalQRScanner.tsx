@@ -695,7 +695,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               </div>
             ) : null}
             
-            <div id="qr-reader-element" className="absolute inset-0" />
+            <div id="qr-reader-element" ref={handleRefCallback} className="absolute inset-0" />
             
             {/* Overlay de scanning */}
             <div className="absolute inset-0 pointer-events-none">
