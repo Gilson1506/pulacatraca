@@ -5,9 +5,9 @@ const Footer = () => {
   return (
     <footer className="bg-gray-50 text-gray-700 w-full">
       {/* Faixa de sombra no topo (transição para o footer) */}
-      <div className="w-full h-10 bg-gradient-to-b from-gray-300/80 via-gray-200/70 to-transparent" />
+      <div className="w-full h-4 bg-gradient-to-b from-gray-300/80 via-gray-200/70 to-transparent" />
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-4">
         {/* Mobile: layout compacto e horizontal para menus */}
         <div className="md:hidden">
           {/* Logo + descrição + redes */}
@@ -15,7 +15,7 @@ const Footer = () => {
             <img
               src="/logo-com-qr.png"
               alt="Logo PULAKATRACA"
-              className="h-[216px] w-auto object-contain mb-3"
+              className="h-[72px] w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               A Pulakatraka é uma plataforma de gestão e venda de ingressos que
@@ -101,13 +101,13 @@ const Footer = () => {
         </div>
 
         {/* Desktop: manter estrutura em 4 colunas */}
-        <div className="hidden md:grid md:grid-cols-4 gap-6">
+        <div className="hidden md:grid md:grid-cols-4 gap-6 items-start">
           {/* Coluna 1: Logo, descrição, redes sociais */}
           <div>
             <img
               src="/logo-com-qr.png"
               alt="Logo PULAKATRACA"
-              className="h-[216px] w-auto object-contain mb-3"
+              className="h-[72px] w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               A Pulakatraka é uma plataforma de gestão e venda de ingressos que
@@ -128,7 +128,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 2: Links úteis */}
-          <div>
+          <div className="md:mt-[72px]">
             <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -147,7 +147,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 3: Pulakatraka */}
-          <div>
+          <div className="md:mt-[72px]">
             <h3 className="text-gray-900 font-semibold mb-3">Pulakatraka</h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -166,7 +166,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 4: Fique por dentro (newsletter) */}
-          <div>
+          <div className="md:mt-[72px]">
             <h3 className="text-gray-900 font-semibold mb-3">Fique por dentro</h3>
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               Se inscreva na nossa lista de e-mail e fique por dentro dos próximos eventos da sua região.
