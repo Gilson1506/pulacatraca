@@ -76,7 +76,7 @@ const LoginPage = () => {
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 w-full max-h-screen overflow-y-auto">
           <div className="text-center mb-6 sm:mb-8">
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
-              {showEmailForm ? 'Acessar Conta' : 'Bem-vindo de volta'}
+              {showEmailForm ? 'Acessar Conta' : 'Bem vindo'}
             </h1>
             <p className="text-gray-600">
               {showEmailForm 
