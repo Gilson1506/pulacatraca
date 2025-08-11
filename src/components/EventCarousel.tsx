@@ -1,58 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
-interface FeaturedEvent {
+interface CarouselEvent {
   id: string;
   title: string;
-  subtitle: string;
-  image: string;
-  buttonText: string;
-  buttonLink: string;
+  image: string | null;
 }
 
 const EventCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
-
-  const featuredEvents: FeaturedEvent[] = [
-    {
-      id: '1',
-      title: 'O EMBAIXADOR',
-      subtitle: 'Classic',
-      image: 'https://i.postimg.cc/7YtVwL9b/Imagem-Whats-App-2025-07-14-s-17-58-28-83ccbe3c.jpg',
-      buttonText: 'COMPRE AQUI SEU INGRESSO!',
-      buttonLink: '/event/1'
-    },
-    {
-      id: '2',
-      title: 'FESTA JULINA',
-      subtitle: 'Sorocaba',
-      image: 'https://i.postimg.cc/d3dtV6Z4/Imagem-Whats-App-2025-07-14-s-17-58-28-fdcded78.jpg',
-      buttonText: 'COMPRE AQUI SEU INGRESSO!',
-      buttonLink: '/event/2'
-    },
-    {
-      id: '3',
-      title: 'TULUM BEACH',
-      subtitle: 'Club 2025',
-      image: 'https://i.postimg.cc/t4nDCVB7/Imagem-Whats-App-2025-07-14-s-17-58-16-03e9661e.jpg',
-      buttonText: 'COMPRE AQUI SEU INGRESSO!',
-      buttonLink: '/event/3'
-    }
-  ];
+  const [events, setEvents] = useState<CarouselEvent[]>([]);
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % featuredEvents.length);
+    setCurrentSlide((prev) => (events.length ? (prev + 1) % events.length : 0));
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + featuredEvents.length) % featuredEvents.length);
+    setCurrentSlide((prev) => (events.length ? (prev - 1 + events.length) % events.length : 0));
   };
 
   useEffect(() => {
+    const fetchCarouselEvents = async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title, image, status, carousel_approved, carousel_priority, reviewed_at')
+        .eq('status', 'approved')
+        .eq('carousel_approved', true)
+        .order('carousel_priority', { ascending: false })
+        .order('reviewed_at', { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        const mapped: CarouselEvent[] = data.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          image: e.image || null,
+        }));
+        setEvents(mapped);
+        setCurrentSlide(0);
+      }
+    };
+
+    fetchCarouselEvents();
+  }, []);
+
+  useEffect(() => {
+    if (!events.length) return;
     const interval = setInterval(nextSlide, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [events.length]);
+
+  if (!events.length) {
+    return null;
+  }
 
   return (
     <div className="relative h-40 sm:h-56 md:h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
@@ -61,11 +63,11 @@ const EventCarousel = () => {
         className="flex transition-transform duration-500 ease-in-out h-full"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
-        {featuredEvents.map((event) => (
+        {events.map((event) => (
           <Link to={`/event/${event.id}`} key={event.id} className="w-full flex-shrink-0 relative cursor-pointer">
             <div className="w-full h-full relative">
               <img 
-                src={event.image}
+                src={event.image || '/placeholder-event.jpg'}
                 alt={event.title}
                 className="w-full h-full object-cover object-center"
                 draggable="false"
@@ -79,7 +81,7 @@ const EventCarousel = () => {
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white space-y-6 max-w-4xl px-4">
-                  {/* Conteúdo removido conforme solicitado */}
+                  {/* Conteúdo do overlay propositalmente minimalista */}
                 </div>
               </div>
             </div>
