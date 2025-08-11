@@ -13,13 +13,13 @@ const EventCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [events, setEvents] = useState<CarouselEvent[]>([]);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (events.length ? (prev + 1) % events.length : 0));
+  const goTo = (idx: number) => {
+    if (!events.length) return;
+    setCurrentSlide((idx + events.length) % events.length);
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (events.length ? (prev - 1 + events.length) % events.length : 0));
-  };
+  const nextSlide = () => goTo(currentSlide + 1);
+  const prevSlide = () => goTo(currentSlide - 1);
 
   useEffect(() => {
     const fetchCarouselEvents = async () => {
@@ -48,41 +48,39 @@ const EventCarousel = () => {
 
   useEffect(() => {
     if (!events.length) return;
-    const interval = setInterval(nextSlide, 5000);
+    const interval = setInterval(nextSlide, 6000);
     return () => clearInterval(interval);
-  }, [events.length]);
+  }, [events.length, currentSlide]);
 
   if (!events.length) {
     return null;
   }
 
   return (
-    <div className="relative h-40 sm:h-56 md:h-[340px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
+    <div className="relative h-[180px] sm:h-[260px] md:h-[360px] lg:h-[460px] xl:h-[560px] overflow-hidden bg-gray-900 rounded-xl shadow-lg">
       {/* Slides */}
-      <div 
-        className="flex transition-transform duration-500 ease-in-out h-full"
+      <div
+        className="flex transition-transform duration-500 ease-in-out h-full w-full"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
         {events.map((event) => (
-          <Link to={`/event/${event.id}`} key={event.id} className="w-full flex-shrink-0 relative cursor-pointer">
+          <Link to={`/event/${event.id}`} key={event.id} className="w-full flex-shrink-0 relative block">
             <div className="w-full h-full relative">
-              <img 
+              <img
                 src={event.image || '/placeholder-event.jpg'}
                 alt={event.title}
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-cover object-center select-none"
                 draggable="false"
-                style={{ 
-                  objectFit: 'cover', 
-                  objectPosition: 'center center',
-                  imageRendering: 'high-quality',
-                  filter: 'contrast(1.02) saturate(1.05)'
-                }}
+                decoding="async"
                 loading="eager"
+                sizes="(min-width: 1280px) 1200px, (min-width: 1024px) 1000px, (min-width: 768px) 768px, 100vw"
+                style={{ objectFit: 'cover', objectPosition: 'center center' }}
               />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center text-white space-y-6 max-w-4xl px-4">
-                  {/* Conteúdo do overlay propositalmente minimalista */}
-                </div>
+              {/* Overlay sutil para melhorar contraste e bordas */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+              {/* Título opcional (oculto por padrão) */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 sm:p-4">
+                <h3 className="hidden sm:block text-white drop-shadow-md font-semibold truncate">{event.title}</h3>
               </div>
             </div>
           </Link>
@@ -92,18 +90,33 @@ const EventCarousel = () => {
       {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-75 transition-all duration-300 z-10"
+        aria-label="Anterior"
+        className="absolute left-3 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 sm:p-3 rounded-full hover:bg-black/70 transition-all duration-300 z-10"
       >
-        <ChevronLeft className="h-6 w-6" />
+        <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
       </button>
       
       <button
         onClick={nextSlide}
-        className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-75 transition-all duration-300 z-10"
+        aria-label="Próximo"
+        className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 sm:p-3 rounded-full hover:bg-black/70 transition-all duration-300 z-10"
       >
-        <ChevronRight className="h-6 w-6" />
+        <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
       </button>
 
+      {/* Dots */}
+      <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 z-10">
+        {events.map((_, idx) => (
+          <button
+            key={idx}
+            aria-label={`Ir para slide ${idx + 1}`}
+            onClick={() => goTo(idx)}
+            className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full transition-all ${
+              idx === currentSlide ? 'bg-white scale-110' : 'bg-white/50 hover:bg-white/80'
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 };
