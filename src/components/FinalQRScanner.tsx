@@ -455,10 +455,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       }
       addDebugInfo('✅ getUserMedia suportado');
 
-      // 4. Testa acesso à câmera
+      // 4. Testa acesso à câmera (permite permissão)
       try {
         const testStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "environment" } 
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
         });
         testStream.getTracks().forEach(track => track.stop());
         addDebugInfo('✅ Acesso à câmera confirmado');
@@ -469,7 +470,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
 
       addDebugInfo('Aguardando estabilidade total...');
       
-      // 5. SOLUÇÃO DEFINITIVA: setTimeout para garantir DOM real
+      // 5. SOLUÇÃO: setTimeout para garantir DOM real
       setTimeout(async () => {
         try {
           if (!isMountedRef.current) {
@@ -490,7 +491,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           addDebugInfo('✅ Html5Qrcode criado com sucesso');
           
           // 8. Configuração robusta
-          const config = {
+          const config: any = {
             fps: 10,
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
@@ -498,26 +499,75 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             rememberLastUsedCamera: true
           };
 
-          addDebugInfo('Iniciando scanner com configuração...');
+          addDebugInfo('Obtendo lista de câmeras...');
+          let cameras: Array<{ id: string; label: string } & any> = [];
+          try {
+            cameras = await (Html5Qrcode as any).getCameras();
+          } catch (e) {
+            addDebugInfo(`Falha ao listar câmeras: ${e}`);
+          }
 
-          // 9. Inicia scanner
-          await scannerRef.current.start(
-            { 
-              facingMode: "environment"
-            },
-            config,
-            (decodedText) => {
-              addDebugInfo(`✅ QR LIDO: ${decodedText.substring(0, 20)}...`);
-              if (!scanned && isMountedRef.current) {
-                handleQRResult(decodedText);
+          // Selecionar melhor câmera: traseira se disponível
+          let deviceIdToUse: string | null = null;
+          if (cameras && cameras.length > 0) {
+            const back = cameras.find((c: any) => /back|traseira|rear|environment/i.test(c.label));
+            deviceIdToUse = (back || cameras[0]).id || (back || cameras[0]).deviceId || null;
+            addDebugInfo(`Câmera selecionada: ${deviceIdToUse}`);
+          }
+
+          const startWith = async (constraints: any) => {
+            addDebugInfo(`Iniciando scanner com constraints: ${JSON.stringify(constraints)}`);
+            return scannerRef.current!.start(
+              constraints,
+              config,
+              (decodedText: string) => {
+                addDebugInfo(`✅ QR LIDO: ${decodedText.substring(0, 20)}...`);
+                if (!scanned && isMountedRef.current) {
+                  handleQRResult(decodedText);
+                }
+              },
+              (_err: string) => {
+                // erros intermitentes de varredura
               }
-            },
-            (error) => {
-              // Erro na leitura (normal durante tentativas)
+            );
+          };
+
+          // Timeout de segurança: 7s
+          const withTimeout = (p: Promise<any>, ms = 7000) => Promise.race([
+            p,
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout ao iniciar câmera')), ms))
+          ]);
+
+          // 9. Tentar iniciar por deviceId; se falhar, por facingMode; por fim user
+          let started = false;
+          try {
+            if (deviceIdToUse) {
+              await withTimeout(startWith({ deviceId: { exact: deviceIdToUse } }));
+              started = true;
             }
-          );
-          
-          if (isMountedRef.current) {
+          } catch (e) {
+            addDebugInfo(`Falha com deviceId: ${e}`);
+          }
+
+          if (!started) {
+            try {
+              await withTimeout(startWith({ facingMode: { ideal: 'environment' } }));
+              started = true;
+            } catch (e) {
+              addDebugInfo(`Falha com facingMode environment: ${e}`);
+            }
+          }
+
+          if (!started) {
+            try {
+              await withTimeout(startWith({ facingMode: 'user' }));
+              started = true;
+            } catch (e) {
+              addDebugInfo(`Falha com facingMode user: ${e}`);
+            }
+          }
+
+          if (isMountedRef.current && started) {
             setIsScanning(true);
             setIsLoading(false);
             addDebugInfo('✅ Scanner iniciado com sucesso - TUDO OK!');
@@ -536,6 +586,10 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             } catch {}
           }
 
+          if (!started) {
+            throw new Error('Não foi possível iniciar a câmera. Verifique permissões e tente outra câmera.');
+          }
+
         } catch (error) {
           addDebugInfo(`❌ Erro no setTimeout: ${error}`);
           if (isMountedRef.current) {
@@ -544,7 +598,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             setIsLoading(false);
           }
         }
-      }, 100); // Tempo ideal para estabilizar DOM real
+      }, 150);
 
     } catch (error) {
       addDebugInfo(`❌ Erro startScanner: ${error}`);
