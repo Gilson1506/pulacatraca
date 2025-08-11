@@ -20,7 +20,7 @@ import CheckInResultPage from './pages/CheckInResultPage';
 const AppRoutes = () => {
   const location = useLocation();
   const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard') || location.pathname.startsWith('/ingresso') || location.pathname.startsWith('/checkin');
-  const hideHeader = location.pathname.startsWith('/event/') || location.pathname.startsWith('/ingresso');
+  const hideHeader = location.pathname.startsWith('/event/') || location.pathname.startsWith('/ingresso') || location.pathname.startsWith('/checkin/resultado');
   
   // A/B Testing Dashboard (apenas em desenvolvimento)
   const { isOpen, setIsOpen } = useABTestingDashboardShortcut();
