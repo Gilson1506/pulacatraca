@@ -117,29 +117,19 @@ const MapRouteModal: React.FC<MapRouteModalProps> = ({ isOpen, onClose, destinat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Como chegar</h2>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900">Como chegar</h2>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-900">✕</button>
         </div>
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {error && (
-            <div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3">
+            <div className="mb-3 text-xs sm:text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2 sm:p-3">
               {error}
             </div>
           )}
-          <div className="h-[360px] rounded-lg overflow-hidden border" ref={containerRef} />
-          <div className="mt-3 flex gap-2">
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationAddress)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800"
-            >
-              Abrir no Google Maps
-            </a>
-          </div>
+          <div className="h-[50vh] md:h-[60vh] lg:h-[70vh] rounded-lg overflow-hidden border" ref={containerRef} />
         </div>
       </div>
     </div>
