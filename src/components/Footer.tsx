@@ -15,7 +15,7 @@ const Footer = () => {
             <img
               src="/logo-com-qr.png"
               alt="Logo PULAKATRACA"
-              className="h-[72px] w-auto object-contain mb-3"
+              className="h-[216px] w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               A Pulakatraka é uma plataforma de gestão e venda de ingressos que
@@ -35,24 +35,44 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Menus em linha para reduzir altura */}
-          <div className="mt-5 space-y-3">
+          {/* Menus em duas colunas como no desktop, para reduzir altura */}
+          <div className="mt-5 grid grid-cols-2 gap-6">
             {/* Links úteis */}
-            <div className="flex items-center gap-3 flex-wrap text-sm">
-              <h3 className="text-gray-900 font-semibold shrink-0">Links úteis</h3>
-              <a href="#" className="hover:text-pink-600">Área do produtor</a>
-              <a href="#" className="hover:text-pink-600">Área do parceiro</a>
-              <a href="#" className="hover:text-pink-600">Cadastre seu evento</a>
-              <a href="#" className="hover:text-pink-600">Contato / Suporte</a>
+            <div>
+              <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a href="#" className="hover:text-pink-600">Área do produtor</a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-pink-600">Área do parceiro</a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-pink-600">Cadastre seu evento</a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-pink-600">Contato / Suporte</a>
+                </li>
+              </ul>
             </div>
 
             {/* Pulakatraka */}
-            <div className="flex items-center gap-3 flex-wrap text-sm">
-              <h3 className="text-gray-900 font-semibold shrink-0">Pulakatraka</h3>
-              <a href="#" className="hover:text-pink-600">Dúvidas</a>
-              <a href="#" className="hover:text-pink-600">Meus ingressos</a>
-              <a href="#" className="hover:text-pink-600">Termos de uso</a>
-              <a href="#" className="hover:text-pink-600">Política de Privacidade</a>
+            <div>
+              <h3 className="text-gray-900 font-semibold mb-3">Pulakatraka</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a href="#" className="hover:text-pink-600">Dúvidas</a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-pink-600">Meus ingressos</a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-pink-600">Termos de uso</a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-pink-600">Política de Privacidade</a>
+                </li>
+              </ul>
             </div>
           </div>
 
@@ -87,7 +107,7 @@ const Footer = () => {
             <img
               src="/logo-com-qr.png"
               alt="Logo PULAKATRACA"
-              className="h-[72px] w-auto object-contain mb-3"
+              className="h-[216px] w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               A Pulakatraka é uma plataforma de gestão e venda de ingressos que
