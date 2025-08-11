@@ -12,9 +12,9 @@ function App() {
         
         {/* Banner de Cookies LGPD/GDPR Compliant */}
         <CookieConsent
-          delaySeconds={2}
+          delaySeconds={5}
           position="bottom"
-          privacyPolicyUrl="/privacy-policy"
+          privacyPolicyUrl="/politica"
           onAccept={() => {
             console.log('✅ Cookies aceitos - Tracking ativado');
             // Aqui você pode ativar Google Analytics, Facebook Pixel, etc.
