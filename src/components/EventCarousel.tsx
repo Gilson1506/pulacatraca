@@ -78,10 +78,7 @@ const EventCarousel = () => {
               />
               {/* Overlay sutil para melhorar contraste e bordas */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
-              {/* Título opcional (oculto por padrão) */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 sm:p-4">
-                <h3 className="hidden sm:block text-white drop-shadow-md font-semibold truncate">{event.title}</h3>
-              </div>
+
             </div>
           </Link>
         ))}
@@ -104,19 +101,7 @@ const EventCarousel = () => {
         <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
       </button>
 
-      {/* Dots */}
-      <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 z-10">
-        {events.map((_, idx) => (
-          <button
-            key={idx}
-            aria-label={`Ir para slide ${idx + 1}`}
-            onClick={() => goTo(idx)}
-            className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full transition-all ${
-              idx === currentSlide ? 'bg-white scale-110' : 'bg-white/50 hover:bg-white/80'
-            }`}
-          />
-        ))}
-      </div>
+
     </div>
   );
 };
