@@ -593,15 +593,7 @@ const TicketPage = () => {
 
               {/* Botões e Status - Compactos */}
               <div className="mt-3 space-y-2">
-                {!ticketUser && (ticket.status === 'valid' || ticket.status === 'pending' || ticket.status === 'active') && (
-                  <button 
-                    onClick={() => setUserModalOpen(true)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg w-full transition-colors flex items-center justify-center gap-2 text-sm"
-                  >
-                    <UserPlus size={16} />
-                    DEFINIR UTILIZADOR
-                  </button>
-                )}
+                {/* Botão 'Definir Utilizador' removido aqui para evitar duplicação (mantido apenas no card laranja acima) */}
 
                 {ticketUser && (
                   <button 
