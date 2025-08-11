@@ -3,7 +3,7 @@ import { X, Camera, AlertTriangle, CheckCircle, User, Calendar, RotateCcw, QrCod
 import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '../lib/supabase';
 import ProfessionalLoader from './ProfessionalLoader';
-import CheckInModal from './CheckInModal';
+
 import { useNavigate } from 'react-router-dom';
 
 interface FinalQRScannerProps {
@@ -49,7 +49,6 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const [scanResult, setScanResult] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const [domReady, setDomReady] = useState(false);
   
@@ -781,21 +780,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           </div>
         </div>
 
-        {/* Modal de Check-in Separado */}
-        <CheckInModal
-          isOpen={showCheckInModal}
-          onClose={() => {
-            setShowCheckInModal(false);
-            setScanned(false);
-            startScanner();
-          }}
-          ticketData={scanResult}
-          onSuccess={() => {
-            setShowCheckInModal(false);
-            setScanned(false);
-            startScanner();
-          }}
-        />
+
       </div>
     </div>
   );
