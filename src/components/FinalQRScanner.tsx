@@ -361,27 +361,45 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         
         addDebugInfo(`✅ [QR SUCCESS] RPC retornou: ${rpcResult.rpcMessage}`);
         
+        // Tentar enriquecer com preço real quando possível
+        let enriched = rpcResult.ticketData;
+        try {
+          const fetched = await fetchTicketData(decodedText);
+          if (fetched) {
+            enriched = { ...enriched, ticket_price: fetched.ticket_price, ticket_id: fetched.ticket_id, ticket_user_id: fetched.ticket_user_id, event_id: fetched.event_id, organizer_id: fetched.organizer_id } as any;
+          }
+        } catch {}
+        
         // Mostra dados no modal de check-in
-        setScanResult(rpcResult.ticketData);
+        setScanResult(enriched);
         setShowCheckInModal(true);
         setError(null);
         
         if (onSuccess) {
-          onSuccess(decodedText, rpcResult.ticketData);
+          onSuccess(decodedText, enriched);
         }
         
       } catch (rpcError) {
         addDebugInfo(`❌ Erro: ${rpcError.message}`);
-        // Fallback: tentar leitura direta em ticket_users/events
-        const fallbackData = await fetchDirectFromTicketUsers(decodedText);
-        if (fallbackData) {
-          setScanResult(fallbackData);
+        // Fallback: tentar leitura que inclui preço via ticket_users -> tickets
+        const viaJoin = await fetchTicketData(decodedText);
+        if (viaJoin) {
+          setScanResult(viaJoin);
           setShowCheckInModal(true);
           setError(null);
-          if (onSuccess) onSuccess(decodedText, fallbackData);
+          if (onSuccess) onSuccess(decodedText, viaJoin);
         } else {
-          setError(`Erro ao processar QR: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
-          setScanResult(null);
+          // Último recurso: leitura simples sem preço
+          const fallbackData = await fetchDirectFromTicketUsers(decodedText);
+          if (fallbackData) {
+            setScanResult(fallbackData);
+            setShowCheckInModal(true);
+            setError(null);
+            if (onSuccess) onSuccess(decodedText, fallbackData);
+          } else {
+            setError(`Erro ao processar QR: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
+            setScanResult(null);
+          }
         }
       }
     } catch (error) {
