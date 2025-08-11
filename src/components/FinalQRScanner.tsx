@@ -4,6 +4,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { supabase } from '../lib/supabase';
 import ProfessionalLoader from './ProfessionalLoader';
 import CheckInModal from './CheckInModal';
+import { useNavigate } from 'react-router-dom';
 
 interface FinalQRScannerProps {
   isOpen: boolean;
@@ -57,6 +58,8 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isMountedRef = useRef(true);
   const readerId = "qr-reader-element";
+
+  const navigate = useNavigate();
 
   // Debug removido para produção
   const addDebugInfo = (info: string) => {
@@ -371,34 +374,26 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         } catch {}
         
         // Mostra dados no modal de check-in
-        setScanResult(enriched);
-        setShowCheckInModal(true);
         setError(null);
-        
-        if (onSuccess) {
-          onSuccess(decodedText, enriched);
-        }
-        
+        navigate('/checkin/resultado', { state: { status: rpcResult.rpcAction === 'ALREADY_CHECKED_IN' ? 'duplicate' : 'success', ticket: enriched } });
+         
       } catch (rpcError) {
         addDebugInfo(`❌ Erro: ${rpcError.message}`);
         // Fallback: tentar leitura que inclui preço via ticket_users -> tickets
         const viaJoin = await fetchTicketData(decodedText);
         if (viaJoin) {
-          setScanResult(viaJoin);
-          setShowCheckInModal(true);
           setError(null);
-          if (onSuccess) onSuccess(decodedText, viaJoin);
+          navigate('/checkin/resultado', { state: { status: 'success', ticket: viaJoin } });
         } else {
           // Último recurso: leitura simples sem preço
           const fallbackData = await fetchDirectFromTicketUsers(decodedText);
           if (fallbackData) {
-            setScanResult(fallbackData);
-            setShowCheckInModal(true);
             setError(null);
-            if (onSuccess) onSuccess(decodedText, fallbackData);
+            navigate('/checkin/resultado', { state: { status: 'success', ticket: fallbackData } });
           } else {
             setError(`Erro ao processar QR: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
             setScanResult(null);
+            navigate('/checkin/resultado', { state: { status: 'not_found' } });
           }
         }
       }
