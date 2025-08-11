@@ -199,40 +199,43 @@ const DashboardOverview = () => {
           <h3 className="text-lg font-semibold text-gray-900">Eventos Recentes</h3>
         </div>
         <div className="p-6">
-          <div className="space-y-4">
-            {recentEvents.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>Nenhum evento encontrado</p>
-              </div>
-            ) : (
-              recentEvents.map(event => (
-                <div key={event.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-pink-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{event.name}</h4>
-                      <p className="text-sm text-gray-600">{event.date} • {event.location}</p>
-                    </div>
+          {recentEvents.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p>Nenhum evento encontrado</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentEvents.map(event => (
+                <div key={event.id} className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div className="h-32 w-full bg-gray-100">
+                    <img
+                      src={(event as any).image || '/placeholder-event.jpg'}
+                      alt={event.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      event.status === 'ativo' ? 'bg-green-100 text-green-800' :
-                      event.status === 'adiado' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                    </span>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <Share2 className="h-5 w-5" />
-                    </button>
+                  <div className="p-3">
+                    <h4 className="font-semibold text-gray-900 truncate">{event.name}</h4>
+                    <p className="text-xs text-gray-600 truncate">{event.date} • {event.location}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        event.status === 'ativo' ? 'bg-green-100 text-green-800' :
+                        event.status === 'adiado' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                      </span>
+                      <button className="text-gray-400 hover:text-gray-600">
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
