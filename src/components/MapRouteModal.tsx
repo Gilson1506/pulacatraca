@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 // @ts-ignore
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface MapRouteModalProps {
   isOpen: boolean;
@@ -14,12 +15,15 @@ const MapRouteModal: React.FC<MapRouteModalProps> = ({ isOpen, onClose, destinat
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const token = (import.meta as any).env?.VITE_MAPBOX_TOKEN || '';
+  const token =
+    (import.meta as any).env?.VITE_MAPBOX_ACCESS_TOKEN ||
+    (import.meta as any).env?.VITE_MAPBOX_TOKEN ||
+    '';
 
   useEffect(() => {
     if (!isOpen) return;
     if (!token) {
-      setError('Mapbox token ausente. Defina VITE_MAPBOX_TOKEN no ambiente.');
+      setError('Mapbox token ausente. Defina VITE_MAPBOX_ACCESS_TOKEN (ou VITE_MAPBOX_TOKEN) no ambiente.');
       return;
     }
     setError(null);
