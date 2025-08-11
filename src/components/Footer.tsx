@@ -1,7 +1,39 @@
 import React from 'react';
 import { Instagram, Facebook, Linkedin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Footer = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleAreaProdutor = () => {
+    if (!user) {
+      navigate('/organizer-register');
+    } else {
+      navigate('/organizer-dashboard');
+    }
+  };
+
+  const handleAreaParceiro = () => {
+    navigate('/login');
+  };
+
+  const handleCadastreEvento = () => {
+    if (!user) {
+      navigate('/organizer-register');
+    } else {
+      navigate('/organizer-dashboard');
+    }
+  };
+
+  const handleContatoSuporte = () => {
+    window.location.href = 'https://wa.me/5531999999999';
+  };
+
+  const handleDuvidas = () => {
+    navigate('/duvidas');
+  };
   return (
     <footer className="bg-gray-50 text-gray-700 w-full">
       {/* Faixa de sombra no topo (transição para o footer) */}
@@ -42,16 +74,16 @@ const Footer = () => {
               <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#" className="hover:text-pink-600">Área do produtor</a>
+                  <button onClick={handleAreaProdutor} className="hover:text-pink-600">Área do produtor</button>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-pink-600">Área do parceiro</a>
+                  <button onClick={handleAreaParceiro} className="hover:text-pink-600">Área do parceiro</button>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-pink-600">Cadastre seu evento</a>
+                  <button onClick={handleCadastreEvento} className="hover:text-pink-600">Cadastre seu evento</button>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-pink-600">Contato / Suporte</a>
+                  <button onClick={handleContatoSuporte} className="hover:text-pink-600">Contato / Suporte</button>
                 </li>
               </ul>
             </div>
@@ -61,7 +93,7 @@ const Footer = () => {
               <h3 className="text-gray-900 font-semibold mb-3">Pulakatraka</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#" className="hover:text-pink-600">Dúvidas</a>
+                  <button onClick={handleDuvidas} className="hover:text-pink-600">Dúvidas</button>
                 </li>
                 <li>
                   <a href="#" className="hover:text-pink-600">Meus ingressos</a>
@@ -132,16 +164,16 @@ const Footer = () => {
             <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Área do produtor</a>
+                <button onClick={handleAreaProdutor} className="hover:text-pink-600 transition-colors">Área do produtor</button>
               </li>
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Área do parceiro</a>
+                <button onClick={handleAreaParceiro} className="hover:text-pink-600 transition-colors">Área do parceiro</button>
               </li>
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Cadastre seu evento</a>
+                <button onClick={handleCadastreEvento} className="hover:text-pink-600 transition-colors">Cadastre seu evento</button>
               </li>
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Contato / Suporte</a>
+                <button onClick={handleContatoSuporte} className="hover:text-pink-600 transition-colors">Contato / Suporte</button>
               </li>
             </ul>
           </div>
@@ -151,7 +183,7 @@ const Footer = () => {
             <h3 className="text-gray-900 font-semibold mb-3">Pulakatraka</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Dúvidas</a>
+                <button onClick={handleDuvidas} className="hover:text-pink-600 transition-colors">Dúvidas</button>
               </li>
               <li>
                 <a href="#" className="hover:text-pink-600 transition-colors">Meus ingressos</a>
