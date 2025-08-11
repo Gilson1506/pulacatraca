@@ -585,7 +585,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         {/* Área do Scanner */}
         <div className="p-6 bg-white">
           <div className="relative bg-gray-100 rounded-xl overflow-hidden mb-6" style={{ aspectRatio: '1' }}>
-            {!scannerActive ? (
+            {!isScanning ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
                   <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -596,6 +596,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             
             <div
               id="qr-reader-element"
+              ref={handleRefCallback}
               className="w-full h-full"
               style={{ minHeight: '300px' }}
             />
