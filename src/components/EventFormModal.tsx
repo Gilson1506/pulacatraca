@@ -1624,8 +1624,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-auto my-4 sm:my-8 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
@@ -1668,7 +1668,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-6 max-h-[calc(95vh-200px)] sm:max-h-[60vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[70vh] sm:max-h-[60vh]">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
@@ -1689,6 +1689,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           <div className="flex gap-2 sm:gap-3">
             <button
               onClick={onClose}
+              type="button"
               className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800"
             >
               Cancelar
@@ -1697,6 +1698,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {currentStep < 5 ? (
               <button
                 onClick={goToNextStep}
+                type="button"
                 className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
               >
                 Próximo
@@ -1704,6 +1706,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             ) : (
               <button
                 onClick={handleSubmit}
+                type="button"
                 disabled={isSubmitting}
                 className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
