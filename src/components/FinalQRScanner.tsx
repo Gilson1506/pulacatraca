@@ -203,6 +203,67 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   };
 
   /**
+   * Fallback: busca direta em ticket_users e events pelo QR
+   * Permite continuar o check-in mesmo se ticket_id estiver NULL
+   */
+  const fetchDirectFromTicketUsers = async (qrCode: string): Promise<TicketData | null> => {
+    try {
+      const { data: tu, error: tuError } = await supabase
+        .from('ticket_users')
+        .select('id, name, email, qr_code, event_id, created_at')
+        .eq('qr_code', qrCode)
+        .maybeSingle();
+
+      if (tuError || !tu) return null;
+
+      // Buscar dados do evento para completar as informações
+      let eventTitle = 'Evento';
+      let eventDate = new Date().toISOString();
+      let eventLocation = 'Local';
+      let organizerId = '';
+
+      if (tu.event_id) {
+        const { data: ev, error: evError } = await supabase
+          .from('events')
+          .select('id, title, start_date, location, user_id')
+          .eq('id', tu.event_id)
+          .maybeSingle();
+
+        if (!evError && ev) {
+          eventTitle = ev.title || eventTitle;
+          eventDate = ev.start_date || eventDate;
+          eventLocation = ev.location || eventLocation;
+          organizerId = ev.user_id || organizerId;
+        }
+      }
+
+      const ticketData: TicketData = {
+        id: tu.id,
+        name: tu.name || 'Participante',
+        email: tu.email || '',
+        event_title: eventTitle,
+        event_date: eventDate,
+        event_location: eventLocation,
+        ticket_type: 'Ingresso',
+        ticket_price: 0,
+        qr_code: tu.qr_code,
+        purchased_at: tu.created_at,
+        ticket_id: tu.id, // usa id do ticket_user como referência de fallback
+        event_id: tu.event_id || 'event-' + qrCode,
+        organizer_id: organizerId,
+        ticket_user_id: tu.id,
+        is_checked_in: false,
+        checked_in_at: null,
+        source: 'ticket_users'
+      };
+
+      return ticketData;
+    } catch {
+      return null;
+    }
+  };
+
+  /**
    * Realiza o check-in do participante
    */
   const performCheckin = async (ticketData: TicketData): Promise<boolean> => {
@@ -311,8 +372,17 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         
       } catch (rpcError) {
         addDebugInfo(`❌ Erro: ${rpcError.message}`);
-        setError(`Erro ao processar QR: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
-        setScanResult(null);
+        // Fallback: tentar leitura direta em ticket_users/events
+        const fallbackData = await fetchDirectFromTicketUsers(decodedText);
+        if (fallbackData) {
+          setScanResult(fallbackData);
+          setShowCheckInModal(true);
+          setError(null);
+          if (onSuccess) onSuccess(decodedText, fallbackData);
+        } else {
+          setError(`Erro ao processar QR: ${rpcError.message || 'Código QR inválido ou ticket não encontrado'}`);
+          setScanResult(null);
+        }
       }
     } catch (error) {
       addDebugInfo(`❌ Erro handleQRResult: ${error}`);
