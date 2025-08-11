@@ -32,29 +32,18 @@ const CheckoutPage = () => {
   const { event, selectedTickets, totalAmount, ticket } = state || {};
 
   useEffect(() => {
-    // Verificar autenticação
-    if (!user) {
-      console.warn('Usuário não autenticado. Redirecionando para login...');
-      navigate('/auth', { 
-        state: { 
-          message: 'Você precisa estar logado para comprar ingressos.',
-          returnUrl: '/checkout',
-          returnState: state 
-        } 
-      });
-      return;
-    }
-
-    // Se não houver dados do evento/tickets, redireciona para a home
+    // Manter o usuário na página mesmo sem login; validar apenas dados básicos
     if (!event || (!selectedTickets && !ticket)) {
       console.warn('Dados do evento ou dos ingressos não encontrados. Redirecionando...');
       navigate('/');
       return;
     }
 
-    // Carregar dados do usuário e evento
-    loadUserData();
-    loadEventData();
+    // Se logado, carregar dados
+    if (user) {
+      loadUserData();
+      loadEventData();
+    }
   }, [event, selectedTickets, ticket, navigate, user]);
 
   const loadUserData = async () => {
@@ -111,10 +100,6 @@ const CheckoutPage = () => {
     setQuantity((prev) => Math.max(1, prev + amount));
   };
 
-  // Remover taxa de serviço
-  // delete serviceFee;
-  // delete totalServiceFee;
-  // Ajustar cálculo do total:
   // Calcular subtotal baseado nos tickets selecionados
   const subtotal = selectedTickets && selectedTickets.length > 0 
     ? selectedTickets.reduce((sum, ticket) => sum + (ticket.price * ticket.quantity), 0)
@@ -129,13 +114,36 @@ const CheckoutPage = () => {
   const taxaPagamento = paymentMethod === 'card' ? subtotal * 0.06 : 0; // 6% cartão, 0 pix
   const totalPrice = subtotal + taxaCompra + taxaPagamento;
 
+  // Garantir reencaminhamento ao login no finalizar e retorno ao checkout com dados
+  const requireAuthAndPersist = () => {
+    const checkoutState = {
+      event,
+      selectedTickets,
+      totalAmount,
+      ticket,
+      quantity,
+      paymentMethod
+    };
+    sessionStorage.setItem('checkout_data', JSON.stringify({
+      returnTo: '/checkout',
+      state: checkoutState
+    }));
+    navigate('/login');
+  };
+
   const handleCheckout = async () => {
     try {
+      // Se não logado, salvar dados e ir para login
+      if (!user) {
+        requireAuthAndPersist();
+        return;
+      }
+
       setIsProcessing(true);
       console.log('🛒 Iniciando processo de compra...');
 
       // Validações finais
-      if (!user || !userProfile || !eventData) {
+      if (!userProfile || !eventData) {
         alert('Dados incompletos. Por favor, recarregue a página e tente novamente.');
         return;
       }

@@ -48,6 +48,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUser();
   }, []);
 
+  const tryRestoreCheckout = () => {
+    const checkoutData = sessionStorage.getItem('checkout_data');
+    if (!checkoutData) return '';
+    try {
+      const data = JSON.parse(checkoutData);
+      sessionStorage.removeItem('checkout_data');
+      const target = data.returnTo || '/checkout';
+      const state = data.state || { event: data.event, ticket: data.ticket };
+      setTimeout(() => {
+        navigate(target, { state });
+      }, 100);
+      return target as string;
+    } catch (error) {
+      console.error('Erro ao processar dados do checkout:', error);
+      return '';
+    }
+  };
+
   const login = async (email: string, password: string): Promise<string> => {
     setLoading(true);
     try {
@@ -64,26 +82,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(profile);
       
-      // Check for saved checkout data
-      const checkoutData = sessionStorage.getItem('checkout_data');
-      if (checkoutData) {
-        try {
-          const data = JSON.parse(checkoutData);
-          sessionStorage.removeItem('checkout_data');
-          // Redirect to checkout with saved data
-          setTimeout(() => {
-            navigate(data.returnTo, { 
-              state: { 
-                event: data.event, 
-                ticket: data.ticket 
-              } 
-            });
-          }, 100);
-          return data.returnTo;
-        } catch (error) {
-          console.error('Erro ao processar dados do checkout:', error);
-        }
-      }
+      // Tentar restaurar checkout
+      const restored = tryRestoreCheckout();
+      if (restored) return restored;
       
       // Return the appropriate dashboard route
       if (profile.role === 'organizer' || profile.role === 'admin') {
@@ -109,8 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await signInWithGoogle();
-      // Return profile dashboard route after Google login
-      return '/profile';
+      // Tentar restaurar checkout após login com Google
+      const restored = tryRestoreCheckout();
+      return restored || '/profile';
     } catch (error: any) {
       console.error('Erro no login com Google:', error);
       throw new Error('Erro ao fazer login com Google');
@@ -136,6 +138,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(profile);
       
+      // Tentar restaurar checkout
+      const restored = tryRestoreCheckout();
+      if (restored) return restored;
+      
       // Return the appropriate dashboard route
       if (profile.role === 'organizer' || profile.role === 'admin') {
         return '/organizer-dashboard';
@@ -151,6 +157,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (existingProfile) {
             console.log('Perfil existente encontrado após erro de duplicação:', existingProfile);
             setUser(existingProfile);
+            
+            const restored = tryRestoreCheckout();
+            if (restored) return restored;
             
             if (existingProfile.role === 'organizer' || existingProfile.role === 'admin') {
               return '/organizer-dashboard';
