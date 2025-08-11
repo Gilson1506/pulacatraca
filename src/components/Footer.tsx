@@ -1,109 +1,103 @@
 import React from 'react';
+import { Instagram, Facebook, Linkedin } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-white w-full pt-0">
-      {/* Logo Section */}
-      <div className="container mx-auto">
-        {/* Mobile Layout */}
-        <div className="flex flex-col items-center md:hidden px-4 py-2">
-          <img
-            src="/logo-com-qr.png"
-            alt="Logo PULACATRACA"
-            className="h-24 w-auto object-contain"
-          />
-          <div className="flex gap-2 mt-2 mb-4">
-            <span className="text-2xl">🇧🇷</span>
-            <span className="text-2xl">🇺🇸</span>
-            <span className="text-2xl">🇪🇸</span>
-          </div>
-        </div>
-
-        {/* Desktop Layout */}
-        <div className="hidden md:flex md:justify-between md:items-center px-4 pb-0 mt-0">
-          <div className="flex justify-center pt-2 pb-1">
+    <footer className="bg-neutral-900 text-gray-300 w-full">
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Coluna 1: Logo, descrição, redes sociais */}
+          <div>
             <img
               src="/logo-com-qr.png"
-              alt="Logo PULACATRACA"
-              className="h-40 w-auto object-contain"
+              alt="Logo PULAKATRACA"
+              className="h-12 w-auto object-contain mb-3"
             />
+            <p className="text-sm leading-relaxed mb-3 text-gray-300/90">
+              A Pulakatraka é uma plataforma de gestão e venda de ingressos que
+              conecta produtores e público com praticidade, segurança e uma
+              experiência simples do começo ao fim.
+            </p>
+            <div className="flex items-center gap-3">
+              <a href="#" aria-label="Instagram" className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                <Instagram size={18} className="text-white" />
+              </a>
+              <a href="#" aria-label="Facebook" className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                <Facebook size={18} className="text-white" />
+              </a>
+              <a href="#" aria-label="LinkedIn" className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                <Linkedin size={18} className="text-white" />
+              </a>
+            </div>
           </div>
-          <div className="flex gap-3 pt-2 pb-1">
-            <span className="text-3xl">🇧🇷</span>
-            <span className="text-3xl">🇺🇸</span>
-            <span className="text-3xl">🇪🇸</span>
+
+          {/* Coluna 2: Links úteis */}
+          <div>
+            <h3 className="text-white font-semibold mb-3">Links úteis</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Área do produtor</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Área do parceiro</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Cadastre seu evento</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Contato / Suporte</a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 3: Pulakatraka */}
+          <div>
+            <h3 className="text-white font-semibold mb-3">Pulakatraka</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Dúvidas</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Meus ingressos</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Termos de uso</a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">Política de Privacidade</a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 4: Fique por dentro (newsletter) */}
+          <div>
+            <h3 className="text-white font-semibold mb-3">Fique por dentro</h3>
+            <p className="text-sm leading-relaxed mb-3 text-gray-300/90">
+              Se inscreva na nossa lista de e-mail e fique por dentro dos próximos eventos da sua região.
+            </p>
+            <form className="flex gap-2">
+              <label htmlFor="newsletter-email" className="sr-only">E-mail</label>
+              <input
+                id="newsletter-email"
+                type="email"
+                placeholder="Digite seu e-mail..."
+                className="flex-1 rounded-md bg-white/5 text-gray-100 placeholder-gray-400 border border-white/10 focus:border-pink-500 focus:outline-none px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                className="rounded-md bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white px-4 py-2 text-sm font-medium"
+              >
+                inscrever-se
+              </button>
+            </form>
           </div>
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="border-t border-gray-200 w-full mb-0 mt-0"></div>
-
-      {/* Links Section */}
-      <div className="container mx-auto px-4">
-        {/* Mobile Layout */}
-        <div className="flex md:hidden flex-row justify-between py-4">
-          {/* Políticas */}
-          <div className="flex flex-col items-center">
-            <span className="font-semibold text-sm mb-1">Políticas</span>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600 mb-1">Política de privacidade</a>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600 mb-1">Termos e Condições</a>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600">Política de cancelamento</a>
-          </div>
-
-          {/* Apps */}
-          <div className="flex flex-col items-center gap-1">
-            <span className="font-semibold text-sm mb-1">Baixe o APP</span>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600 mb-1">Google Play</a>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600">Apple Store</a>
-          </div>
-
-          {/* Redes Sociais */}
-          <div className="flex flex-col items-center gap-1">
-            <span className="font-semibold text-sm mb-1">Redes Sociais</span>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600 mb-1">Instagram</a>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600 mb-1">Facebook</a>
-            <a href="#" className="text-gray-600 text-xs hover:text-pink-600">Linkedin</a>
-          </div>
-        </div>
-
-        {/* Desktop Layout */}
-        <div className="hidden md:flex flex-row items-start justify-evenly text-center py-4 mt-1">
-          {/* Políticas */}
-          <div className="flex flex-col items-center min-w-[200px] flex-1 px-4">
-            <span className="font-semibold mb-3 text-gray-800">Políticas</span>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Política de privacidade</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Termos e Condições</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Política de cancelamento</a>
-          </div>
-
-          {/* Apps */}
-          <div className="flex flex-col items-center min-w-[200px] flex-1 px-4">
-            <span className="font-semibold mb-3 text-gray-800">Baixe o APP</span>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Google Play</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Apple Store</a>
-          </div>
-
-          {/* Redes Sociais */}
-          <div className="flex flex-col items-center min-w-[200px] flex-1 px-4">
-            <span className="font-semibold mb-3 text-gray-800">Redes Sociais</span>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Instagram</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600 mb-1">Facebook</a>
-            <a href="#" className="text-gray-600 text-sm hover:text-pink-600">Linkedin</a>
-          </div>
-        </div>
-      </div>
-
-      {/* Informações da empresa */}
-      <div className="container mx-auto px-4 pt-1 pb-0 text-center text-xs md:text-sm text-gray-700">
-        <div>PULAKATRACA BILHETERIA DIGITAL LTDA 35.491.197/0001-93</div>
-        <div>contato@pulakatracacom.br</div>
-        <div>R. 1128, 270 - St. Marista, Goiânia - GO, 74175-130</div>
-      </div>
-
-      {/* Copyright */}
-      <div className="container mx-auto px-4 pb-1 text-center text-xs text-gray-500">
-        © {new Date().getFullYear()} PULACATRACA. Todos os direitos reservados.
+      {/* Linha branca + crédito final */}
+      <div className="border-t border-white/30" />
+      <div className="container mx-auto px-4 py-3 text-center text-xs text-gray-300">
+        Pulakatraka 2025 - 2026
       </div>
     </footer>
   );
