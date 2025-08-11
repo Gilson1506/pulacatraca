@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
 import ProfessionalLoader from '../components/ProfessionalLoader';
+import MapRouteModal from '../components/MapRouteModal';
 import { useNavigate, useParams } from 'react-router-dom';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
@@ -91,6 +92,7 @@ const EventPage = () => {
   console.log('EventPage - ID do evento:', eventId); // Log para debug
 
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showRouteModal, setShowRouteModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const imageModalRef = useRef<HTMLDivElement>(null);
@@ -673,6 +675,14 @@ const EventPage = () => {
                 <MapPin className="h-4 w-4 text-white/80" />
                 <span className="text-xs text-white/90">Local: {event.location} - {event.address}</span>
               </div>
+              <div>
+                <button
+                  onClick={() => setShowRouteModal(true)}
+                  className="mt-2 inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-xs font-medium px-3 py-1.5 rounded-md transition"
+                >
+                  <MapPin className="h-3 w-3" /> Como chegar
+                </button>
+              </div>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-white/80" />
                 <span className="text-xs text-white/90">Abertura dos portões: {formatTime(event.time)}</span>
@@ -730,6 +740,14 @@ const EventPage = () => {
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">Local: {event.location} - {event.address}</span>
+                </div>
+                <div>
+                  <button
+                    onClick={() => setShowRouteModal(true)}
+                    className="mt-2 inline-flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white text-xs font-medium px-3 py-1.5 rounded-md transition"
+                  >
+                    <MapPin className="h-3 w-3" /> Como chegar
+                  </button>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-gray-400" />
@@ -915,6 +933,11 @@ const EventPage = () => {
           </div>
         </>
       )}
+      <MapRouteModal
+        isOpen={showRouteModal}
+        onClose={() => setShowRouteModal(false)}
+        destinationAddress={event.address}
+      />
 
     </div>
   );
