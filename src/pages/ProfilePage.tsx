@@ -91,7 +91,6 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
       setIsLoading(true);
       console.log('📋 Buscando histórico de pedidos...');
 
-      // Buscar o usuário atual
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         console.error('❌ Erro ao obter usuário:', authError);
@@ -101,9 +100,9 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
       console.log('👤 Usuário ID:', user.id);
       let foundOrders = false;
 
-      // 1. Tentar buscar via ticket_users primeiro (histórico de pedidos)
+      // 1) ticket_users com LEFT JOIN em tickets e events
       try {
-        console.log('🔄 1. Tentando buscar histórico via ticket_users...');
+        console.log('🔄 1. Tentando via ticket_users (left join)...');
         const { data: ordersFromTicketUsers, error: ticketUsersError } = await supabase
           .from('ticket_users')
           .select(`
@@ -112,19 +111,20 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
             email,
             document,
             created_at,
-            tickets!inner(
+            tickets(
               id,
               qr_code,
               price,
               status,
               ticket_type,
-              events!inner(
+              events(
                 id,
                 title,
                 description,
                 start_date,
                 location,
-                image
+                image,
+                price
               )
             )
           `)
@@ -132,126 +132,130 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
           .order('created_at', { ascending: false });
 
         if (!ticketUsersError && ordersFromTicketUsers && ordersFromTicketUsers.length > 0) {
-          console.log('✅ Histórico encontrado via ticket_users:', ordersFromTicketUsers.length);
-          setUserOrders(ordersFromTicketUsers);
+          console.log('✅ Histórico via ticket_users:', ordersFromTicketUsers.length);
+          // Normalizar para o formato esperado em render
+          const normalized = ordersFromTicketUsers.map((row: any) => ({
+            id: row.id,
+            status: row.tickets?.status || 'active',
+            created_at: row.created_at,
+            code: row.tickets?.qr_code,
+            event: {
+              title: row.tickets?.events?.title || 'Evento',
+              location: row.tickets?.events?.location || 'Local',
+              image: row.tickets?.events?.image || null,
+              price: row.tickets?.price || row.tickets?.events?.price || 0,
+            }
+          }));
+          setUserOrders(normalized as any);
           foundOrders = true;
-          return;
         } else if (ticketUsersError) {
-          console.log('⚠️ Erro ticket_users:', ticketUsersError.message);
-        } else {
-          console.log('ℹ️ Nenhum dado encontrado em ticket_users');
+          console.log('⚠️ ticket_users:', ticketUsersError.message);
         }
       } catch (err) {
-        console.log('⚠️ Erro ao acessar ticket_users:', err);
+        console.log('⚠️ ticket_users falhou:', err);
       }
 
-      // 2. Fallback: buscar diretamente da tabela tickets com buyer_id
+      // 2) tickets por buyer_id (LEFT JOIN events)
       if (!foundOrders) {
         try {
-          console.log('🔄 2. Tentando buscar tickets com buyer_id...');
+          console.log('🔄 2. Tentando tickets (buyer_id)...');
           const { data: ticketsData, error: ticketsError } = await supabase
             .from('tickets')
-            .select(`
-              *,
-              events!inner(title, description, start_date, location, image)
-            `)
+            .select(`*, events(*)`)
             .eq('buyer_id', user.id)
             .order('created_at', { ascending: false });
 
           if (!ticketsError && ticketsData && ticketsData.length > 0) {
-            console.log('✅ Pedidos encontrados via tickets (buyer_id):', ticketsData.length);
-            setUserOrders(ticketsData);
+            const normalized = ticketsData.map((t: any) => ({
+              id: t.id,
+              status: t.status || 'active',
+              created_at: t.created_at,
+              code: t.qr_code,
+              event: {
+                title: t.events?.title || 'Evento',
+                location: t.events?.location || 'Local',
+                image: t.events?.image || null,
+                price: t.price || t.events?.price || 0,
+              }
+            }));
+            setUserOrders(normalized);
             foundOrders = true;
-            return;
           } else if (ticketsError) {
-            console.log('⚠️ Erro tickets buyer_id:', ticketsError.message);
+            console.log('⚠️ tickets buyer_id:', ticketsError.message);
           }
         } catch (err) {
-          console.log('⚠️ Erro ao acessar tickets (buyer_id):', err);
+          console.log('⚠️ tickets buyer_id falhou:', err);
         }
       }
 
-      // 3. Fallback: buscar tickets com user_id
+      // 3) tickets por user_id (LEFT JOIN events)
       if (!foundOrders) {
         try {
-          console.log('🔄 3. Tentando buscar tickets com user_id...');
+          console.log('🔄 3. Tentando tickets (user_id)...');
           const { data: userTicketsData, error: userTicketsError } = await supabase
             .from('tickets')
-            .select(`
-              *,
-              events!inner(title, description, start_date, location, image)
-            `)
+            .select(`*, events(*)`)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
           if (!userTicketsError && userTicketsData && userTicketsData.length > 0) {
-            console.log('✅ Pedidos encontrados via tickets (user_id):', userTicketsData.length);
-            setUserOrders(userTicketsData);
+            const normalized = userTicketsData.map((t: any) => ({
+              id: t.id,
+              status: t.status || 'active',
+              created_at: t.created_at,
+              code: t.qr_code,
+              event: {
+                title: t.events?.title || 'Evento',
+                location: t.events?.location || 'Local',
+                image: t.events?.image || null,
+                price: t.price || t.events?.price || 0,
+              }
+            }));
+            setUserOrders(normalized);
             foundOrders = true;
-            return;
           } else if (userTicketsError) {
-            console.log('⚠️ Erro tickets user_id:', userTicketsError.message);
+            console.log('⚠️ tickets user_id:', userTicketsError.message);
           }
         } catch (err) {
-          console.log('⚠️ Erro ao acessar tickets (user_id):', err);
+          console.log('⚠️ tickets user_id falhou:', err);
         }
       }
 
-      // 4. Fallback: verificar se a tabela transactions existe e buscar
+      // 4) transactions por buyer_id (LEFT JOIN events)
       if (!foundOrders) {
         try {
-          console.log('🔄 4. Tentando buscar de transactions...');
-          
-          // Primeiro, teste simples para ver se a tabela existe
-          const { data: transactionsTest, error: testError } = await supabase
+          console.log('🔄 4. Tentando transactions...');
+          const { data: transactionsData, error: transactionsError } = await supabase
             .from('transactions')
-            .select('id')
-            .limit(1);
+            .select(`id, amount, status, payment_method, created_at, events(*)`)
+            .eq('buyer_id', user.id)
+            .order('created_at', { ascending: false });
 
-          if (testError) {
-            console.log('⚠️ Tabela transactions não existe ou sem acesso:', testError.message);
-          } else {
-            console.log('✅ Tabela transactions acessível');
-            
-            // Buscar transações do usuário
-            const { data: transactionsData, error: transactionsError } = await supabase
-              .from('transactions')
-              .select(`
-                id,
-                amount,
-                status,
-                payment_method,
-                created_at,
-                notes,
-                events!inner(
-                  id,
-                  title,
-                  description,
-                  start_date,
-                  location,
-                  image
-                )
-              `)
-              .eq('buyer_id', user.id)
-              .order('created_at', { ascending: false });
-
-            if (!transactionsError && transactionsData && transactionsData.length > 0) {
-              console.log('✅ Pedidos encontrados via transactions:', transactionsData.length);
-              setUserOrders(transactionsData);
-              foundOrders = true;
-              return;
-            } else if (transactionsError) {
-              console.log('⚠️ Erro ao buscar transactions:', transactionsError.message);
-            }
+          if (!transactionsError && transactionsData && transactionsData.length > 0) {
+            const normalized = transactionsData.map((t: any) => ({
+              id: t.id,
+              status: t.status || 'confirmed',
+              created_at: t.created_at,
+              code: t.id,
+              event: {
+                title: t.events?.title || 'Evento',
+                location: t.events?.location || 'Local',
+                image: t.events?.image || null,
+                price: (t.amount || 0) / 100,
+              }
+            }));
+            setUserOrders(normalized);
+            foundOrders = true;
+          } else if (transactionsError) {
+            console.log('⚠️ transactions:', transactionsError.message);
           }
         } catch (err) {
-          console.log('⚠️ Erro ao acessar transactions:', err);
+          console.log('⚠️ transactions falhou:', err);
         }
       }
 
-      // Se chegou até aqui, não encontrou pedidos
       if (!foundOrders) {
-        console.log('ℹ️ Nenhum pedido encontrado em nenhuma tabela');
+        console.log('ℹ️ Nenhum pedido encontrado');
         setUserOrders([]);
       }
 
@@ -783,16 +787,15 @@ const dummyContent = (
 });
 
 const ProfilePage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [supportMessages, setSupportMessages] = useState([
-    // Mensagem automática inicial
     { id: 1, text: 'Olá! Como podemos ajudar?', from: 'system', read: false }
   ]);
-  const [supportBadge, setSupportBadge] = useState(1); // Começa com 1 mensagem automática
+  const [supportBadge, setSupportBadge] = useState(1);
 
   useEffect(() => {
     if (user && user.role === 'organizer') {
@@ -850,6 +853,17 @@ const ProfilePage = () => {
   };
 
   const handleBackToMenu = () => setActiveMenu(null);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <ProfessionalLoader size="lg" className="mr-2" />
+          <span className="text-gray-600 text-lg">Carregando...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

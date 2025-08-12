@@ -149,7 +149,7 @@ const CheckoutPage = () => {
       }
 
       // Simular processamento de pagamento (2 segundos)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       console.log('💳 Processamento de pagamento simulado concluído');
 
