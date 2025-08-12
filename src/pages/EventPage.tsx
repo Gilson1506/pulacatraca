@@ -450,7 +450,7 @@ const EventPage = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-lg mb-3">REGRAS DE TROCA DE UTILIZADOR</h3>
               <p className="text-sm">O ingresso do tipo INDIVIDUAL pode ter seu utilizador alterado até 1x no prazo máximo de 0h antes do início do evento.</p>
-              <button className="mt-3 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors">
+              <button className="mt-3 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
                 <Share2 className="h-4 w-4 inline mr-2" />
                 Como transferir o seu ingresso
               </button>
@@ -696,34 +696,26 @@ const EventPage = () => {
 
       {/* Botão de compra em desktop */}
       <div className="hidden lg:flex w-full justify-end px-4 lg:pr-16 mt-6 mb-12 relative z-30">
-        <div className="flex items-center gap-3">
-          <button
-            className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
-            onClick={() => {
-              // Track purchase intent
-              trackPurchaseFlow.purchaseIntent(
-                event.id,
-                'ticket_selection',
-                0
-              );
-              
-              setShowTicketModal(true);
-            }}
-            disabled={loading}
-          >
-            {loading ? (
-              <ProfessionalLoader size="sm" />
-            ) : (
-              'COMPRAR INGRESSOS'
-            )}
-          </button>
-          <button
-            onClick={() => navigate('/duvidas')}
-            className="py-3 px-4 bg-white text-pink-600 border border-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-bold text-base shadow-md"
-          >
-            Como transferir ingresso?
-          </button>
-        </div>
+        <button
+          className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
+          onClick={() => {
+            // Track purchase intent
+            trackPurchaseFlow.purchaseIntent(
+              event.id,
+              'ticket_selection',
+              0
+            );
+            
+            setShowTicketModal(true);
+          }}
+          disabled={loading}
+        >
+          {loading ? (
+            <ProfessionalLoader size="sm" />
+          ) : (
+            'COMPRAR INGRESSOS'
+          )}
+        </button>
       </div>
 
       {/* Conteúdo principal */}
@@ -783,12 +775,7 @@ const EventPage = () => {
                   'COMPRAR INGRESSOS'
                 )}
               </button>
-              <button
-                onClick={() => navigate('/duvidas')}
-                className="w-full mt-2 py-3 px-4 bg-white text-pink-600 border border-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-bold text-base shadow-md"
-              >
-                Como transferir ingresso?
-              </button>
+
             </div>
 
             <nav className="bg-white rounded-lg shadow-sm lg:overflow-hidden sticky top-24">
