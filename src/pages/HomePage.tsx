@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import EventCarousel from '../components/EventCarousel';
-import Carousel from '../components/Carousel';
 import EventCard from '../components/EventCard';
 import MobileEventSearchBar from '../components/MobileEventSearchBar';
 import LiveChat from '../components/LiveChat';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
-
+ 
 const HomePage = () => {
   const [events, setEvents] = useState<any[]>([]);
-  const [carouselEvents, setCarouselEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-
-
+ 
   // Eventos estáticos como fallback
   const fallbackEvents = [
     {
@@ -52,17 +48,16 @@ const HomePage = () => {
       price: 0,
     },
   ];
-
+ 
   useEffect(() => {
     fetchApprovedEvents();
-    fetchCarouselApprovedEvents();
   }, []);
-
+ 
   const fetchApprovedEvents = async () => {
     try {
       setIsLoading(true);
       setError(null);
-
+ 
       // Buscar apenas eventos aprovados do Supabase
       const { data: eventsData, error } = await supabase
         .from('events')
@@ -88,14 +83,14 @@ const HomePage = () => {
         `)
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .order('start_date', { ascending: true });
-
+ 
       if (error) {
         console.error('Erro ao buscar eventos:', error);
         setError('Erro ao carregar eventos');
         setEvents(fallbackEvents); // Usar eventos estáticos como fallback
         return;
       }
-
+ 
       // Formatar eventos para o formato esperado pelo EventCard
       const formattedEvents = eventsData?.map(event => {
         // Formatar localização baseada no tipo
@@ -113,7 +108,7 @@ const HomePage = () => {
             return event.location || '';
           }
         };
-
+ 
         // Extrair cidade e estado
         const getLocationParts = () => {
           if (event.location_type === 'online') {
@@ -121,144 +116,76 @@ const HomePage = () => {
           } else if (event.location_type === 'tbd') {
             return { city: 'A definir', state: '' };
           } else if (event.location_city && event.location_state) {
-            return { 
-              city: event.location_city, 
-              state: event.location_state 
-            };
-          } else {
-            // Fallback para parsing da location original
-            const parts = event.location?.split(',') || [];
-            return {
-              city: parts[0]?.trim() || '',
-              state: parts[1]?.trim() || ''
-            };
+            return { city: event.location_city, state: event.location_state };
           }
+          const parts = (event.location || '').split(',');
+          return { city: parts[0]?.trim() || '', state: parts[1]?.trim() || '' };
         };
-
-        const locationParts = getLocationParts();
-
+ 
+        const { city, state } = getLocationParts();
+ 
         return {
           id: event.id,
           title: event.title,
-          date: event.start_date?.split('T')[0] || '',
-          endDate: event.end_date?.split('T')[0],
+          date: event.start_date,
+          endDate: event.end_date,
           location: formatLocation(),
-          image: event.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
-          category: event.subject || event.category || 'Evento',
-          subcategory: event.subcategory,
-          city: locationParts.city,
-          state: locationParts.state,
+          image: event.image,
+          category: event.category,
+          city,
+          state,
           price: event.price || 0,
-          ticket_type: event.ticket_type,
-          location_type: event.location_type,
-          organizer_id: event.organizer_id,
-          created_at: event.created_at
         };
       }) || [];
-
-      // Se não há eventos aprovados, usar fallback
-      if (formattedEvents.length === 0) {
-        console.log('Nenhum evento aprovado encontrado, usando eventos estáticos');
-        setEvents(fallbackEvents);
-      } else {
-        console.log(`${formattedEvents.length} eventos aprovados carregados`);
-        setEvents(formattedEvents);
-      }
-
-    } catch (error) {
-      console.error('Erro inesperado ao buscar eventos:', error);
+ 
+      setEvents(formattedEvents);
+    } catch (err) {
+      console.error('Erro inesperado ao buscar eventos:', err);
       setError('Erro inesperado');
       setEvents(fallbackEvents);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const fetchCarouselApprovedEvents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('id, title, image, status, carousel_approved, carousel_priority, reviewed_at')
-        .eq('status', 'approved')
-        .eq('carousel_approved', true)
-        .order('carousel_priority', { ascending: false })
-        .order('reviewed_at', { ascending: false })
-        .limit(10);
-
-      if (!error && data) {
-        setCarouselEvents(data);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar eventos do carrossel:', e);
-    }
-  };
-
+ 
   return (
     <div className="min-h-screen bg-gray-50 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       {/* Mobile SearchBar sticky abaixo do Header, antes do carrossel */}
       <div className="md:hidden sticky top-20 z-40 bg-white border-b shadow">
         <MobileEventSearchBar />
       </div>
-      {/* Hero Carousel */}
-      {/* Carrossel Coverflow de Eventos (Swiper) */}
-      {carouselEvents.length > 0 && (
-        <div className="max-w-6xl mx-auto px-4 mt-4">
-          <Carousel
-            id="home-coverflow"
-            options={carouselEvents.map((e) => ({
-              slide: (
-                <a href={`/event/${e.id}`} className="block w-full h-full">
-                  <img
-                    src={e.image || '/placeholder-event.jpg'}
-                    alt={e.title}
-                    className="w-full h-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </a>
-              ),
-            }))}
-          />
-        </div>
-      )}
-
-
+ 
+      {/* Hero Carousel anterior */}
+      <div className="container mx-auto px-4">
+        <EventCarousel />
+      </div>
+ 
       {/* Events Section */}
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-2" style={{ fontWeight: 600, letterSpacing: '-0.5px' }}>
-            Eventos
-          </h2>
-          <div className="w-16 h-1 bg-pink-600"></div>
+          <h2 className="text-2xl font-bold text-gray-900">Eventos em destaque</h2>
+          <p className="text-gray-600">Descubra os melhores eventos selecionados para você</p>
         </div>
-
+ 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center h-48">
             <ProfessionalLoader size="lg" />
           </div>
         ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-red-600 mb-4">{error}</p>
-            <p className="text-gray-600">Mostrando eventos em destaque</p>
+          <div className="text-center text-red-600">{error}</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
           </div>
-        ) : events.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">Nenhum evento aprovado encontrado</p>
-            <p className="text-sm text-gray-500">Aguarde novos eventos serem aprovados</p>
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {events.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
+        )}
       </div>
-      
-      {/* LiveChat apenas na página inicial */}
+ 
+      {/* Live Chat */}
       <LiveChat />
     </div>
   );
 };
-
+ 
 export default HomePage;
