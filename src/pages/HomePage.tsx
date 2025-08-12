@@ -4,8 +4,7 @@ import MobileEventSearchBar from '../components/MobileEventSearchBar';
 import LiveChat from '../components/LiveChat';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
-import HomeCarousel from '../components/HomeCarousel';
-import { Link } from 'react-router-dom';
+import EventCarousel from '../components/EventCarousel';
  
 const HomePage = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -156,27 +155,9 @@ const HomePage = () => {
         <MobileEventSearchBar />
       </div>
 
-      {/* Hero Carousel novo (HomeCarousel). O anterior permanece no código-base, mas não é renderizado aqui. */}
-      <div className="container mx-auto px-4 py-4">
-        <HomeCarousel
-          id="home-hero-carousel"
-          type="banner-card"
-          options={(events.length ? events : fallbackEvents).slice(0, 8).map((e) => ({
-            slide: (
-              <Link to={`/event/${e.id}`} className="block w-full">
-                <div className="w-full h-[42vh] md:h-[56vh] lg:h-[64vh] rounded-xl overflow-hidden bg-gray-200">
-                  <img
-                    src={e.image || '/placeholder-event.jpg'}
-                    alt={e.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-              </Link>
-            ),
-          }))}
-        />
+      {/* Hero Carousel anterior */}
+      <div className="container mx-auto px-4">
+        <EventCarousel />
       </div>
 
       {/* Events Section */}
