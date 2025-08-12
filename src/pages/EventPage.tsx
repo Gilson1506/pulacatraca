@@ -563,7 +563,7 @@ const EventPage = () => {
                   </div>
                 </div>
               </div>
-              <button className="mt-4 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors">
+              <button className="mt-4 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
                 <Info className="h-4 w-4 inline mr-2" />
                 Clique aqui para ver as perguntas frequentes sobre o evento
               </button>
@@ -696,26 +696,34 @@ const EventPage = () => {
 
       {/* Botão de compra em desktop */}
       <div className="hidden lg:flex w-full justify-end px-4 lg:pr-16 mt-6 mb-12 relative z-30">
-        <button
-          className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
-          onClick={() => {
-            // Track purchase intent
-            trackPurchaseFlow.purchaseIntent(
-              event.id,
-              'ticket_selection',
-              0
-            );
-            
-            setShowTicketModal(true);
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <ProfessionalLoader size="sm" />
-          ) : (
-            'COMPRAR INGRESSOS'
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
+            onClick={() => {
+              // Track purchase intent
+              trackPurchaseFlow.purchaseIntent(
+                event.id,
+                'ticket_selection',
+                0
+              );
+              
+              setShowTicketModal(true);
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <ProfessionalLoader size="sm" />
+            ) : (
+              'COMPRAR INGRESSOS'
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/duvidas')}
+            className="py-3 px-4 bg-white text-pink-600 border border-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-bold text-base shadow-md"
+          >
+            Como comprar ingresso?
+          </button>
+        </div>
       </div>
 
       {/* Conteúdo principal */}
@@ -774,6 +782,12 @@ const EventPage = () => {
                 ) : (
                   'COMPRAR INGRESSOS'
                 )}
+              </button>
+              <button
+                onClick={() => navigate('/duvidas')}
+                className="w-full mt-2 py-3 px-4 bg-white text-pink-600 border border-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-bold text-base shadow-md"
+              >
+                Como comprar ingresso?
               </button>
             </div>
 
