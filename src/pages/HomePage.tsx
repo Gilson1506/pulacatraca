@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import EventCarousel from '../components/EventCarousel';
 import EventCard from '../components/EventCard';
 import MobileEventSearchBar from '../components/MobileEventSearchBar';
 import LiveChat from '../components/LiveChat';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
+import HomeCarousel from '../components/HomeCarousel';
+import { Link } from 'react-router-dom';
  
 const HomePage = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -154,19 +155,37 @@ const HomePage = () => {
       <div className="md:hidden sticky top-20 z-40 bg-white border-b shadow">
         <MobileEventSearchBar />
       </div>
- 
-      {/* Hero Carousel anterior */}
-      <div className="container mx-auto px-4">
-        <EventCarousel />
+
+      {/* Hero Carousel novo (HomeCarousel). O anterior permanece no código-base, mas não é renderizado aqui. */}
+      <div className="container mx-auto px-4 py-4">
+        <HomeCarousel
+          id="home-hero-carousel"
+          type="banner-card"
+          options={(events.length ? events : fallbackEvents).slice(0, 8).map((e) => ({
+            slide: (
+              <Link to={`/event/${e.id}`} className="block w-full">
+                <div className="w-full h-[42vh] md:h-[56vh] lg:h-[64vh] rounded-xl overflow-hidden bg-gray-200">
+                  <img
+                    src={e.image || '/placeholder-event.jpg'}
+                    alt={e.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </Link>
+            ),
+          }))}
+        />
       </div>
- 
+
       {/* Events Section */}
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">Eventos em destaque</h2>
           <p className="text-gray-600">Descubra os melhores eventos selecionados para você</p>
         </div>
- 
+
         {isLoading ? (
           <div className="flex items-center justify-center h-48">
             <ProfessionalLoader size="lg" />
@@ -181,11 +200,11 @@ const HomePage = () => {
           </div>
         )}
       </div>
- 
+
       {/* Live Chat */}
       <LiveChat />
     </div>
   );
 };
- 
+
 export default HomePage;
