@@ -189,70 +189,73 @@ const DashboardOverview = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">Receita por mês</h3>
-          <Line
-            data={{
-              labels: labelsSeries,
-              datasets: [
-                {
-                  label: 'Receita (R$)',
-                  data: revenueSeries,
-                  borderColor: 'rgb(236,72,153)',
-                  backgroundColor: 'rgba(236,72,153,0.2)',
-                  tension: 0.35,
-                  fill: true
-                }
-              ]
-            }}
-            options={{
-              plugins: { legend: { display: false } },
-              scales: { y: { ticks: { callback: (v: any) => `R$ ${v}` } } },
-              responsive: true,
-              maintainAspectRatio: false
-            }}
-            height={220}
-          />
+          <div className="h-56 sm:h-64 md:h-72">
+            <Line
+              data={{
+                labels: labelsSeries,
+                datasets: [
+                  {
+                    label: 'Receita (R$)',
+                    data: revenueSeries,
+                    borderColor: 'rgb(236,72,153)',
+                    backgroundColor: 'rgba(236,72,153,0.2)',
+                    tension: 0.35,
+                    fill: true
+                  }
+                ]
+              }}
+              options={{
+                plugins: { legend: { display: false } },
+                scales: { y: { ticks: { callback: (v: any) => `R$ ${v}` } } },
+                responsive: true,
+                maintainAspectRatio: false
+              }}
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">Vendas por mês</h3>
-          <Bar
-            data={{
-              labels: labelsSeries,
-              datasets: [
-                {
-                  label: 'Ingressos',
-                  data: ticketsSeries,
-                  backgroundColor: 'rgba(59,130,246,0.6)'
-                }
-              ]
-            }}
-            options={{
-              plugins: { legend: { display: false } },
-              responsive: true,
-              maintainAspectRatio: false
-            }}
-            height={220}
-          />
+          <div className="h-56 sm:h-64 md:h-72">
+            <Bar
+              data={{
+                labels: labelsSeries,
+                datasets: [
+                  {
+                    label: 'Ingressos',
+                    data: ticketsSeries,
+                    backgroundColor: 'rgba(59,130,246,0.6)'
+                  }
+                ]
+              }}
+              options={{
+                plugins: { legend: { display: false } },
+                responsive: true,
+                maintainAspectRatio: false
+              }}
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">Resumo</h3>
-          <Doughnut
-            data={{
-              labels: ['Aprovados', 'Pendentes', 'Outros'],
-              datasets: [
-                {
-                  data: [stats.activeEvents, stats.pendingSales, Math.max(0, (recentEvents.length || 0) - stats.activeEvents)],
-                  backgroundColor: ['#22c55e', '#f59e0b', '#9ca3af']
-                }
-              ]
-            }}
-            options={{ plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false }}
-            height={220}
-          />
+          <div className="h-56 sm:h-64 md:h-72">
+            <Doughnut
+              data={{
+                labels: ['Aprovados', 'Pendentes', 'Outros'],
+                datasets: [
+                  {
+                    data: [stats.activeEvents, stats.pendingSales, Math.max(0, (recentEvents.length || 0) - stats.activeEvents)],
+                    backgroundColor: ['#22c55e', '#f59e0b', '#9ca3af']
+                  }
+                ]
+              }}
+              options={{ plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false, responsive: true }}
+            />
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             <div className="p-2 bg-green-50 rounded-lg">
               <div className="text-green-700 font-semibold">Eventos aprovados</div>
@@ -285,7 +288,7 @@ const DashboardOverview = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentEvents.map(event => (
                 <div key={event.id} className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="h-32 w-full bg-gray-100">
+                  <div className="h-32 sm:h-36 md:h-40 w-full bg-gray-100">
                     <img
                       src={(event as any).image || '/placeholder-event.jpg'}
                       alt={event.name}
