@@ -2465,4 +2465,4 @@ const OrganizerCheckIns = () => {
   );
 };
 
-export default OrganizerCheckIns;
+export default OrganizerDashboardPage;
