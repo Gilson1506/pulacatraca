@@ -91,53 +91,30 @@ const HomePage = () => {
         return;
       }
  
-      // Formatar eventos para o formato esperado pelo EventCard
-      const formattedEvents = eventsData?.map(event => {
-        // Formatar localização baseada no tipo
-        const formatLocation = () => {
-          if (event.location_type === 'online') {
-            return 'Evento Online';
-          } else if (event.location_type === 'tbd') {
-            return 'Local a definir';
-          } else {
-            // Usar dados detalhados se disponíveis
-            if (event.location_city && event.location_state) {
-              return `${event.location_city}, ${event.location_state}`;
-            }
-            // Fallback para location original
-            return event.location || '';
-          }
-        };
- 
-        // Extrair cidade e estado
-        const getLocationParts = () => {
-          if (event.location_type === 'online') {
-            return { city: 'Online', state: '' };
-          } else if (event.location_type === 'tbd') {
-            return { city: 'A definir', state: '' };
-          } else if (event.location_city && event.location_state) {
-            return { city: event.location_city, state: event.location_state };
-          }
-          const parts = (event.location || '').split(',');
-          return { city: parts[0]?.trim() || '', state: parts[1]?.trim() || '' };
-        };
- 
-        const { city, state } = getLocationParts();
- 
+            // Formatar eventos para o formato esperado pelo EventCard (simples, como antes)
+      const formattedEvents = (eventsData || []).map((event) => {
+        const rawLocation: string = event.location || '';
+        const parts = rawLocation.split(',');
+        const city = (parts[0] || '').trim();
+        const state = (parts[1] || '').trim();
+
+        const startDate = event.start_date ? String(event.start_date).slice(0, 10) : '';
+        const endDate = event.end_date ? String(event.end_date).slice(0, 10) : undefined;
+
         return {
           id: event.id,
-          title: event.title,
-          date: event.start_date,
-          endDate: event.end_date,
-          location: formatLocation(),
-          image: event.image,
-          category: event.category,
+          title: event.title || 'Evento',
+          date: startDate,
+          endDate,
+          location: rawLocation,
+          image: event.image || '/placeholder-event.jpg',
+          category: event.category || '',
           city,
           state,
-          price: event.price || 0,
+          price: typeof event.price === 'number' ? event.price : Number(event.price) || 0,
         };
-      }) || [];
- 
+      });
+
       setEvents(formattedEvents);
     } catch (err) {
       console.error('Erro inesperado ao buscar eventos:', err);
@@ -163,8 +140,7 @@ const HomePage = () => {
       {/* Events Section */}
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Eventos em destaque</h2>
-          <p className="text-gray-600">Descubra os melhores eventos selecionados para você</p>
+          <h2 className="text-2xl font-bold text-gray-900">Eventos</h2>
         </div>
 
         {isLoading ? (
