@@ -565,9 +565,113 @@ const OrganizerEvents = () => {
       {/* Event Form Modal */}
       <EventFormModal
         isOpen={showEventFormModal}
-        onClose={() => setShowEventFormModal(false)}
+        onClose={() => {
+          setShowEventFormModal(false);
+          setSelectedEvent(undefined);
+        }}
         event={selectedEvent}
-        onSubmit={handleSubmitEvent}
+        onSubmit={async (data) => {
+          try {
+            if (data.id) {
+              // Atualizar evento existente
+              const { error: eventError } = await supabase
+                .from('events')
+                .update({
+                  title: data.name,
+                  description: data.description,
+                  start_date: `${data.date}T${data.time || '00:00'}:00`,
+                  end_date: data.endDate ? `${data.endDate}T${data.endTime || '23:59'}:00` : null,
+                  location: data.location,
+                  category: data.category,
+                  image: data.image,
+                  price: data.price || 0,
+                  total_tickets: data.totalTickets,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', data.id);
+              if (eventError) throw eventError;
+
+              // Recriar tipos de ingressos
+              await supabase.from('event_ticket_types').delete().eq('event_id', data.id);
+              if (data.ticketTypes?.length) {
+                const payload = data.ticketTypes.map((t: any) => ({
+                  event_id: data.id,
+                  title: t.name,
+                  name: t.name,
+                  description: t.description || '',
+                  area: t.area || 'Pista',
+                  price: t.price,
+                  price_masculine: t.price,
+                  price_feminine: t.price_feminine || t.price,
+                  quantity: t.quantity,
+                  available_quantity: t.quantity,
+                  min_quantity: t.min_quantity || 1,
+                  max_quantity: t.max_quantity || 5,
+                  has_half_price: !!t.has_half_price,
+                  sale_period_type: t.sale_period_type || 'date',
+                  sale_start_date: t.sale_start_date ? `${t.sale_start_date}T${t.sale_start_time || '00:00'}:00` : null,
+                  sale_end_date: t.sale_end_date ? `${t.sale_end_date}T${t.sale_end_time || '23:59'}:00` : null,
+                  availability: t.availability || 'public',
+                  ticket_type: 'paid',
+                  status: 'active'
+                }));
+                await supabase.from('event_ticket_types').insert(payload);
+              }
+            } else {
+              // Criação (fallback)
+              const { data: userData } = await supabase.auth.getUser();
+              const { data: created, error: createError } = await supabase
+                .from('events')
+                .insert({
+                  title: data.name,
+                  description: data.description,
+                  start_date: `${data.date}T${data.time || '00:00'}:00`,
+                  end_date: data.endDate ? `${data.endDate}T${data.endTime || '23:59'}:00` : null,
+                  location: data.location,
+                  category: data.category,
+                  image: data.image,
+                  organizer_id: userData.user?.id || '',
+                  price: data.price || 0,
+                  total_tickets: data.totalTickets,
+                  status: 'pending'
+                })
+                .select()
+                .single();
+              if (createError) throw createError;
+              if (data.ticketTypes?.length) {
+                const payload = data.ticketTypes.map((t: any) => ({
+                  event_id: created.id,
+                  title: t.name,
+                  name: t.name,
+                  description: t.description || '',
+                  area: t.area || 'Pista',
+                  price: t.price,
+                  price_masculine: t.price,
+                  price_feminine: t.price_feminine || t.price,
+                  quantity: t.quantity,
+                  available_quantity: t.quantity,
+                  min_quantity: t.min_quantity || 1,
+                  max_quantity: t.max_quantity || 5,
+                  has_half_price: !!t.has_half_price,
+                  sale_period_type: t.sale_period_type || 'date',
+                  sale_start_date: t.sale_start_date ? `${t.sale_start_date}T${t.sale_start_time || '00:00'}:00` : null,
+                  sale_end_date: t.sale_end_date ? `${t.sale_end_date}T${t.sale_end_time || '23:59'}:00` : null,
+                  availability: t.availability || 'public',
+                  ticket_type: 'paid',
+                  status: 'active'
+                }));
+                await supabase.from('event_ticket_types').insert(payload);
+              }
+            }
+            await fetchEvents();
+            setSelectedEvent(undefined);
+            setShowEventFormModal(false);
+            alert('Evento salvo com sucesso!');
+          } catch (e: any) {
+            console.error('Erro ao salvar evento:', e);
+            alert('Erro ao salvar evento: ' + (e?.message || 'erro desconhecido'));
+          }
+        }}
       />
 
       {/* Filters and Search */}
@@ -2253,26 +2357,9 @@ const OrganizerCheckIns = () => {
       setCheckIns(prev => [newCheckIn, ...prev]);
       setQrResult(`✅ CHECK-IN OK: ${userName}`);
       alert(`✅ Check-in realizado com sucesso!\nParticipante: ${userName}\nEvento: ${ticketData.event.title}`);
-      
     } catch (error) {
-      console.error('❌ Erro inesperado na validação:', error);
-      alert('❌ Erro inesperado ao validar ingresso');
-    }
-  };
-
-  const handleQRCodeScan = (data: string | null) => {
-    if (data) {
-      handleTicketValidation(data);
-      setManualCode('');
-      setShowQrScanner(false);
-    }
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      handleTicketValidation(manualCode.trim());
-      setManualCode('');
+      console.error('❌ Erro inesperado ao validar ingresso:', error);
+      alert('Erro ao validar ingresso. Por favor, tente novamente.');
     }
   };
 
@@ -2280,62 +2367,16 @@ const OrganizerCheckIns = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Check-ins</h2>
-                 <button
-           type="button"
-           onClick={() => window.open('/checkin', '_blank')}
-           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg hover:from-pink-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-         >
-                       <CheckCircle className="h-5 w-5" />
-            Sistema Check-in V2
-         </button>
+        <button 
+          onClick={() => setShowQrScanner(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Camera className="h-5 w-5" />
+          Scan QR Code
+        </button>
       </div>
-      {qrResult && (
-        <div className="mt-2 text-green-700 font-semibold">QR Code lido: {qrResult}</div>
-      )}
-      {showQrScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg relative w-full max-w-lg">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Scanner QR Code</h3>
-              <button
-                onClick={() => setShowQrScanner(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-4">
-              <div className="aspect-square w-full max-w-sm mx-auto overflow-hidden rounded-lg">
-                <QrScanner
-                  onResult={result => {
-                    handleQRCodeScan(result);
-                  }}
-                />
-              </div>
-              <p className="text-sm text-gray-600 text-center mt-4">
-                Posicione o QR Code no centro da câmera para fazer o check-in
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Input manual para check-in */}
-            <form onSubmit={handleManualSubmit} className="w-full flex flex-col items-center mb-2">
-              <input
-                type="text"
-                className="border border-gray-300 rounded-lg px-3 py-2 w-full mb-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                placeholder="Digite o código manualmente"
-                value={manualCode}
-                onChange={e => setManualCode(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium w-full"
-              >
-                Registrar Check-in Manual
-              </button>
-            </form>
-      {/* Tabela de check-ins */}
+
+      {/* Check-ins Display */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -2344,9 +2385,8 @@ const OrganizerCheckIns = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participante</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Ingresso</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -2354,12 +2394,12 @@ const OrganizerCheckIns = () => {
                 <tr key={checkIn.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center mr-3">
-                        <Calendar className="h-5 w-5 text-teal-600" />
+                      <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
+                        <Calendar className="h-5 w-5 text-pink-600" />
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{checkIn.eventId}</div>
-                        <div className="text-sm text-gray-500">Evento: {checkIn.eventId}</div>
+                        <div className="text-sm text-gray-500">{checkIn.eventId}</div>
                       </div>
                     </div>
                   </td>
@@ -2367,253 +2407,62 @@ const OrganizerCheckIns = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{checkIn.ticketType}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{checkIn.checkInTime}</td>
                   <td className="px-6 py-4">
-                    <span className={`
-                      ${checkIn.status === 'ok' ? 'bg-green-100 text-green-800' : ''}
-                      ${checkIn.status === 'duplicado' ? 'bg-yellow-100 text-yellow-800' : ''}
-                      ${checkIn.status === 'invalido' ? 'bg-red-100 text-red-800' : ''}
-                      px-3 py-1 rounded-full text-xs font-medium`
-                    }>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      checkIn.status === 'ok' ? 'bg-green-100 text-green-800' :
+                      checkIn.status === 'duplicado' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
                       {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
                     </span>
                   </td>
-                  <td className="px-6 py-4">-</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  );
-};
 
-// Configurações do Organizador
-const OrganizerSettings = () => {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    notifications: true
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  // ✅ BUSCAR DADOS REAIS DO ORGANIZADOR
-  const fetchOrganizerData = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Obter o usuário atual
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('Erro ao obter usuário:', userError);
-        return;
-      }
-
-      // Buscar dados do perfil do organizador
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Erro ao buscar dados do organizador:', error);
-        return;
-      }
-
-      // Preencher formulário com dados reais
-      setForm(prev => ({
-        ...prev,
-        name: profileData.name || '',
-        email: profileData.email || '',
-        phone: profileData.phone || '',
-        // Não preencher senhas por segurança
-        password: '',
-        confirmPassword: ''
-      }));
-    } catch (error) {
-      console.error('Erro inesperado ao buscar dados do organizador:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Carregar dados ao montar o componente
-  React.useEffect(() => {
-    fetchOrganizerData();
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSuccess('');
-    setError('');
-    
-    if (form.password && form.password !== form.confirmPassword) {
-      setError('As senhas não coincidem.');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      // Obter o usuário atual
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        setError('Erro ao obter dados do usuário');
-        return;
-      }
-
-      // Atualizar dados do perfil
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          name: form.name,
-          phone: form.phone
-          // Email não é atualizado aqui por questões de segurança
-        })
-        .eq('id', user.id);
-
-      if (profileError) {
-        setError('Erro ao salvar configurações: ' + profileError.message);
-        return;
-      }
-
-      // Se há nova senha, atualizar no Auth
-      if (form.password) {
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: form.password
-        });
-
-        if (passwordError) {
-          setError('Erro ao atualizar senha: ' + passwordError.message);
-          return;
-        }
-      }
-
-      setSuccess('Configurações salvas com sucesso!');
-      setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
-    } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      setError('Erro inesperado ao salvar configurações');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="p-6 max-w-xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Configurações da Conta</h2>
-      {success && <div className="mb-4 p-3 bg-green-50 text-green-700 rounded">{success}</div>}
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">{error}</div>}
-      
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <ProfessionalLoader size="md" className="mr-2" />
-          <span className="ml-2 text-gray-600">Carregando dados...</span>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-          <input type="text" name="name" value={form.name} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-          <input type="email" name="email" value={form.email} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-          <input type="text" name="phone" value={form.phone} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
-            <input type="password" name="password" value={form.password} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nova Senha</label>
-            <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
+      {/* QR Scanner Modal */}
+      {showQrScanner && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Scan QR Code</h3>
+                <button 
+                  onClick={() => setShowQrScanner(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <div className="relative w-64 h-64 mb-4">
+                  {/* Add your QR code scanner component here */}
+                  {/* For example, you can use a library like react-qr-reader */}
+                  <div id="qr-reader"></div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Or enter code manually"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+                <button
+                  onClick={() => handleTicketValidation(manualCode)}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Validate Code
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" name="notifications" checked={form.notifications} onChange={handleChange} id="notifications" className="h-4 w-4 text-pink-600 border-gray-300 rounded" />
-          <label htmlFor="notifications" className="text-sm text-gray-700">Receber notificações por e-mail</label>
-        </div>
-        <LoadingButton 
-          type="submit" 
-          isLoading={isSaving}
-          loadingText="Salvando..."
-          variant="primary"
-          size="lg"
-          className="w-full font-semibold"
-        >
-          Salvar Alterações
-        </LoadingButton>
-      </form>
       )}
     </div>
   );
 };
 
-// Main OrganizerDashboardPage component
-const OrganizerDashboardPage = () => {
-  const [active, setActive] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Fecha o menu ao navegar
-  const handleSetActive = (v: string) => {
-    setActive(v);
-    setSidebarOpen(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-      {/* Botão de abrir menu no mobile */}
-      <div className="md:hidden flex items-center justify-between p-2 bg-white shadow-sm sticky top-0 z-30">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-full bg-pink-100 text-pink-600">
-          <Menu className="h-7 w-7" />
-        </button>
-        <h2 className="text-lg font-bold text-gray-900">Painel do Organizador</h2>
-    </div>
-      {/* Sidebar como drawer no mobile, fixa no desktop */}
-      <div>
-        {/* Drawer overlay */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 z-40" onClick={() => setSidebarOpen(false)}></div>
-        )}
-        <aside className={`bg-white shadow-md rounded-lg p-2 md:p-4 w-64 md:w-64 mb-4 md:mb-0 md:sticky md:top-6 z-50 transition-transform duration-200 fixed md:static top-0 left-0 h-full md:h-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`} style={{maxWidth: '90vw'}}>
-          <nav className="flex flex-col gap-2 w-full">
-            <button onClick={() => handleSetActive('dashboard')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='dashboard'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Dashboard</button>
-            <button onClick={() => handleSetActive('events')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
-            <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
-            <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
-            <button onClick={() => window.open('/checkin', '_blank')} className={`w-full flex items-center gap-2 px-4 py-2 rounded hover:bg-pink-50 text-gray-700`}>Check-in</button>
-            <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
-    </nav>
-  </aside>
-      </div>
-      <main className="flex-1 p-2 sm:p-4 md:p-8 w-full">
-        {active === 'dashboard' && <DashboardOverview />}
-        {active === 'events' && <OrganizerEvents />}
-        {active === 'sales' && <OrganizerSales />}
-        {active === 'finance' && <OrganizerFinancial />}
-        {active === 'checkin' && <OrganizerCheckIns />}
-        {active === 'settings' && <OrganizerSettings />}
-      </main>
-    </div>
-  );
-};
-
-export default OrganizerDashboardPage;
+export default OrganizerCheckIns;

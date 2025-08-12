@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, Calendar, Clock, MapPin, Ticket, Plus, Minus, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight, Link, Image, Type, Palette } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -70,10 +70,12 @@ interface TicketData {
 interface EventFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventCreated: () => void;
+  onEventCreated?: () => void;
+  event?: any;
+  onSubmit?: (eventData: any) => void;
 }
 
-const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEventCreated }) => {
+const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEventCreated, event, onSubmit }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,6 +140,87 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdEventData, setCreatedEventData] = useState<any>(null);
+
+  // Pré-preencher quando estiver editando
+  useEffect(() => {
+    const prefill = async () => {
+      if (!event) return;
+      try {
+        // Imagem
+        setImagePreview(event.image || '');
+
+        // Datas
+        const startDate = event.date || (event.start_date ? String(event.start_date).slice(0, 10) : '');
+        const startTime = event.time || (event.start_date ? String(event.start_date).slice(11, 16) : '');
+        const endDate = event.endDate || (event.end_date ? String(event.end_date).slice(0, 10) : '');
+        const endTime = event.endTime || (event.end_date ? String(event.end_date).slice(11, 16) : '');
+
+        // Local básico
+        const locationText = event.location || '';
+        const parts = locationText.split(',');
+        const city = (event.location_city || parts[0] || '').trim();
+        const state = (event.location_state || parts[1] || '').trim();
+
+        setFormData(prev => ({
+          ...prev,
+          title: event.name || event.title || '',
+          image: event.image || '',
+          subject: event.subject || '',
+          category: event.category || '',
+          start_date: startDate || '',
+          start_time: startTime || '',
+          end_date: endDate || '',
+          end_time: endTime || '',
+          description: event.description || '',
+          location_type: event.location_type || 'physical',
+          location_search: event.location_name || '',
+          location_name: event.location_name || '',
+          location_address: event.address || '',
+          location_city: city,
+          location_state: state,
+          location_street: event.location_street || '',
+          location_number: event.location_number || '',
+          location_neighborhood: event.location_neighborhood || '',
+          location_cep: event.location_cep || '',
+          ticket_type: event.ticket_type || 'paid',
+        }));
+
+        // Buscar tipos de ingressos reais (se existir event.id)
+        if (event.id) {
+          const { data: types } = await supabase
+            .from('event_ticket_types')
+            .select('*')
+            .eq('event_id', event.id)
+            .order('price', { ascending: true });
+          if (types && types.length) {
+            const mapped = types.map((t: any) => ({
+              id: t.id,
+              title: t.title || t.name || '',
+              quantity: t.quantity || t.available_quantity || 0,
+              price: t.price_masculine ?? t.price ?? 0,
+              price_feminine: t.price_feminine ?? 0,
+              area: t.area || 'Pista',
+              has_half_price: !!t.has_half_price,
+              sale_period_type: (t.sale_period_type as any) || 'date',
+              sale_start_date: t.sale_start_date ? String(t.sale_start_date).slice(0,10) : '',
+              sale_start_time: t.sale_start_date ? String(t.sale_start_date).slice(11,16) : '',
+              sale_end_date: t.sale_end_date ? String(t.sale_end_date).slice(0,10) : '',
+              sale_end_time: t.sale_end_date ? String(t.sale_end_date).slice(11,16) : '',
+              availability: (t.availability as any) || 'public',
+              min_quantity: t.min_quantity || 1,
+              max_quantity: t.max_quantity || 5,
+              description: t.description || '',
+              batches: [],
+            }));
+            setFormData(prev => ({ ...prev, tickets: mapped }));
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao pré-preencher evento:', e);
+      }
+    };
+    prefill();
+  }, [event]);
 
   if (!isOpen) return null;
 
@@ -457,6 +540,50 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       setIsSubmitting(true);
       console.log('🎫 EventFormModal - handleSubmit iniciado');
       console.log('🎫 EventFormModal - formData completo:', formData);
+
+      // Se o pai fornece onSubmit, delegar criação/edição ao pai
+      if (onSubmit) {
+        const minimalPrice = formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price || 0)) : 0;
+        const totalQty = formData.tickets.reduce((acc, t) => acc + (t.quantity || 0), 0);
+
+        const payload = {
+          id: event?.id,
+          name: formData.title.trim(),
+          date: formData.start_date,
+          time: formData.start_time,
+          endDate: formData.end_date,
+          endTime: formData.end_time,
+          location: formData.location_name || formData.location_address || formData.location_city || '',
+          description: formData.description,
+          status: event?.status || 'pending',
+          category: formData.category || event?.category || '',
+          price: minimalPrice,
+          totalTickets: totalQty,
+          image: formData.image,
+          ticketTypes: formData.tickets.map(t => ({
+            name: t.title,
+            description: t.description,
+            area: t.area,
+            price: t.price,
+            price_feminine: t.price_feminine,
+            quantity: t.quantity,
+            min_quantity: t.min_quantity,
+            max_quantity: t.max_quantity,
+            has_half_price: t.has_half_price,
+            sale_period_type: t.sale_period_type,
+            sale_start_date: t.sale_start_date,
+            sale_start_time: t.sale_start_time,
+            sale_end_date: t.sale_end_date,
+            sale_end_time: t.sale_end_time,
+            availability: t.availability,
+          }))
+        };
+
+        await onSubmit(payload);
+        setIsSubmitting(false);
+        onClose();
+        return;
+      }
 
       // Validações básicas
       if (!formData.title.trim()) {
@@ -1629,11 +1756,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
-            {currentStep === 1 && 'Informações Básicas'}
-            {currentStep === 2 && 'Data e Horário'}
-            {currentStep === 3 && 'Descrição do Evento'}
-            {currentStep === 4 && 'Local do Evento'}
-            {currentStep === 5 && 'Ingressos'}
+            {event ? 'Editar Evento' : (currentStep === 1 && 'Informações Básicas')}
+            {(!event && currentStep === 2) && 'Data e Horário'}
+            {(!event && currentStep === 3) && 'Descrição do Evento'}
+            {(!event && currentStep === 4) && 'Local do Evento'}
+            {(!event && currentStep === 5) && 'Ingressos'}
           </h2>
           <button
             onClick={onClose}
@@ -1644,91 +1771,126 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         </div>
 
         {/* Progress bar */}
-        <div className="px-4 sm:px-6 py-2 bg-gray-50">
-          <div className="flex items-center justify-between mb-2">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <div
-                key={step}
-                className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
-                  step <= currentStep
-                    ? 'bg-pink-600 text-white'
-                    : 'bg-gray-200 text-gray-600'
-                }`}
-              >
-                {step}
-              </div>
-            ))}
+        {!event && (
+          <div className="px-4 sm:px-6 py-2 bg-gray-50">
+            <div className="flex items-center justify-between mb-2">
+              {[1, 2, 3, 4, 5].map((step) => (
+                <div
+                  key={step}
+                  className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
+                    step <= currentStep
+                      ? 'bg-pink-600 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {step}
+                </div>
+              ))}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-pink-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(currentStep / 5) * 100}%` }}
+              />
+            </div>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-pink-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / 5) * 100}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* Content */}
         <div className="p-4 sm:p-6 overflow-y-auto max-h-[70vh] sm:max-h-[60vh]">
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
-          {currentStep === 5 && renderStep5()}
+          {/* Em modo edição, mostramos todas as seções em sequência já preenchidas */}
+          {event ? (
+            <>
+              {renderStep1()}
+              {renderStep2()}
+              {renderStep3()}
+              {renderStep4()}
+              {renderStep5()}
+            </>
+          ) : (
+            <>
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
+              {currentStep === 4 && renderStep4()}
+              {currentStep === 5 && renderStep5()}
+            </>
+          )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-            disabled={currentStep === 1}
-            className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-          >
-            Voltar
-          </button>
-
-          <div className="flex gap-2 sm:gap-3">
-            <button
-              onClick={onClose}
-              type="button"
-              className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800"
-            >
-              Cancelar
-            </button>
-
-            {currentStep < 5 ? (
+          {!event ? (
+            <>
               <button
-                onClick={goToNextStep}
-                type="button"
-                className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                disabled={currentStep === 1}
+                className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                Próximo
+                Voltar
               </button>
-            ) : (
+              <div className="flex gap-2 sm:gap-3">
+                <button
+                  onClick={onClose}
+                  type="button"
+                  className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800"
+                >
+                  Cancelar
+                </button>
+                {currentStep < 5 ? (
+                  <button
+                    onClick={goToNextStep}
+                    type="button"
+                    className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                  >
+                    Próximo
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmit}
+                    type="button"
+                    disabled={isSubmitting}
+                    className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span className="hidden sm:inline">Criando...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="hidden sm:inline">Criar Evento</span>
+                        <span className="sm:hidden">Criar</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="ml-auto flex gap-2 sm:gap-3">
+              <button
+                onClick={onClose}
+                type="button"
+                className="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800"
+              >
+                Cancelar
+              </button>
               <button
                 onClick={handleSubmit}
                 type="button"
                 disabled={isSubmitting}
-                className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span className="hidden sm:inline">Criando...</span>
-                    <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">Criar Evento</span>
-                    <span className="sm:hidden">Criar</span>
-                  </>
-                )}
+                {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
-      
-      {/* Modal de Sucesso */}
+
+      {/* Modal de Sucesso - mantido para fluxo de criação com onEventCreated */}
       {showSuccessModal && createdEventData && (
         <EventSuccessModal
           isOpen={showSuccessModal}
