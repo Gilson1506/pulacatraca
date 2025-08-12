@@ -8,6 +8,31 @@ import { supabase } from '../lib/supabase';
 import LoadingButton from '../components/LoadingButton';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate } from 'react-router-dom';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 // Interfaces
 interface Event {
@@ -84,6 +109,9 @@ const DashboardOverview = () => {
     pendingSales: 0
   });
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
+  const [revenueSeries, setRevenueSeries] = useState<number[]>([]);
+  const [ticketsSeries, setTicketsSeries] = useState<number[]>([]);
+  const [labelsSeries, setLabelsSeries] = useState<string[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -93,48 +121,49 @@ const DashboardOverview = () => {
     try {
       setIsLoading(true);
 
-      // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         console.error('Erro ao obter usuário:', userError);
         return;
       }
 
-      // Buscar apenas eventos do organizador atual
       const { data: events, error: eventsError } = await supabase
         .from('events')
         .select('*')
-        .eq('organizer_id', user.id) // ✅ APENAS EVENTOS DO ORGANIZADOR
+        .eq('organizer_id', user.id)
         .order('created_at', { ascending: false });
 
       if (eventsError) throw eventsError;
 
-      // Buscar transações (vendas) apenas dos eventos do organizador
       const { data: sales, error: salesError } = await supabase
         .from('transactions')
-        .select(`
-          *,
-          event:events!inner(organizer_id)
-        `)
-        .eq('event.organizer_id', user.id) // ✅ APENAS VENDAS DOS EVENTOS DO ORGANIZADOR
-        .order('created_at', { ascending: false });
+        .select(`*, event:events!inner(organizer_id)`) 
+        .eq('event.organizer_id', user.id)
+        .order('created_at', { ascending: true });
 
       if (salesError) throw salesError;
 
-      // Calcular estatísticas
       const activeEventsCount = events?.filter(event => event.status === 'approved').length || 0;
       const totalRevenue = sales?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
       const totalTicketsSold = sales?.filter(sale => sale.status === 'completed').length || 0;
       const pendingSales = sales?.filter(sale => sale.status === 'pending').length || 0;
 
-      setStats({
-        totalRevenue,
-        totalTicketsSold,
-        activeEvents: activeEventsCount,
-        pendingSales
-      });
-
+      setStats({ totalRevenue, totalTicketsSold, activeEvents: activeEventsCount, pendingSales });
       setRecentEvents(events?.slice(0, 3) || []);
+
+      // Build simple monthly series from transactions
+      const byMonth: Record<string, { revenue: number; tickets: number }> = {};
+      (sales || []).forEach(s => {
+        const d = new Date(s.created_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!byMonth[key]) byMonth[key] = { revenue: 0, tickets: 0 };
+        byMonth[key].revenue += s.amount || 0;
+        byMonth[key].tickets += s.status === 'completed' ? 1 : 0;
+      });
+      const keys = Object.keys(byMonth).sort();
+      setLabelsSeries(keys);
+      setRevenueSeries(keys.map(k => byMonth[k].revenue));
+      setTicketsSeries(keys.map(k => byMonth[k].tickets));
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
     } finally {
@@ -159,37 +188,84 @@ const DashboardOverview = () => {
         <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
-            <div className="text-center">
-              <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-blue-200 mx-auto mb-2" />
-              <p className="text-blue-100 text-xs md:text-sm">Receita Total</p>
-              <p className="text-lg md:text-2xl font-bold">R$ {stats.totalRevenue.toLocaleString()}</p>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Receita por mês</h3>
+          <Line
+            data={{
+              labels: labelsSeries,
+              datasets: [
+                {
+                  label: 'Receita (R$)',
+                  data: revenueSeries,
+                  borderColor: 'rgb(236,72,153)',
+                  backgroundColor: 'rgba(236,72,153,0.2)',
+                  tension: 0.35,
+                  fill: true
+                }
+              ]
+            }}
+            options={{
+              plugins: { legend: { display: false } },
+              scales: { y: { ticks: { callback: (v: any) => `R$ ${v}` } } },
+              responsive: true,
+              maintainAspectRatio: false
+            }}
+            height={220}
+          />
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Vendas por mês</h3>
+          <Bar
+            data={{
+              labels: labelsSeries,
+              datasets: [
+                {
+                  label: 'Ingressos',
+                  data: ticketsSeries,
+                  backgroundColor: 'rgba(59,130,246,0.6)'
+                }
+              ]
+            }}
+            options={{
+              plugins: { legend: { display: false } },
+              responsive: true,
+              maintainAspectRatio: false
+            }}
+            height={220}
+          />
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Resumo</h3>
+          <Doughnut
+            data={{
+              labels: ['Aprovados', 'Pendentes', 'Outros'],
+              datasets: [
+                {
+                  data: [stats.activeEvents, stats.pendingSales, Math.max(0, (recentEvents.length || 0) - stats.activeEvents)],
+                  backgroundColor: ['#22c55e', '#f59e0b', '#9ca3af']
+                }
+              ]
+            }}
+            options={{ plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false }}
+            height={220}
+          />
+          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <div className="text-green-700 font-semibold">Eventos aprovados</div>
+              <div className="text-green-700">{stats.activeEvents}</div>
             </div>
-          </div>
-        
-        <div className="bg-gradient-to-r from-green-500 to-green-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
-          <div className="text-center">
-            <Users className="h-6 w-6 md:h-8 md:w-8 text-green-200 mx-auto mb-2" />
-            <p className="text-green-100 text-xs md:text-sm">Ingressos Vendidos</p>
-            <p className="text-lg md:text-2xl font-bold">{stats.totalTicketsSold.toLocaleString()}</p>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
-          <div className="text-center">
-            <Calendar className="h-6 w-6 md:h-8 md:w-8 text-purple-200 mx-auto mb-2" />
-            <p className="text-purple-100 text-xs md:text-sm">Eventos Ativos</p>
-            <p className="text-lg md:text-2xl font-bold">{stats.activeEvents}</p>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3 md:p-6 rounded-xl text-white aspect-square flex flex-col justify-center">
-          <div className="text-center">
-            <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-orange-200 mx-auto mb-2" />
-            <p className="text-orange-100 text-xs md:text-sm">Vendas Pendentes</p>
-            <p className="text-lg md:text-2xl font-bold">{stats.pendingSales}</p>
+            <div className="p-2 bg-yellow-50 rounded-lg">
+              <div className="text-yellow-700 font-semibold">Vendas pendentes</div>
+              <div className="text-yellow-700">{stats.pendingSales}</div>
+            </div>
+            <div className="p-2 bg-blue-50 rounded-lg col-span-2">
+              <div className="text-blue-700 font-semibold">Ingressos vendidos</div>
+              <div className="text-blue-700">{stats.totalTicketsSold}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -222,11 +298,16 @@ const DashboardOverview = () => {
                     <p className="text-xs text-gray-600 truncate">{event.date} • {event.location}</p>
                     <div className="mt-2 flex items-center justify-between">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                        event.status === 'ativo' ? 'bg-green-100 text-green-800' :
-                        event.status === 'adiado' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                        event.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        event.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
-                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                        {event.status === 'approved' ? 'Aprovado' :
+                         event.status === 'pending' ? 'Pendente' :
+                         event.status === 'cancelled' ? 'Cancelado' :
+                         event.status === 'rejected' ? 'Rejeitado' : 'Rascunho'}
                       </span>
                       <button className="text-gray-400 hover:text-gray-600">
                         <Share2 className="h-4 w-4" />
