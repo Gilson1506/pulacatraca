@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Swiper as SwiperClass, SwiperOptions } from 'swiper/types';
-import { Pagination, Autoplay } from 'swiper/modules';
+import { Autoplay } from 'swiper/modules';
 import 'swiper/css';
-import 'swiper/css/pagination';
 
 interface CarouselEvent {
   id: string;
@@ -60,9 +59,8 @@ const EventCarousel: React.FC<CarouselProps> = ({ settings = {}, id = 'event-car
   return (
     <div data-testid={id} className="relative rounded-xl shadow-lg overflow-hidden">
       <Swiper
-        modules={[Pagination, Autoplay]}
+        modules={[Autoplay]}
         onSwiper={(swiper) => (swiperRef.current = swiper)}
-        pagination={{ clickable: true }}
         autoplay={{ delay: 6000, disableOnInteraction: false }}
         speed={250}
         resistanceRatio={0.5}
