@@ -7,6 +7,7 @@ import EventFormModal from '../components/EventFormModal';
 import { supabase } from '../lib/supabase';
 import LoadingButton from '../components/LoadingButton';
 import ProfessionalLoader from '../components/ProfessionalLoader';
+import { useNavigate } from 'react-router-dom';
 
 // Interfaces
 interface Event {
@@ -2545,6 +2546,7 @@ const OrganizerSettings = () => {
 const OrganizerDashboardPage = () => {
   const [active, setActive] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleSetActive = (v: string) => {
     setActive(v);
@@ -2572,7 +2574,7 @@ const OrganizerDashboardPage = () => {
             <button onClick={() => handleSetActive('events')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
             <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
             <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
-            <button onClick={() => handleSetActive('checkin')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='checkin'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Check-in</button>
+            <button onClick={() => navigate('/checkin')} className={`w-full flex items-center gap-2 px-4 py-2 rounded hover:bg-pink-50 text-gray-700`}>Check-in</button>
             <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-4 py-2 rounded ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Configurações</button>
           </nav>
         </aside>
@@ -2584,7 +2586,6 @@ const OrganizerDashboardPage = () => {
         {active === 'events' && <OrganizerEvents />}
         {active === 'sales' && <OrganizerSales />}
         {active === 'finance' && <OrganizerFinancial />}
-        {active === 'checkin' && <OrganizerCheckIns />}
         {active === 'settings' && <OrganizerSettings />}
       </main>
     </div>
