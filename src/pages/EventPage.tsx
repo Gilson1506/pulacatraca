@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
 import ProfessionalLoader from '../components/ProfessionalLoader';
-import MapRouteModal from '../components/MapRouteModal';
 import { useNavigate, useParams } from 'react-router-dom';
+// @ts-ignore
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
 import TicketSelectorModal from '../components/TicketSelectorModal';
@@ -82,6 +84,138 @@ interface SupabaseEvent {
   important_notes: SupabaseImportantNote[];
   contact_info: SupabaseContactInfo[];
 }
+
+const MapInline: React.FC<{ destinationAddress: string }> = ({ destinationAddress }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any>(null);
+  const userLngLatRef = useRef<[number, number] | null>(null);
+  const destLngLatRef = useRef<[number, number] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingMap, setLoadingMap] = useState(false);
+
+  const token = (import.meta as any).env?.VITE_MAPBOX_ACCESS_TOKEN || (import.meta as any).env?.VITE_MAPBOX_TOKEN || '';
+
+  useEffect(() => {
+    if (!token) {
+      setError('Mapbox token ausente. Defina VITE_MAPBOX_ACCESS_TOKEN.');
+      return;
+    }
+    setError(null);
+    setLoadingMap(true);
+
+    let isCancelled = false;
+
+    const initialize = async () => {
+      try {
+        // Geocodifica o destino
+        const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(destinationAddress)}.json?limit=1&access_token=${token}`;
+        const geoRes = await fetch(geoUrl);
+        const geoJson = await geoRes.json();
+        if (!geoJson?.features?.length) return;
+        const [lng, lat] = geoJson.features[0].center;
+        destLngLatRef.current = [lng, lat];
+
+        (mapboxgl as any).accessToken = token;
+        mapRef.current = new mapboxgl.Map({
+          container: containerRef.current as HTMLDivElement,
+          style: 'mapbox://styles/mapbox/streets-v11',
+          center: destLngLatRef.current,
+          zoom: 14,
+        });
+
+        // Marcador do destino
+        new mapboxgl.Marker({ color: '#ec4899' }).setLngLat(destLngLatRef.current).addTo(mapRef.current);
+
+        // Pedir geolocalização do usuário
+        await new Promise<void>((resolve) => {
+          if (!navigator.geolocation) return resolve();
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              userLngLatRef.current = [pos.coords.longitude, pos.coords.latitude];
+              resolve();
+            },
+            () => resolve(),
+            { enableHighAccuracy: true, timeout: 6000 }
+          );
+        });
+
+        // Traçar rota se usuário disponível
+        if (userLngLatRef.current && destLngLatRef.current) {
+          const dirUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${userLngLatRef.current[0]},${userLngLatRef.current[1]};${destLngLatRef.current[0]},${destLngLatRef.current[1]}?geometries=geojson&access_token=${token}`;
+          const dirRes = await fetch(dirUrl);
+          const dirJson = await dirRes.json();
+          const route = dirJson?.routes?.[0]?.geometry;
+          if (route) {
+            const addRoute = () => {
+              if (!mapRef.current.getSource('route')) {
+                mapRef.current.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route } });
+                mapRef.current.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#ec4899', 'line-width': 4 } });
+              }
+              const bounds = new (mapboxgl as any).LngLatBounds();
+              route.coordinates.forEach((c: [number, number]) => bounds.extend(c));
+              mapRef.current.fitBounds(bounds, { padding: 40 });
+            };
+            if (mapRef.current.loaded()) addRoute(); else mapRef.current.on('load', addRoute);
+          }
+
+          // Marcador usuário
+          new mapboxgl.Marker({ color: '#3b82f6' }).setLngLat(userLngLatRef.current).addTo(mapRef.current);
+        }
+      } catch (e) {
+        console.error('Erro no mapa:', e);
+      } finally {
+        if (!isCancelled) setLoadingMap(false);
+      }
+    };
+
+    initialize();
+
+    return () => {
+      isCancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [destinationAddress, token]);
+
+  const flyToRoute = () => {
+    if (!mapRef.current) return;
+    if (userLngLatRef.current && destLngLatRef.current) {
+      const bounds = new (mapboxgl as any).LngLatBounds();
+      bounds.extend(userLngLatRef.current);
+      bounds.extend(destLngLatRef.current);
+      mapRef.current.fitBounds(bounds, { padding: 40, duration: 800 });
+    } else if (destLngLatRef.current) {
+      mapRef.current.flyTo({ center: destLngLatRef.current, zoom: 14, speed: 1.2, curve: 1.4 });
+    }
+  };
+
+  return (
+    <div className="relative">
+      <div className="w-full h-[40vh] sm:h-[50vh] md:h-[60vh] rounded-xl overflow-hidden border border-gray-200 shadow-sm" ref={containerRef} />
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-red-600 text-sm font-medium">
+          {error}
+        </div>
+      )}
+      {loadingMap && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/40">
+          <ProfessionalLoader size="lg" />
+        </div>
+      )}
+      {/* Botão bússola */}
+      <button
+        onClick={flyToRoute}
+        className="absolute top-3 right-3 z-10 rounded-full bg-white/90 hover:bg-white text-gray-700 shadow p-2 border border-gray-200"
+        aria-label="Recentrar mapa"
+        title="Recentrar mapa"
+      >
+        🧭
+      </button>
+    </div>
+  );
+};
 
 const EventPage = () => {
   const [loading, setLoading] = useState(false);
@@ -810,6 +944,12 @@ const EventPage = () => {
                   {getTabContent('informacoes')}
                 </div>
 
+                {/* Mapa de rota inline (Mapbox) */}
+                <div className="transition-all duration-500">
+                  <h2 className="text-xl font-semibold mb-4">COMO CHEGAR</h2>
+                  <MapInline destinationAddress={event.address} />
+                </div>
+
                 <div
                   id="setores-e-areas"
                   ref={el => sectionRefs.current['setores-e-areas'] = el}
@@ -931,11 +1071,6 @@ const EventPage = () => {
           </div>
         </>
       )}
-      <MapRouteModal
-        isOpen={showRouteModal}
-        onClose={() => setShowRouteModal(false)}
-        destinationAddress={event.address}
-      />
 
     </div>
   );
