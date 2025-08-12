@@ -721,7 +721,7 @@ const EventPage = () => {
             onClick={() => navigate('/duvidas')}
             className="py-3 px-4 bg-white text-pink-600 border border-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-bold text-base shadow-md"
           >
-            Como comprar ingresso?
+            Como transferir ingresso?
           </button>
         </div>
       </div>
@@ -787,7 +787,7 @@ const EventPage = () => {
                 onClick={() => navigate('/duvidas')}
                 className="w-full mt-2 py-3 px-4 bg-white text-pink-600 border border-pink-600 rounded-xl hover:bg-pink-50 transition-colors font-bold text-base shadow-md"
               >
-                Como comprar ingresso?
+                Como transferir ingresso?
               </button>
             </div>
 
