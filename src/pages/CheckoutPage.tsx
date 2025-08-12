@@ -667,17 +667,6 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
     }
   };
 
-  // Estado de loading inicial
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <ProfessionalLoader size="lg" className="mr-2" />
-          <span className="text-gray-600 text-lg">Carregando...</span>
-        </div>
-      </div>
-    );
-  }
 
   // Renderiza uma tela de erro se os dados não foram passados corretamente
   if (!event || (!selectedTickets && !ticket)) {
@@ -698,17 +687,6 @@ Seus ingressos aparecerão no histórico após confirmação do organizador.`
     );
   }
 
-  // Loading enquanto carrega dados do usuário
-  if (!userProfile) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <ProfessionalLoader size="lg" className="mr-2" />
-          <span className="text-gray-600 text-lg">Verificando permissões...</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-4 sm:py-8">

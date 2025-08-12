@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUser();
   }, []);
 
-  const tryRestoreCheckout = () => {
+  const tryRestoreCheckout = (): string => {
     const checkoutData = sessionStorage.getItem('checkout_data');
     if (!checkoutData) return '';
     try {
@@ -56,9 +56,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('checkout_data');
       const target = data.returnTo || '/checkout';
       const state = data.state || { event: data.event, ticket: data.ticket };
-      setTimeout(() => {
-        navigate(target, { state });
-      }, 100);
+      // Navega imediatamente e também retorna a rota para os chamadores usarem
+      navigate(target, { state, replace: true });
       return target as string;
     } catch (error) {
       console.error('Erro ao processar dados do checkout:', error);
@@ -187,11 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async (): Promise<void> => {
     try {
       await signOut();
-      setUser(null);
-      navigate('/');
-    } catch (error: any) {
-      console.error('Erro no logout:', error);
-      // Force logout even if API call fails
+    } finally {
       setUser(null);
       navigate('/');
     }
