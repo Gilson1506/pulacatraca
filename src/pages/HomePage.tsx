@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EventCarousel from '../components/EventCarousel';
+import Carousel from '../components/Carousel';
 import EventCard from '../components/EventCard';
 import MobileEventSearchBar from '../components/MobileEventSearchBar';
 import LiveChat from '../components/LiveChat';
@@ -8,6 +9,7 @@ import { supabase } from '../lib/supabase';
 
 const HomePage = () => {
   const [events, setEvents] = useState<any[]>([]);
+  const [carouselEvents, setCarouselEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +55,7 @@ const HomePage = () => {
 
   useEffect(() => {
     fetchApprovedEvents();
+    fetchCarouselApprovedEvents();
   }, []);
 
   const fetchApprovedEvents = async () => {
@@ -171,6 +174,25 @@ const HomePage = () => {
     }
   };
 
+  const fetchCarouselApprovedEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title, image, status, carousel_approved, carousel_priority, reviewed_at')
+        .eq('status', 'approved')
+        .eq('carousel_approved', true)
+        .order('carousel_priority', { ascending: false })
+        .order('reviewed_at', { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        setCarouselEvents(data);
+      }
+    } catch (e) {
+      console.error('Erro ao buscar eventos do carrossel:', e);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       {/* Mobile SearchBar sticky abaixo do Header, antes do carrossel */}
@@ -178,10 +200,27 @@ const HomePage = () => {
         <MobileEventSearchBar />
       </div>
       {/* Hero Carousel */}
-      <div className="container mx-auto px-4">
-        <EventCarousel />
-      </div>
-
+      {/* Carrossel Coverflow de Eventos (Swiper) */}
+      {carouselEvents.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 mt-4">
+          <Carousel
+            id="home-coverflow"
+            options={carouselEvents.map((e) => ({
+              slide: (
+                <a href={`/event/${e.id}`} className="block w-full h-full">
+                  <img
+                    src={e.image || '/placeholder-event.jpg'}
+                    alt={e.title}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </a>
+              ),
+            }))}
+          />
+        </div>
+      )}
 
 
       {/* Events Section */}
