@@ -720,7 +720,7 @@ const EventPage = () => {
 
   if (isLoadingEvent) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-start justify-center pt-6">
         <ProfessionalLoader size="lg" />
       </div>
     );

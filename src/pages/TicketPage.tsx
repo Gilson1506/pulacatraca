@@ -292,7 +292,7 @@ const TicketPage = () => {
   // Estado de loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-start justify-center pt-6">
         <div className="flex items-center gap-3">
           <ProfessionalLoader size="lg" className="mr-2" />
           <span className="text-gray-600 text-lg">Carregando ingresso...</span>

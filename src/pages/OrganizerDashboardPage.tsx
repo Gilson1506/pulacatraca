@@ -173,7 +173,7 @@ const DashboardOverview = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-start justify-center pt-6">
         <div className="text-center">
           <ProfessionalLoader size="lg" className="mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Carregando dados do dashboard...</p>
@@ -621,7 +621,7 @@ const OrganizerEvents = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-start justify-center pt-6">
         <div className="text-center">
           <ProfessionalLoader size="lg" className="mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Carregando eventos...</p>
