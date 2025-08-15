@@ -1,0 +1,6 @@
+v1.0.0 - $(date +"%Y-%m-%d %H:%M:%S")
+Versão com todas as otimizações implementadas:
+- Query otimizada para Meus Ingressos
+- Modal de ingressos com foreign key tickets_events_fk
+- README.md atualizado
+- Melhorias de performance
