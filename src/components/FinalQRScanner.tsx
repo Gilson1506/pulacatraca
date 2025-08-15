@@ -75,6 +75,8 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
   const fetchTicketData = async (qrCode: string): Promise<TicketData | null> => {
     try {
       // Query única e otimizada com relacionamentos
+      console.log(`🔍 [JOIN] Buscando QR "${qrCode}" com relacionamentos...`);
+      
       const { data: ticketUserData, error: ticketUserError } = await supabase
         .from('ticket_users')
         .select(`
@@ -83,20 +85,21 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           email,
           qr_code,
           created_at,
-          tickets!inner(
+          event_id,
+          tickets(
             id,
             price,
             price_feminine,
             ticket_type,
             area,
-            event_id,
-            events!inner(
-              id,
-              title,
-              start_date,
-              location,
-              user_id
-            )
+            event_id
+          ),
+          events!inner(
+            id,
+            title,
+            start_date,
+            location,
+            user_id
           ),
           checkin(
             id,
@@ -106,28 +109,50 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         .eq('qr_code', qrCode)
         .maybeSingle();
 
-      if (ticketUserError || !ticketUserData?.tickets?.events) {
+      if (ticketUserError) {
+        console.error(`❌ [JOIN] Erro ao buscar ticket_users com join:`, ticketUserError);
+        return null;
+      }
+
+      if (!ticketUserData) {
+        console.log(`❌ [JOIN] Nenhum ticket_user encontrado para QR: ${qrCode}`);
+        return null;
+      }
+
+      if (!ticketUserData.tickets?.events) {
+        console.log(`❌ [JOIN] Dados incompletos - faltam tickets ou events para QR: ${qrCode}`);
         return null;
       }
 
       const isAlreadyCheckedIn = ticketUserData.checkin && ticketUserData.checkin.length > 0;
+      
+      // Buscar dados do ticket se disponível
+      const ticket = ticketUserData.tickets && ticketUserData.tickets.length > 0 ? ticketUserData.tickets[0] : null;
+      const event = ticketUserData.events;
+
+      console.log(`✅ [JOIN] Dados encontrados:`, {
+        ticket_user: ticketUserData.id,
+        event: event?.title,
+        ticket: ticket?.id,
+        checkin: isAlreadyCheckedIn
+      });
 
       return {
         id: ticketUserData.id,
         name: ticketUserData.name,
         email: ticketUserData.email,
-        event_title: ticketUserData.tickets.events.title,
-        event_date: ticketUserData.tickets.events.start_date,
-        event_location: ticketUserData.tickets.events.location,
-        ticket_type: ticketUserData.tickets.ticket_type || 'Padrão',
-        ticket_area: ticketUserData.tickets.area || 'Área não informada',
-        ticket_price: ticketUserData.tickets.price || 0,
-        ticket_price_feminine: ticketUserData.tickets.price_feminine || ticketUserData.tickets.price || 0,
+        event_title: event?.title || 'Evento',
+        event_date: event?.start_date || new Date().toISOString(),
+        event_location: event?.location || 'Local',
+        ticket_type: ticket?.ticket_type || 'Padrão',
+        ticket_area: ticket?.area || 'Área não informada',
+        ticket_price: ticket?.price || 0,
+        ticket_price_feminine: ticket?.price_feminine || ticket?.price || 0,
         qr_code: ticketUserData.qr_code,
         purchased_at: ticketUserData.created_at,
-        ticket_id: ticketUserData.tickets.id,
-        event_id: ticketUserData.tickets.events.id,
-        organizer_id: ticketUserData.tickets.events.user_id,
+        ticket_id: ticket?.id || ticketUserData.id,
+        event_id: event?.id || ticketUserData.event_id,
+        organizer_id: event?.user_id || '',
         ticket_user_id: ticketUserData.id,
         is_checked_in: isAlreadyCheckedIn,
         checked_in_at: ticketUserData.checkin?.[0]?.checked_in_at || null,
@@ -216,13 +241,26 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
    */
   const fetchDirectFromTicketUsers = async (qrCode: string): Promise<TicketData | null> => {
     try {
+      console.log(`🔍 [FALLBACK] Buscando QR "${qrCode}" em ticket_users...`);
+      
+      // Primeiro, vamos verificar se o QR code existe
       const { data: tu, error: tuError } = await supabase
         .from('ticket_users')
-        .select('id, name, email, qr_code, event_id, created_at')
+        .select('*')
         .eq('qr_code', qrCode)
         .maybeSingle();
 
-      if (tuError || !tu) return null;
+      if (tuError) {
+        console.error(`❌ [FALLBACK] Erro ao buscar ticket_users:`, tuError);
+        return null;
+      }
+
+      if (!tu) {
+        console.log(`❌ [FALLBACK] QR code "${qrCode}" não encontrado em ticket_users`);
+        return null;
+      }
+
+      console.log(`✅ [FALLBACK] Encontrado ticket_user:`, tu);
 
       // Buscar dados do evento para completar as informações
       let eventTitle = 'Evento';
@@ -231,18 +269,26 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       let organizerId = '';
 
       if (tu.event_id) {
+        console.log(`🔍 [FALLBACK] Buscando evento com ID: ${tu.event_id}`);
         const { data: ev, error: evError } = await supabase
           .from('events')
-          .select('id, title, start_date, location, user_id')
+          .select('*')
           .eq('id', tu.event_id)
           .maybeSingle();
 
-        if (!evError && ev) {
+        if (evError) {
+          console.error(`❌ [FALLBACK] Erro ao buscar evento:`, evError);
+        } else if (ev) {
           eventTitle = ev.title || eventTitle;
           eventDate = ev.start_date || eventDate;
           eventLocation = ev.location || eventLocation;
           organizerId = ev.user_id || organizerId;
+          console.log(`✅ [FALLBACK] Evento encontrado:`, ev.title);
+        } else {
+          console.log(`⚠️ [FALLBACK] Evento não encontrado para ID: ${tu.event_id}`);
         }
+      } else {
+        console.log(`⚠️ [FALLBACK] ticket_user não tem event_id`);
       }
 
       const ticketData: TicketData = {
@@ -265,8 +311,10 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         source: 'ticket_users'
       };
 
+      console.log(`✅ [FALLBACK] Ticket data criado:`, ticketData);
       return ticketData;
-    } catch {
+    } catch (error) {
+      console.error(`❌ [FALLBACK] Erro geral:`, error);
       return null;
     }
   };
