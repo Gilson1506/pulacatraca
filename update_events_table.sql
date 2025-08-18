@@ -243,3 +243,89 @@ BEGIN
     RAISE NOTICE '✅ Trigger automático para updated_at';
     RAISE NOTICE '✅ Políticas RLS atualizadas';
 END $$;
+
+-- Atualização da tabela events para adicionar campos de classificação, importância e atrações
+-- Execute este SQL no seu banco de dados Supabase
+
+-- IMPORTANTE: Primeiro, vamos verificar se existe uma view que depende da tabela events
+-- Se existir, precisamos recriá-la após as alterações
+
+-- 1. Verificar se existe a view events_with_ticket_types
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.views WHERE view_name = 'events_with_ticket_types') THEN
+        RAISE NOTICE '⚠️ View events_with_ticket_types encontrada. Será recriada após as alterações.';
+        DROP VIEW IF EXISTS events_with_ticket_types CASCADE;
+    END IF;
+END $$;
+
+-- 2. Adicionar campo classification (classificação etária)
+ALTER TABLE events 
+ADD COLUMN IF NOT EXISTS classification VARCHAR(10) DEFAULT NULL;
+
+-- 3. Adicionar campo important_info (informações importantes do evento)
+ALTER TABLE events 
+ADD COLUMN IF NOT EXISTS important_info TEXT[] DEFAULT NULL;
+
+-- 4. Adicionar campo attractions (atrações do evento)
+ALTER TABLE events 
+ADD COLUMN IF NOT EXISTS attractions TEXT[] DEFAULT NULL;
+
+-- 5. Adicionar comentários para documentação
+COMMENT ON COLUMN events.classification IS 'Classificação etária do evento (livre, 10, 12, 14, 16, 18)';
+COMMENT ON COLUMN events.important_info IS 'Array de informações importantes sobre o evento';
+COMMENT ON COLUMN events.attractions IS 'Array de atrações/artistas do evento';
+
+-- 6. Criar índices para melhorar performance de busca
+CREATE INDEX IF NOT EXISTS idx_events_classification ON events(classification);
+CREATE INDEX IF NOT EXISTS idx_events_important_info ON events USING GIN(important_info);
+CREATE INDEX IF NOT EXISTS idx_events_attractions ON events USING GIN(attractions);
+
+-- 7. Recriar a view events_with_ticket_types se ela existia
+-- (Esta é uma view comum em sistemas de eventos)
+CREATE OR REPLACE VIEW events_with_ticket_types AS
+SELECT 
+    e.*,
+    COALESCE(
+        (SELECT json_agg(
+            json_build_object(
+                'id', ett.id,
+                'title', ett.title,
+                'name', ett.name,
+                'price', ett.price,
+                'price_masculine', ett.price_masculine,
+                'price_feminine', ett.price_feminine,
+                'area', ett.area,
+                'quantity', ett.quantity,
+                'available_quantity', ett.available_quantity,
+                'description', ett.description,
+                'status', ett.status
+            )
+        ) FROM event_ticket_types ett 
+        WHERE ett.event_id = e.id AND ett.status = 'active'), 
+        '[]'::json
+    ) as ticket_types
+FROM events e;
+
+-- 8. Atualizar eventos existentes com valores padrão (opcional)
+-- UPDATE events SET classification = 'livre' WHERE classification IS NULL;
+-- UPDATE events SET important_info = '{}' WHERE important_info IS NULL;
+-- UPDATE events SET attractions = '{}' WHERE attractions IS NULL;
+
+-- 9. Verificar se as colunas foram criadas
+SELECT 
+    column_name, 
+    data_type, 
+    is_nullable, 
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'events' 
+AND column_name IN ('classification', 'important_info', 'attractions')
+ORDER BY column_name;
+
+-- 10. Verificar se a view foi recriada
+SELECT 
+    table_name,
+    table_type
+FROM information_schema.tables 
+WHERE table_name = 'events_with_ticket_types';

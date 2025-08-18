@@ -287,6 +287,9 @@ const EventPage = () => {
           subject,
           subcategory,
           category,
+          classification,
+          important_info,
+          attractions,
           price,
           status,
           organizer_id,
@@ -332,16 +335,15 @@ const EventPage = () => {
 
       console.log('EventPage - Dados brutos do evento:', eventData); // Log para debug
 
-      // Formatar endereço completo
+      // Formatar endereço completo (sem incluir o nome do local)
       const formatAddress = () => {
         if (eventData.location_type === 'online') {
           return 'Evento Online';
         } else if (eventData.location_type === 'tbd') {
           return 'Local ainda será definido';
         } else {
-          // Montar endereço físico completo
+          // Montar endereço físico completo (sem o nome do local)
           const addressParts = [];
-          if (eventData.location_name) addressParts.push(eventData.location_name);
           if (eventData.location_street) {
             let streetInfo = eventData.location_street;
             if (eventData.location_number) streetInfo += `, ${eventData.location_number}`;
@@ -353,7 +355,7 @@ const EventPage = () => {
           }
           if (eventData.location_cep) addressParts.push(`CEP: ${eventData.location_cep}`);
           
-          return addressParts.length > 0 ? addressParts.join(', ') : (eventData.location || 'Local não informado');
+          return addressParts.length > 0 ? addressParts.join(', ') : 'Endereço não informado';
         }
       };
 
@@ -412,6 +414,7 @@ const EventPage = () => {
               ...(eventData.subject ? [`Assunto: ${eventData.subject}`] : []),
               ...(eventData.subcategory ? [`Subcategoria: ${eventData.subcategory}`] : []),
               `Categoria: ${eventData.category || 'Não informado'}`,
+              ...(eventData.classification ? [`Classificação: ${eventData.classification}`] : []),
               ...(eventData.ticket_type ? [`Tipo de ingresso: ${eventData.ticket_type === 'paid' ? 'Pago' : 'Gratuito'}`] : []),
               ...(eventData.end_date ? [`Duração: ${formatDuration()}`] : [])
             ]
@@ -420,9 +423,10 @@ const EventPage = () => {
             name: 'Local e Data',
             details: [
               `Tipo de local: ${eventData.location_type === 'physical' ? 'Físico' : eventData.location_type === 'online' ? 'Online' : 'A definir'}`,
+              `Local: ${eventData.location_name || eventData.location || 'Local não informado'}`,
+              `Endereço: ${formatAddress()}`,
               `Data de início: ${new Date(eventData.start_date).toLocaleDateString('pt-BR')} às ${eventData.start_date?.split('T')[1]?.substring(0, 5) || ''}`,
-              ...(eventData.end_date ? [`Data de término: ${new Date(eventData.end_date).toLocaleDateString('pt-BR')} às ${eventData.end_date?.split('T')[1]?.substring(0, 5) || ''}`] : []),
-              `Endereço: ${formatAddress()}`
+              ...(eventData.end_date ? [`Data de término: ${new Date(eventData.end_date).toLocaleDateString('pt-BR')} às ${eventData.end_date?.split('T')[1]?.substring(0, 5) || ''}`] : [])
             ]
           },
           {
@@ -442,10 +446,20 @@ const EventPage = () => {
               `Total de ingressos: ${eventData.total_tickets || 0}`,
               `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2)}`}`
             ]
-          }
+          },
+          // Seção de Atrações (só aparece se houver atrações)
+          ...(eventData.attractions && eventData.attractions.length > 0 ? [{
+            name: 'Atrações',
+            details: eventData.attractions
+          }] : []),
+          // Seção de Informações Importantes (só aparece se houver informações)
+          ...(eventData.important_info && eventData.important_info.length > 0 ? [{
+            name: 'Informações Importantes',
+            details: eventData.important_info.map((info: string) => `⭐ ${info}`)
+          }] : [])
         ],
-        attractions: eventData.tags || [],
-        importantNotes: [
+        attractions: eventData.attractions && eventData.attractions.length > 0 ? eventData.attractions : [],
+        importantNotes: eventData.important_info && eventData.important_info.length > 0 ? eventData.important_info : [
           'Chegue com antecedência',
           'Documento obrigatório',
           ...(eventData.location_type === 'online' ? ['Link de acesso será enviado por email'] : ['Proibido entrada de bebidas']),
@@ -590,21 +604,7 @@ const EventPage = () => {
               </button>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-3">CONSUMIDOR</h3>
-              <p className="text-sm">PROCON grandes capitais: 151</p>
-              <p className="text-sm">Procure o site do PROCON do seu estado</p>
-              <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                <button className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors w-full sm:w-auto">
-                  <AlertCircle className="h-4 w-4 inline mr-2" />
-                  Código de Defesa do Consumidor - L8078 Compilado
-                </button>
-                <button className="bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors w-full sm:w-auto">
-                  <Info className="h-4 w-4 inline mr-2" />
-                  Lei da meia entrada
-                </button>
-              </div>
-            </div>
+
           </div>
         );
       case 'setores-e-areas':
@@ -720,7 +720,7 @@ const EventPage = () => {
 
   if (isLoadingEvent) {
     return (
-      <div className="min-h-screen flex items-start justify-center pt-6">
+      <div className="flex items-center justify-center min-h-screen">
         <ProfessionalLoader size="lg" />
       </div>
     );
@@ -749,7 +749,6 @@ const EventPage = () => {
                   className="w-full h-full object-cover"
                   style={{ 
                     objectPosition: 'center center',
-                    imageRendering: 'high-quality',
                     filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
                     WebkitBackfaceVisibility: 'hidden',
                     backfaceVisibility: 'hidden',
@@ -774,7 +773,6 @@ const EventPage = () => {
                 className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white pointer-events-auto"
                 style={{ 
                   objectPosition: 'center center',
-                  imageRendering: 'high-quality',
                   filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
                   WebkitBackfaceVisibility: 'hidden',
                   backfaceVisibility: 'hidden',
@@ -796,7 +794,8 @@ const EventPage = () => {
             <h1 className="text-2xl font-bold mb-4 max-w-xl leading-tight text-white drop-shadow-lg" style={{ fontWeight: 700 }}>
               {event.title}
             </h1>
-            <div className="text-sm mb-2 text-white/90 drop-shadow-md">{event.address}</div>
+            <div className="text-sm mb-2 text-white/90 drop-shadow-md font-medium">{event.location}</div>
+            <div className="text-xs text-white/80 drop-shadow-md">{event.address}</div>
             <div className="inline-block bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold mb-4">
               {event.dateLabel}
             </div>
@@ -807,7 +806,10 @@ const EventPage = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-white/80" />
-                <span className="text-xs text-white/90">Local: {event.location} - {event.address}</span>
+                <span className="text-xs text-white/90">Local: {event.location}</span>
+              </div>
+              <div className="flex items-center space-x-2 ml-6">
+                <span className="text-xs text-white/80">Endereço: {event.address}</span>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -855,7 +857,8 @@ const EventPage = () => {
               <h1 className="text-xl font-bold mb-4 leading-tight text-gray-900" style={{ fontWeight: 700 }}>
                 {event.title}
               </h1>
-              <div className="text-sm mb-2 text-gray-600">{event.address}</div>
+              <div className="text-sm mb-2 text-gray-600 font-medium">{event.location}</div>
+              <div className="text-xs text-gray-500 mb-2">{event.address}</div>
               <div className="inline-block bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold mb-4">
                 {event.dateLabel}
               </div>
@@ -866,7 +869,10 @@ const EventPage = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">Local: {event.location} - {event.address}</span>
+                  <span className="text-sm text-gray-600">Local: {event.location}</span>
+                </div>
+                <div className="flex items-center space-x-2 ml-6">
+                  <span className="text-sm text-gray-500">Endereço: {event.address}</span>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -1003,8 +1009,7 @@ const EventPage = () => {
           title: event.title,
           date: event.date,
           location: event.address,
-          image: event.image,
-          user_id: event.user_id
+          image: event.image
         }}
         user={user}
       />
@@ -1032,6 +1037,9 @@ const EventPage = () => {
                   <span>•</span>
                   <MapPin className="h-3 w-3" />
                   <span className="truncate">{event.location}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
+                  <span className="truncate">{event.address}</span>
                 </div>
               </div>
             </div>

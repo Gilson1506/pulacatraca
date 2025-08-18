@@ -452,7 +452,7 @@ const OrganizerRegisterPage = () => {
             <img
               src="/logo-com-qr.png"
               alt="Logo PULACATRACA"
-              className="h-16 sm:h-24 md:h-32 lg:h-40 w-auto mx-auto mb-4 sm:mb-6"
+              className="h-32 sm:h-40 md:h-48 w-auto mx-auto mb-4 sm:mb-6"
             />
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Cadastro de Organizador</h1>
             <p className="text-gray-600">

@@ -600,7 +600,7 @@ const CheckInPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-start justify-center pt-6">
+      <div className="flex items-center justify-center min-h-screen">
         <ProfessionalLoader size="lg" />
       </div>
     );

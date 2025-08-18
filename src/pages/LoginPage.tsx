@@ -58,24 +58,24 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center py-4 px-4 sm:py-12 overflow-auto">
-      <div className="max-w-md w-full my-auto flex flex-col justify-center min-h-0">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-4 px-4 overflow-auto">
+      <div className="max-w-md w-full flex flex-col justify-center">
         {/* Logo */}
         <Link
           to="/"
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 mb-8 transition-colors"
+          className="flex items-center justify-center text-gray-600 hover:text-gray-800 mb-6 transition-colors"
         >
           <img
             src="https://i.postimg.cc/YSKSHFBw/PULAKATACA-removebg-preview-1.png"
             alt="Logo PULACATRACA"
-            className="h-16 sm:h-24 md:h-32 lg:h-40 w-auto mx-auto mb-4 sm:mb-6"
+            className="h-32 sm:h-40 md:h-48 w-auto"
           />
         </Link>
 
         {/* Login Card */}
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 w-full max-h-screen overflow-y-auto">
-          <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
+        <div className="bg-white rounded-lg shadow-md p-6 w-full">
+          <div className="text-center mb-4">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">
               {showEmailForm ? 'Acessar Conta' : 'Bem vindo'}
             </h1>
             <p className="text-gray-600">
@@ -94,7 +94,7 @@ const LoginPage = () => {
           )}
 
           {!showEmailForm ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Email Login Button */}
               <button
                 onClick={() => setShowEmailForm(true)}
@@ -129,9 +129,9 @@ const LoginPage = () => {
                 ← Voltar
               </button>
 
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-3">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
                   <input
@@ -146,7 +146,7 @@ const LoginPage = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                     Senha
                   </label>
                   <input
@@ -172,7 +172,7 @@ const LoginPage = () => {
           )}
 
           {/* Register Link */}
-          <div className="mt-8 text-center">
+          <div className="mt-6 text-center">
             <p className="text-gray-600">
               Ainda não possui uma conta?{' '}
               <Link to="/register" className="text-pink-600 hover:text-pink-700 font-medium">

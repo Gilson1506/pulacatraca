@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -11,19 +11,12 @@ import ProfilePage from './pages/ProfilePage';
 import CheckInPage from './pages/CheckInPage';
 import OrganizerRegisterPage from './pages/OrganizerRegisterPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
-import TicketPage from './pages/TicketPage';
+// import TicketPage from './pages/TicketPage';
+import TicketPage from './pages/TicketPage2';
 import ABTestingDashboard, { useABTestingDashboardShortcut } from './components/ABTestingDashboard';
 import FAQPage from './pages/FAQPage';
 import PolicyPage from './pages/PolicyPage';
 import CheckInResultPage from './pages/CheckInResultPage';
-
-const ScrollToTop = () => {
-  const location = useLocation();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
-  return null;
-};
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -37,7 +30,6 @@ const AppRoutes = () => {
     <div className="flex flex-col min-h-screen">
       {!hideHeader && <Header />}
       <main className="flex-grow">
-        <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />

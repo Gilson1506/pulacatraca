@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSearch } from '../contexts/SearchContext';
 import LocationModal from './LocationModal';
-import { Search, MapPin, User, X } from 'lucide-react';
+import { Search, MapPin, User, X, HelpCircle } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -40,13 +40,13 @@ const Header: React.FC = () => {
       }`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between h-20 w-full">
+          <div className="hidden md:flex items-center justify-between h-24 w-full">
             <div className="flex items-center flex-shrink-0">
               <Link to="/" className="flex items-center space-x-3 flex-shrink-0">
                 <img
                   src={logoSrc}
-                  alt="Logo PULACATRACA"
-                  className="h-20 md:h-24 w-auto"
+                  alt="Logo Pulacatraca"
+                  className="h-28 md:h-32 w-auto"
                 />
               </Link>
             </div>
@@ -124,18 +124,25 @@ const Header: React.FC = () => {
                   >
                     CADASTRAR
                   </Link>
+                  <Link
+                    to="/duvidas"
+                    className={`${isEventPage ? 'text-white' : 'text-gray-700'} hover:text-pink-600 transition-colors font-medium flex items-center space-x-1`}
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    <span>Dúvidas</span>
+                  </Link>
                 </div>
               )}
             </div>
           </div>
           {/* Mobile Header */}
-          <div className="md:hidden flex items-center justify-between h-24">
+          <div className="md:hidden flex items-center justify-between h-28">
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <img
                   src={logoSrc}
                   alt="Logo PULACATRACA"
-                  className="h-24 sm:h-28 w-auto cursor-pointer"
+                  className="h-28 sm:h-32 w-auto cursor-pointer"
                   onClick={() => setIsMenuOpen(false)}
                 />
               </Link>
@@ -216,6 +223,14 @@ const Header: React.FC = () => {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       CADASTRAR
+                    </Link>
+                    <Link
+                      to="/duvidas"
+                      className={`block py-2 ${isEventPage ? 'text-white' : 'text-gray-700'} hover:text-pink-600 transition-colors font-medium flex items-center justify-center space-x-2`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      <span>Dúvidas</span>
                     </Link>
                   </div>
                 )}

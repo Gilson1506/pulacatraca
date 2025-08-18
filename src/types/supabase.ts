@@ -25,7 +25,6 @@ export interface Event {
   title: string;
   description: string;
   organizer_id: string;
-  created_by: string;
   start_date: string;
   end_date: string;
   location: string;

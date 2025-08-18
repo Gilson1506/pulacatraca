@@ -4,6 +4,28 @@ import { CheckCircle, AlertTriangle, XCircle, Calendar, MapPin, User } from 'luc
 
 type StatusKind = 'success' | 'duplicate' | 'not_found';
 
+interface TicketData {
+  id: string;
+  name: string;
+  email?: string;
+  event_title?: string;
+  event_date?: string;
+  event_location?: string;
+  ticket_type?: string;
+  ticket_area?: string;
+  ticket_price?: number;
+  ticket_price_feminine?: number;
+  qr_code?: string;
+  purchased_at?: string;
+  is_checked_in?: boolean;
+  checked_in_at?: string | null;
+  ticket_id?: string;
+  event_id?: string;
+  organizer_id?: string;
+  ticket_user_id?: string;
+  source?: string;
+}
+
 const statusStyles: Record<StatusKind, { pageBg: string; btnBg: string; accent: string; icon: React.ReactNode; title: string; subtitle: string } > = {
   success: {
     pageBg: 'bg-gradient-to-br from-green-500 via-green-600 to-green-700',
@@ -35,7 +57,7 @@ const CheckInResultPage: React.FC = () => {
   const location = useLocation() as any;
   const navigate = useNavigate();
   const status: StatusKind = location.state?.status || 'not_found';
-  const ticket = location.state?.ticket || null;
+  const ticket: TicketData | null = location.state?.ticket || null;
 
   const s = statusStyles[status];
 
@@ -97,10 +119,16 @@ const CheckInResultPage: React.FC = () => {
                 <div className="bg-white/70 backdrop-blur rounded-lg p-3 border border-white/50">
                   <div className="text-xs text-gray-600">Tipo de ingresso</div>
                   <div className="text-gray-900 font-semibold">{ticket.ticket_type || 'Ingresso'}</div>
+                  {ticket.ticket_area && (
+                    <div className="text-xs text-gray-500 mt-1">{ticket.ticket_area}</div>
+                  )}
                 </div>
                 <div className="bg-white/70 backdrop-blur rounded-lg p-3 border border-white/50">
                   <div className="text-xs text-gray-600">Valor</div>
                   <div className="text-gray-900 font-semibold">R$ {(ticket.ticket_price ?? 0).toFixed(2).replace('.', ',')}</div>
+                  {ticket.ticket_price_feminine && ticket.ticket_price_feminine !== ticket.ticket_price && (
+                    <div className="text-xs text-gray-500 mt-1">Feminino: R$ {ticket.ticket_price_feminine.toFixed(2).replace('.', ',')}</div>
+                  )}
                 </div>
               </div>
 

@@ -18,7 +18,7 @@ const HomePage = () => {
       title: 'Reveillon Mil Sorrisos',
       date: '2025-12-27',
       endDate: '2026-01-02',
-      location: 'São Miguel dos Milagres, AL',
+      location: 'São Miguel dos Milagres', // Apenas cidade
       image: 'https://i.postimg.cc/QCJNJNgc/Imagem-Whats-App-2025-07-14-s-20-38-33-6d804a5e.jpg',
       category: 'Festa',
       city: 'São Miguel dos Milagres',
@@ -29,7 +29,7 @@ const HomePage = () => {
       id: '2',
       title: 'MAIOR INTER',
       date: '2025-08-10',
-      location: 'São Paulo, SP',
+      location: 'São Paulo', // Apenas cidade
       image: 'https://i.postimg.cc/xCr0rNtK/Imagem-Whats-App-2025-07-14-s-20-38-34-840bac16.jpg',
       category: 'Festival',
       city: 'São Paulo',
@@ -40,7 +40,7 @@ const HomePage = () => {
       id: '3',
       title: 'ARRAIÁ DO PULA CATRACA',
       date: '2025-07-20',
-      location: 'Belo Horizonte, MG',
+      location: 'Belo Horizonte', // Apenas cidade
       image: 'https://i.postimg.cc/x1hQHbrW/Imagem-Whats-App-2025-07-14-s-20-38-34-99ab0e70.jpg',
       category: 'Festa Junina',
       city: 'Belo Horizonte',
@@ -93,26 +93,41 @@ const HomePage = () => {
  
             // Formatar eventos para o formato esperado pelo EventCard (simples, como antes)
       const formattedEvents = (eventsData || []).map((event) => {
-        const rawLocation: string = event.location || '';
-        const parts = rawLocation.split(',');
-        const city = (parts[0] || '').trim();
-        const state = (parts[1] || '').trim();
+        // Usar diretamente a cidade do evento do banco de dados
+        const city = event.location_city || '';
+        const state = event.location_state || '';
 
         const startDate = event.start_date ? String(event.start_date).slice(0, 10) : '';
         const endDate = event.end_date ? String(event.end_date).slice(0, 10) : undefined;
 
-        return {
+        const formattedEvent = {
           id: event.id,
           title: event.title || 'Evento',
           date: startDate,
           endDate,
-          location: rawLocation,
+          location: city, // Usar apenas a cidade
           image: event.image || '/placeholder-event.jpg',
           category: event.category || '',
           city,
           state,
           price: typeof event.price === 'number' ? event.price : Number(event.price) || 0,
         };
+        
+        console.log('Evento formatado:', {
+          id: formattedEvent.id,
+          title: formattedEvent.title,
+          location: formattedEvent.location,
+          city: formattedEvent.city,
+          state: formattedEvent.state,
+          rawData: {
+            location_city: event.location_city,
+            location_state: event.location_state,
+            location_name: event.location_name,
+            location: event.location
+          }
+        });
+        
+        return formattedEvent;
       });
 
       setEvents(formattedEvents);
