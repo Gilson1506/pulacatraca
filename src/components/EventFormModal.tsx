@@ -618,17 +618,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         return;
       }
 
-      // Calcular dados dos ingressos
-      const totalTicketsCount = formData.tickets.reduce((acc, t) => acc + (t.quantity || 0), 0);
-      const minPrice = formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price || 0)) : 0;
+      // ✅ Calcular dados dos ingressos (com proteção contra arrays vazios)
+      const totalTicketsCount = formData.tickets?.reduce((acc, t) => acc + (t.quantity || 0), 0) || 0;
+      const ticketPrices = formData.tickets?.map(t => t.price || 0) || [0];
+      const minPrice = ticketPrices.length > 0 ? Math.min(...ticketPrices) : 0;
       
-      // Calcular datas de venda (primeira data de início e última de fim)
-      const salesDates = formData.tickets
+      // ✅ Calcular datas de venda (com proteção contra arrays vazios)
+      const salesDates = (formData.tickets || [])
         .filter(t => t.sale_start_date && t.sale_start_time)
         .map(t => new Date(`${t.sale_start_date}T${t.sale_start_time}:00`))
         .sort((a, b) => a.getTime() - b.getTime());
       
-      const salesEndDates = formData.tickets
+      const salesEndDates = (formData.tickets || [])
         .filter(t => t.sale_end_date && t.sale_end_time)
         .map(t => new Date(`${t.sale_end_date}T${t.sale_end_time}:00`))
         .sort((a, b) => b.getTime() - a.getTime());
@@ -700,8 +701,14 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         available_tickets: totalTicketsCount,
         total_tickets: totalTicketsCount,
         sold_tickets: 0,
-        max_tickets_per_user: Math.max(...formData.tickets.map(t => t.max_quantity || 5), 5),
-        min_tickets_per_user: Math.min(...formData.tickets.map(t => t.min_quantity || 1), 1),
+        max_tickets_per_user: (() => {
+          const maxValues = (formData.tickets || []).map(t => t.max_quantity || 5);
+          return maxValues.length > 0 ? Math.max(...maxValues, 5) : 5;
+        })(),
+        min_tickets_per_user: (() => {
+          const minValues = (formData.tickets || []).map(t => t.min_quantity || 1);
+          return minValues.length > 0 ? Math.min(...minValues, 1) : 1;
+        })(),
         
         // ✅ NOVOS: Campos de venda
         ticket_sales_start: salesDates.length > 0 ? salesDates[0].toISOString() : null,
@@ -713,10 +720,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         image_size: 0, // Será atualizado se tivermos o tamanho
         image_format: formData.image ? formData.image.split('.').pop()?.toLowerCase() : null,
         
-        // ✅ NOVOS: Campos adicionais
-        tags: formData.subject ? [formData.subject, formData.category].filter(Boolean) : [],
-        important_info: formData.important_info.filter(info => info.trim() !== ''),
-        attractions: formData.attractions.filter(attraction => attraction.trim() !== ''),
+        // ✅ NOVOS: Campos adicionais (com proteção contra undefined)
+        tags: (() => {
+          const tagList = [formData.subject, formData.category].filter(Boolean);
+          return tagList.length > 0 ? tagList : [];
+        })(),
+        important_info: (formData.important_info || []).filter(info => info && info.trim() !== ''),
+        attractions: (formData.attractions || []).filter(attraction => attraction && attraction.trim() !== ''),
         classification: null, // Pode ser adicionado no formulário
         
         // ✅ Campos de controle (garantir obrigatórios)
@@ -792,7 +802,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       setCreatedEventData(successData);
       setShowSuccessModal(true);
       
-      // Reset form
+      // ✅ Reset form (incluindo novos campos)
       setFormData({
         title: '',
         image: '',
@@ -806,6 +816,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         location_type: 'tbd',
         location_search: '',
         location_name: '',
+        location_address: '',
         location_cep: '',
         location_street: '',
         location_number: '',
@@ -814,7 +825,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         location_city: '',
         location_state: '',
         ticket_type: 'paid',
-        tickets: []
+        tickets: [],
+        important_info: [''], // ✅ NOVO
+        attractions: [''] // ✅ NOVO
       });
       setCurrentStep(1);
       setImagePreview('');
