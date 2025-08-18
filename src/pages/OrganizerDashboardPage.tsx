@@ -902,6 +902,15 @@ const OrganizerSales = () => {
     fetchEvents();
   }, []);
 
+  // Efeito para buscar vendas quando filtros mudarem
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchSalesWithFilters();
+    }, 300); // Debounce de 300ms para evitar muitas requisições
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, filter, selectedEvent, dateRange]);
+
   const fetchEvents = async () => {
     try {
       // Obter o usuário atual
