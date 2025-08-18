@@ -507,6 +507,7 @@ const OrganizerEvents = () => {
             category: eventData.category,
             banner_url: eventData.image,
             organizer_id: userData.user?.id || '',
+            created_by: userData.user?.id || '',
             price: eventData.price || 0,
             available_tickets: eventData.totalTickets,
             total_tickets: eventData.totalTickets,
@@ -716,6 +717,7 @@ const OrganizerEvents = () => {
                   category: data.category,
                   image: data.image,
                   organizer_id: userData.user?.id || '',
+                  created_by: userData.user?.id || '',
                   price: data.price || 0,
                   total_tickets: data.totalTickets,
                   status: 'pending'
