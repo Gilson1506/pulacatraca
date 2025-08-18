@@ -36,6 +36,10 @@ interface EventFormData {
   // Seção 5: Ingressos
   ticket_type: 'paid' | 'free';
   tickets: TicketData[];
+  
+  // ✅ NOVOS: Seção 6: Informações Adicionais
+  important_info: string[];
+  attractions: string[];
 }
 
 interface TicketData {
@@ -133,7 +137,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         description: '',
         batches: []
       }
-    ]
+    ],
+    
+    // ✅ NOVOS: Seção 6: Informações Adicionais
+    important_info: [''],
+    attractions: ['']
   });
 
   const [imagePreview, setImagePreview] = useState<string>('');
@@ -685,8 +693,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         
         // ✅ NOVOS: Campos adicionais
         tags: formData.subject ? [formData.subject, formData.category].filter(Boolean) : [],
-        important_info: [], // Pode ser expandido futuramente
-        attractions: [], // Pode ser expandido futuramente
+        important_info: formData.important_info.filter(info => info.trim() !== ''),
+        attractions: formData.attractions.filter(attraction => attraction.trim() !== ''),
         classification: null, // Pode ser adicionado no formulário
         
         // ✅ Campos de controle
@@ -1811,6 +1819,144 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     </div>
   );
 
+  const renderStep6 = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">6. Informações Adicionais</h3>
+        <p className="text-sm text-gray-600 mb-4">Adicione informações importantes e atrações do seu evento.</p>
+      </div>
+
+      {/* Informações Importantes */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Informações Importantes
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                important_info: [...prev.important_info, '']
+              }));
+            }}
+            className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar Informação
+          </button>
+        </div>
+        <div className="space-y-2">
+          {formData.important_info.map((info, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                type="text"
+                value={info}
+                onChange={(e) => {
+                  const newInfo = [...formData.important_info];
+                  newInfo[index] = e.target.value;
+                  setFormData(prev => ({ ...prev, important_info: newInfo }));
+                }}
+                placeholder="Ex: Documento obrigatório, Chegue com antecedência..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              {formData.important_info.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newInfo = formData.important_info.filter((_, i) => i !== index);
+                    setFormData(prev => ({ ...prev, important_info: newInfo }));
+                  }}
+                  className="px-3 py-2 text-red-500 hover:text-red-600"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Atrações */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Atrações e Artistas
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                attractions: [...prev.attractions, '']
+              }));
+            }}
+            className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar Atração
+          </button>
+        </div>
+        <div className="space-y-2">
+          {formData.attractions.map((attraction, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                type="text"
+                value={attraction}
+                onChange={(e) => {
+                  const newAttractions = [...formData.attractions];
+                  newAttractions[index] = e.target.value;
+                  setFormData(prev => ({ ...prev, attractions: newAttractions }));
+                }}
+                placeholder="Ex: DJ John, Banda XYZ, Show de Luzes..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+              {formData.attractions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newAttractions = formData.attractions.filter((_, i) => i !== index);
+                    setFormData(prev => ({ ...prev, attractions: newAttractions }));
+                  }}
+                  className="px-3 py-2 text-red-500 hover:text-red-600"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Preview dos campos adicionais */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Preview:</h4>
+        <div className="space-y-2 text-sm">
+          {formData.important_info.filter(info => info.trim()).length > 0 && (
+            <div>
+              <span className="font-medium text-gray-600">Informações Importantes:</span>
+              <ul className="list-disc list-inside ml-2 text-gray-600">
+                {formData.important_info.filter(info => info.trim()).map((info, index) => (
+                  <li key={index}>{info}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {formData.attractions.filter(attraction => attraction.trim()).length > 0 && (
+            <div>
+              <span className="font-medium text-gray-600">Atrações:</span>
+              <ul className="list-disc list-inside ml-2 text-gray-600">
+                {formData.attractions.filter(attraction => attraction.trim()).map((attraction, index) => (
+                  <li key={index}>{attraction}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-auto my-4 sm:my-8 overflow-hidden">
@@ -1822,6 +1968,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {(!event && currentStep === 3) && 'Descrição do Evento'}
             {(!event && currentStep === 4) && 'Local do Evento'}
             {(!event && currentStep === 5) && 'Ingressos'}
+            {(!event && currentStep === 6) && 'Informações Adicionais'}
           </h2>
           <button
             onClick={onClose}
@@ -1835,7 +1982,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         {!event && (
           <div className="px-4 sm:px-6 py-2 bg-gray-50">
             <div className="flex items-center justify-between mb-2">
-              {[1, 2, 3, 4, 5].map((step) => (
+              {[1, 2, 3, 4, 5, 6].map((step) => (
                 <div
                   key={step}
                   className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
@@ -1851,7 +1998,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-pink-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentStep / 5) * 100}%` }}
+                style={{ width: `${(currentStep / 6) * 100}%` }}
               />
             </div>
           </div>
@@ -1867,6 +2014,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               {renderStep3()}
               {renderStep4()}
               {renderStep5()}
+              {renderStep6()}
             </>
           ) : (
             <>
@@ -1875,6 +2023,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               {currentStep === 3 && renderStep3()}
               {currentStep === 4 && renderStep4()}
               {currentStep === 5 && renderStep5()}
+              {currentStep === 6 && renderStep6()}
             </>
           )}
         </div>
@@ -1898,7 +2047,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 >
                   Cancelar
                 </button>
-                {currentStep < 5 ? (
+                {currentStep < 6 ? (
                   <button
                     onClick={goToNextStep}
                     type="button"

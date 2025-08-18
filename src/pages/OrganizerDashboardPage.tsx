@@ -55,6 +55,7 @@ interface Sale {
   id: string;
   eventId: string;
   eventName: string;
+  eventImage?: string; // ✅ NOVO: Banner do evento
   buyerName: string;
   buyerEmail: string;
   userName: string; // ✅ PESSOA QUE USA O INGRESSO
@@ -64,7 +65,7 @@ interface Sale {
   quantity: number;
   amount: number;
   date: string;
-  status: 'pendente' | 'confirmado' | 'cancelado' | 'usado';
+  status: 'pendente' | 'confirmado' | 'cancelado' | 'usado' | 'transferido';
   paymentMethod: string;
   isUsed: boolean; // ✅ STATUS DE USO
   usedAt: string | null; // ✅ DATA/HORA DE USO
@@ -1631,31 +1632,28 @@ const OrganizerSales = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="w-10 h-10 rounded-lg overflow-hidden mr-3 flex-shrink-0">
-                        {(() => {
-                          const event = events.find(e => e.id === sale.eventId);
-                          return event?.image ? (
-                            <img 
-                              src={event.image} 
-                              alt={sale.eventName}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Fallback para ícone se imagem falhar
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement.innerHTML = `
-                                  <div class="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
-                                    <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                  </div>
-                                `;
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
-                              <Calendar className="h-5 w-5 text-pink-600" />
-                            </div>
-                          );
-                        })()}
+                        {sale.eventImage ? (
+                          <img 
+                            src={sale.eventImage} 
+                            alt={sale.eventName}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback para ícone se imagem falhar
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement.innerHTML = `
+                                <div class="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
+                                  <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                  </svg>
+                                </div>
+                              `;
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
+                            <Calendar className="h-5 w-5 text-pink-600" />
+                          </div>
+                        )}
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
