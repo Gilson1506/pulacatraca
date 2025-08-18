@@ -1144,45 +1144,58 @@ const OrganizerSales = () => {
       // ✅ 3. Buscar dados dos usuários separadamente para evitar problemas de FK
       const userIds = [...new Set([
         ...ticketsData?.map(t => t.buyer_id).filter(Boolean) || [],
-        ...ticketsData?.map(t => t.user_id).filter(Boolean) || []
+        ...ticketsData?.map(t => t.user_id).filter(Boolean) || [],
+        ...ticketsData?.map(t => t.assigned_user_id).filter(Boolean) || [],
+        ...ticketsData?.map(t => t.assigned_by).filter(Boolean) || [],
+        ...ticketsData?.map(t => t.check_in_by).filter(Boolean) || []
       ])];
 
       let usersData = {};
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, name, email')
-          .in('id', userIds);
-        
-        usersData = profiles?.reduce((acc, profile) => {
-          acc[profile.id] = profile;
-          return acc;
-        }, {}) || {};
+        try {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', userIds);
+          
+          usersData = profiles?.reduce((acc, profile) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {}) || {};
+          
+          console.log('📊 Sales Debug - Profiles encontrados:', Object.keys(usersData).length);
+        } catch (profileError) {
+          console.log('⚠️ Erro ao buscar profiles, usando dados dos tickets');
+        }
       }
 
       // ✅ 4. Formatar dados das vendas usando eventos + tickets
       const formattedSales: Sale[] = ticketsData?.map(ticket => {
         const event = eventsData.find(e => e.id === ticket.event_id);
         const buyer = usersData[ticket.buyer_id] || {};
-        const ticketUser = usersData[ticket.user_id] || buyer;
+        const ticketUser = usersData[ticket.user_id] || usersData[ticket.assigned_user_id] || buyer;
         
         return {
           id: ticket.id,
           eventId: ticket.event_id,
           eventName: event?.title || 'Evento não encontrado',
-          buyerName: buyer.name || 'Nome não informado',
-          buyerEmail: buyer.email || 'Email não informado',
-          userName: ticketUser.name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
-          userEmail: ticketUser.email || 'Email não informado',
-          ticketType: ticket.ticket_type || 'Padrão',
-          ticketCode: ticket.code || ticket.ticket_code || 'N/A', // ✅ CÓDIGO DO INGRESSO
+          buyerName: buyer.name || ticket.assigned_user_name || 'Nome não informado',
+          buyerEmail: buyer.email || ticket.assigned_user_email || 'Email não informado',
+          userName: ticketUser.name || ticket.assigned_user_name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
+          userEmail: ticketUser.email || ticket.assigned_user_email || 'Email não informado',
+          ticketType: ticket.ticket_type_name || ticket.ticket_type || 'Padrão',
+          ticketCode: ticket.qr_code || ticket.code || 'N/A', // ✅ QR CODE DO INGRESSO
           quantity: 1,
-          amount: event?.price || 0, // ✅ Preço vem do evento
-          date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
-          status: ticket.status === 'active' ? 'confirmado' : ticket.status === 'used' ? 'usado' : ticket.status === 'cancelled' ? 'cancelado' : 'pendente',
-          paymentMethod: 'Não informado',
-          isUsed: ticket.status === 'used', // ✅ STATUS DE USO DO INGRESSO
-          usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : null
+          amount: ticket.price || event?.price || 0, // ✅ Preço do ticket ou do evento
+          date: new Date(ticket.purchase_date || ticket.created_at).toLocaleDateString('pt-BR'),
+          status: ticket.status === 'active' ? 'confirmado' : 
+                 ticket.status === 'used' ? 'usado' : 
+                 ticket.status === 'cancelled' ? 'cancelado' : 
+                 ticket.status === 'transferred' ? 'transferido' : 'pendente',
+          paymentMethod: ticket.payment_method || 'Não informado',
+          isUsed: ticket.is_used || ticket.used || ticket.status === 'used', // ✅ STATUS DE USO
+          usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : 
+                 ticket.check_in_date ? new Date(ticket.check_in_date).toLocaleString('pt-BR') : null
         };
       }) || [];
 
