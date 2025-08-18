@@ -1194,44 +1194,78 @@ const OrganizerSales = () => {
   };
 
   // Fallback para buscar apenas transações se tabela tickets não existir
-  const fetchTransactionsOnly = async (userId: string) => {
+  const fetchTransactionsOnly = async (userId: string, eventsData: any[]) => {
     try {
       console.log('🔄 Fallback: Buscando apenas transações...');
       
+      // ✅ Buscar todas as transações sem JOIN complexo
       const { data: salesData, error } = await supabase
         .from('transactions')
-        .select(`
-          *,
-          event:events!inner(title, organizer_id, price),
-          buyer:profiles!transactions_user_id_fkey(name, email)
-        `)
-        .eq('event.organizer_id', userId)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const formattedSales: Sale[] = salesData?.map(sale => ({
-        id: sale.id,
-        eventId: sale.event_id,
-        eventName: sale.event.title,
-        buyerName: sale.buyer?.name || 'Nome não informado',
-        buyerEmail: sale.buyer?.email || 'Email não informado',
-        userName: sale.buyer?.name || 'Usuário não informado', // Mesmo que comprador
-        userEmail: sale.buyer?.email || 'Email não informado',
-        ticketType: 'Padrão',
-        ticketCode: 'N/A', // Não disponível em transações
-        quantity: 1,
-        amount: sale.amount,
-        date: new Date(sale.created_at).toLocaleDateString('pt-BR'),
-        status: sale.status === 'completed' ? 'confirmado' : sale.status === 'pending' ? 'pendente' : 'cancelado',
-        paymentMethod: sale.payment_method || 'Não informado',
-        isUsed: false,
-        usedAt: null
-      })) || [];
+      console.log('📊 Sales Debug - Transactions encontradas:', salesData?.length || 0);
 
+      // ✅ Filtrar transações que pertencem aos eventos do organizador
+      const eventIds = eventsData.map(e => e.id);
+      const filteredTransactions = salesData?.filter(transaction => 
+        transaction.event_id && eventIds.includes(transaction.event_id)
+      ) || [];
+
+      console.log('📊 Sales Debug - Transactions filtradas:', filteredTransactions.length);
+
+      // ✅ Buscar dados dos usuários se necessário
+      const userIds = [...new Set(filteredTransactions.map(t => t.user_id || t.buyer_id).filter(Boolean))];
+      let usersData = {};
+      
+      if (userIds.length > 0) {
+        try {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', userIds);
+          
+          usersData = profiles?.reduce((acc, profile) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {}) || {};
+        } catch (profileError) {
+          console.log('⚠️ Erro ao buscar profiles, continuando sem dados de usuário');
+        }
+      }
+
+      const formattedSales: Sale[] = filteredTransactions?.map(sale => {
+        const event = eventsData.find(e => e.id === sale.event_id);
+        const buyer = usersData[sale.user_id || sale.buyer_id] || {};
+        
+        return {
+          id: sale.id,
+          eventId: sale.event_id,
+          eventName: event?.title || 'Evento não encontrado',
+          buyerName: buyer.name || 'Nome não informado',
+          buyerEmail: buyer.email || 'Email não informado',
+          userName: buyer.name || 'Usuário não informado', // Mesmo que comprador
+          userEmail: buyer.email || 'Email não informado',
+          ticketType: 'Padrão',
+          ticketCode: 'N/A', // Não disponível em transações
+          quantity: 1,
+          amount: sale.amount || event?.price || 0,
+          date: new Date(sale.created_at).toLocaleDateString('pt-BR'),
+          status: sale.status === 'completed' ? 'confirmado' : sale.status === 'pending' ? 'pendente' : 'cancelado',
+          paymentMethod: sale.payment_method || 'Não informado',
+          isUsed: false, // Não disponível em transações
+          usedAt: null
+        };
+      }) || [];
+
+      console.log('📊 Sales Debug - Vendas formatadas (transactions):', formattedSales.length);
       setSales(formattedSales);
     } catch (error) {
       console.error('❌ Erro no fallback de transações:', error);
+      // Se tudo falhar, definir lista vazia
+      setSales([]);
     }
   };
 
