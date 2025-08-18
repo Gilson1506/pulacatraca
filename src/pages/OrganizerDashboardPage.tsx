@@ -135,11 +135,46 @@ const DashboardOverview = () => {
 
       if (eventsError) throw eventsError;
 
-      const { data: sales, error: salesError } = await supabase
-        .from('transactions')
-        .select(`*, event:events!inner(organizer_id)`) 
-        .eq('event.organizer_id', user.id)
-        .order('created_at', { ascending: true });
+      // Tentar buscar dados da tabela tickets primeiro (mais completa)
+      let sales = null;
+      let salesError = null;
+
+      try {
+        const { data: ticketsData, error: ticketsErr } = await supabase
+          .from('tickets')
+          .select(`
+            *,
+            event:events!inner(title, organizer_id, price)
+          `)
+          .eq('event.organizer_id', user.id)
+          .order('created_at', { ascending: true });
+
+        if (!ticketsErr && ticketsData) {
+          // Converter dados de tickets para formato de sales
+          sales = ticketsData.map(ticket => ({
+            id: ticket.id,
+            amount: ticket.event?.price || 0,
+            status: ticket.status === 'active' ? 'completed' : 
+                   ticket.status === 'cancelled' ? 'cancelled' : 'pending',
+            created_at: ticket.created_at,
+            event_id: ticket.event_id
+          }));
+        } else {
+          throw ticketsErr;
+        }
+      } catch (ticketsError) {
+        console.log('⚠️ Fallback para transactions table:', ticketsError);
+        
+        // Fallback para transactions
+        const { data: transData, error: transError } = await supabase
+          .from('transactions')
+          .select(`*, event:events!inner(organizer_id)`) 
+          .eq('event.organizer_id', user.id)
+          .order('created_at', { ascending: true });
+          
+        sales = transData;
+        salesError = transError;
+      }
 
       if (salesError) throw salesError;
 
@@ -894,6 +929,8 @@ const OrganizerSales = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sales, setSales] = useState<Sale[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [showQuickSearch, setShowQuickSearch] = useState(false);
+  const [quickSearchResult, setQuickSearchResult] = useState<Sale | null>(null);
   
   // Estados removidos - agora o comprador define o usuário
 
@@ -948,6 +985,99 @@ const OrganizerSales = () => {
       setEvents(formattedEvents);
     } catch (error) {
       console.error('Erro ao buscar eventos:', error);
+    }
+  };
+
+  // Nova função para buscar vendas com filtros no Supabase
+  const fetchSalesWithFilters = async () => {
+    try {
+      console.log('🔍 Buscando vendas com filtros no Supabase...');
+      
+      // Obter o usuário atual
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('❌ Erro ao obter usuário:', userError);
+        return;
+      }
+
+      // Construir query com filtros
+      let query = supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:events!inner(title, organizer_id, price)
+        `)
+        .eq('event.organizer_id', user.id);
+
+      // Aplicar filtro de status
+      if (filter !== 'todos') {
+        const dbStatus = filter === 'confirmado' ? 'active' : 
+                        filter === 'cancelado' ? 'cancelled' : 
+                        filter === 'pendente' ? 'pending' : filter;
+        query = query.eq('status', dbStatus);
+      }
+
+      // Aplicar filtro de evento específico
+      if (selectedEvent) {
+        query = query.eq('event_id', selectedEvent.id);
+      }
+
+      // Aplicar filtro de data
+      if (dateRange.start && dateRange.end) {
+        query = query.gte('created_at', dateRange.start + 'T00:00:00')
+                    .lte('created_at', dateRange.end + 'T23:59:59');
+      }
+
+      // Aplicar busca por texto usando ilike (case insensitive)
+      if (searchTerm) {
+        query = query.or(`
+          ticket_code.ilike.%${searchTerm}%,
+          buyer_name.ilike.%${searchTerm}%,
+          buyer_email.ilike.%${searchTerm}%,
+          user_name.ilike.%${searchTerm}%,
+          user_email.ilike.%${searchTerm}%,
+          event.title.ilike.%${searchTerm}%
+        `);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data: ticketsData, error } = await query;
+
+      if (error) {
+        console.error('❌ Erro ao buscar ingressos com filtros:', error);
+        return;
+      }
+
+      console.log('✅ Ingressos filtrados encontrados:', ticketsData?.length || 0);
+
+      // Processar dados dos ingressos
+      if (ticketsData && ticketsData.length > 0) {
+        const formattedSales = ticketsData.map(ticket => ({
+          id: ticket.id,
+          eventName: ticket.event?.title || 'Evento não encontrado',
+          buyerName: ticket.buyer_name || 'Nome não informado',
+          buyerEmail: ticket.buyer_email || 'Email não informado',
+          userName: ticket.user_name || ticket.buyer_name || 'Usuário não informado',
+          userEmail: ticket.user_email || ticket.buyer_email || 'Email não informado',
+          ticketCode: ticket.ticket_code || 'Código não gerado',
+          ticketType: ticket.ticket_type || 'Padrão',
+          amount: ticket.event?.price || 0,
+          status: ticket.status === 'active' ? 'confirmado' : 
+                 ticket.status === 'cancelled' ? 'cancelado' : 
+                 ticket.status === 'used' ? 'usado' : 'pendente',
+          date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
+          isUsed: ticket.status === 'used',
+          usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleDateString('pt-BR') : null
+        }));
+
+        setSales(formattedSales);
+      } else {
+        setSales([]);
+      }
+
+    } catch (error) {
+      console.error('❌ Erro inesperado ao buscar vendas com filtros:', error);
     }
   };
 
@@ -1071,27 +1201,8 @@ const OrganizerSales = () => {
     }
   };
 
-  // Filtrar vendas
-  const filteredSales = useMemo(() => {
-    return sales.filter((sale: Sale) => {
-      const matchesFilter = filter === 'todos' || sale.status === filter;
-      const matchesDate = !dateRange.start || !dateRange.end || 
-        (sale.date >= dateRange.start && sale.date <= dateRange.end);
-      
-      // Filtro por evento selecionado
-      const matchesEvent = !selectedEvent || sale.eventName === selectedEvent.name;
-      
-      // Busca por texto (nome do comprador, código do ingresso, nome do evento, email)
-      const matchesSearch = !searchTerm || 
-        sale.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.ticketCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (sale.userEmail && sale.userEmail.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      return matchesFilter && matchesDate && matchesEvent && matchesSearch;
-    });
-  }, [sales, filter, dateRange, selectedEvent, searchTerm]);
+  // Como a filtragem agora é feita no Supabase, usamos diretamente os sales
+  const filteredSales = sales;
 
   // Calcular totais
   const totalRevenue = useMemo(() => 
@@ -1103,6 +1214,58 @@ const OrganizerSales = () => {
     filteredSales.filter((sale: Sale) => sale.status === 'pendente').length,
     [filteredSales]
   );
+
+  // Função de busca rápida por código
+  const quickSearchByCode = async (code: string) => {
+    if (!code.trim()) {
+      setQuickSearchResult(null);
+      return;
+    }
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) return;
+
+      const { data: ticketData, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:events!inner(title, organizer_id, price)
+        `)
+        .eq('event.organizer_id', user.id)
+        .eq('ticket_code', code.toUpperCase())
+        .single();
+
+      if (error || !ticketData) {
+        // Definir resultado como "não encontrado" em vez de null
+        setQuickSearchResult({} as Sale);
+        return;
+      }
+
+      const result: Sale = {
+        id: ticketData.id,
+        eventName: ticketData.event?.title || 'Evento não encontrado',
+        buyerName: ticketData.buyer_name || 'Nome não informado',
+        buyerEmail: ticketData.buyer_email || 'Email não informado',
+        userName: ticketData.user_name || ticketData.buyer_name || 'Usuário não informado',
+        userEmail: ticketData.user_email || ticketData.buyer_email || 'Email não informado',
+        ticketCode: ticketData.ticket_code || 'Código não gerado',
+        ticketType: ticketData.ticket_type || 'Padrão',
+        amount: ticketData.event?.price || 0,
+        status: ticketData.status === 'active' ? 'confirmado' : 
+               ticketData.status === 'cancelled' ? 'cancelado' : 
+               ticketData.status === 'used' ? 'usado' : 'pendente',
+        date: new Date(ticketData.created_at).toLocaleDateString('pt-BR'),
+        isUsed: ticketData.status === 'used',
+        usedAt: ticketData.used_at ? new Date(ticketData.used_at).toLocaleDateString('pt-BR') : null
+      };
+
+      setQuickSearchResult(result);
+    } catch (error) {
+      console.error('Erro na busca rápida:', error);
+      setQuickSearchResult(null);
+    }
+  };
 
   // Função para destacar texto da busca
   const highlightSearchTerm = (text: string) => {
@@ -1479,6 +1642,13 @@ const OrganizerSales = () => {
         <div className="flex flex-wrap gap-2">
           <span className="text-sm font-medium text-gray-700 self-center">Busca rápida:</span>
           <button
+            onClick={() => setShowQuickSearch(true)}
+            className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-xs font-medium hover:bg-pink-200 transition-colors flex items-center gap-1"
+          >
+            <Search className="h-3 w-3" />
+            Buscar código
+          </button>
+          <button
             onClick={() => setFilter('pendente')}
             className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium hover:bg-orange-200 transition-colors"
           >
@@ -1627,6 +1797,88 @@ const OrganizerSales = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal de Busca Rápida */}
+      {showQuickSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Busca Rápida por Código</h3>
+              <button
+                onClick={() => {
+                  setShowQuickSearch(false);
+                  setQuickSearchResult(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Digite o código do ingresso:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: TICKET123456"
+                  onChange={(e) => quickSearchByCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  autoFocus
+                />
+              </div>
+              
+              {quickSearchResult && quickSearchResult.id && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-800">Ingresso encontrado!</span>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div><strong>Evento:</strong> {quickSearchResult.eventName}</div>
+                    <div><strong>Comprador:</strong> {quickSearchResult.buyerName}</div>
+                    <div><strong>Email:</strong> {quickSearchResult.buyerEmail}</div>
+                    <div><strong>Código:</strong> {quickSearchResult.ticketCode}</div>
+                    <div><strong>Status:</strong> 
+                      <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
+                        quickSearchResult.status === 'confirmado' ? 'bg-green-100 text-green-800' :
+                        quickSearchResult.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
+                        quickSearchResult.status === 'usado' ? 'bg-blue-100 text-blue-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {quickSearchResult.status}
+                      </span>
+                    </div>
+                    {quickSearchResult.isUsed && quickSearchResult.usedAt && (
+                      <div><strong>Usado em:</strong> {quickSearchResult.usedAt}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {quickSearchResult && !quickSearchResult.id && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    <span className="font-medium text-red-800">Ingresso não encontrado</span>
+                  </div>
+                  <p className="text-sm text-red-700">
+                    Verifique se o código está correto e se o ingresso pertence aos seus eventos.
+                  </p>
+                </div>
+              )}
+              
+              {quickSearchResult === null && (
+                <div className="text-center text-gray-500 py-4">
+                  Digite um código para buscar...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal removido - agora o comprador define o usuário */}
     </div>
