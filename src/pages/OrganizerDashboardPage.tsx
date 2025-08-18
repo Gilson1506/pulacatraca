@@ -1102,25 +1102,46 @@ const OrganizerSales = () => {
         return;
       }
 
-      // Buscar ingressos com dados completos do comprador e usuário
-      const { data: ticketsData, error } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          event:events!inner(title, organizer_id, price)
-        `)
-        .eq('event.organizer_id', user.id) // ✅ APENAS INGRESSOS DOS EVENTOS DO ORGANIZADOR
+      // ✅ 1. Primeiro busca os eventos do organizador
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('organizer_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Erro ao buscar ingressos:', error);
-        // Fallback para buscar apenas transações se tickets não existir
-        return await fetchTransactionsOnly(user.id);
+      if (eventsError) throw eventsError;
+
+      console.log('📊 Sales Debug - Eventos encontrados:', eventsData?.length || 0);
+
+      if (!eventsData || eventsData.length === 0) {
+        console.log('⚠️ Organizador não tem eventos, zerando vendas');
+        setSales([]);
+        return;
       }
 
-      console.log('✅ Ingressos encontrados:', ticketsData?.length || 0);
+      // ✅ 2. Depois busca os tickets vendidos para esses eventos
+      const eventIds = eventsData.map(event => event.id);
+      const { data: ticketsData, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('*')
+        .in('event_id', eventIds)
+        .order('created_at', { ascending: false });
 
-      // Buscar dados dos usuários separadamente para evitar problemas de FK
+      if (ticketsError) {
+        console.error('❌ Erro ao buscar tickets:', ticketsError);
+        // Fallback para buscar apenas transações se tickets não existir
+        return await fetchTransactionsOnly(user.id, eventsData);
+      }
+
+      console.log('📊 Sales Debug - Tickets encontrados:', ticketsData?.length || 0);
+      console.log('📊 Sales Debug - Tickets por status:', 
+        ticketsData?.reduce((acc, ticket) => {
+          acc[ticket.status] = (acc[ticket.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      );
+
+      // ✅ 3. Buscar dados dos usuários separadamente para evitar problemas de FK
       const userIds = [...new Set([
         ...ticketsData?.map(t => t.buyer_id).filter(Boolean) || [],
         ...ticketsData?.map(t => t.user_id).filter(Boolean) || []
@@ -1139,22 +1160,24 @@ const OrganizerSales = () => {
         }, {}) || {};
       }
 
+      // ✅ 4. Formatar dados das vendas usando eventos + tickets
       const formattedSales: Sale[] = ticketsData?.map(ticket => {
+        const event = eventsData.find(e => e.id === ticket.event_id);
         const buyer = usersData[ticket.buyer_id] || {};
         const ticketUser = usersData[ticket.user_id] || buyer;
         
         return {
           id: ticket.id,
           eventId: ticket.event_id,
-          eventName: ticket.event.title,
+          eventName: event?.title || 'Evento não encontrado',
           buyerName: buyer.name || 'Nome não informado',
           buyerEmail: buyer.email || 'Email não informado',
           userName: ticketUser.name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
           userEmail: ticketUser.email || 'Email não informado',
           ticketType: ticket.ticket_type || 'Padrão',
-          ticketCode: ticket.code || 'N/A', // ✅ CÓDIGO DO INGRESSO
+          ticketCode: ticket.code || ticket.ticket_code || 'N/A', // ✅ CÓDIGO DO INGRESSO
           quantity: 1,
-          amount: ticket.event.price || 0,
+          amount: event?.price || 0, // ✅ Preço vem do evento
           date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
           status: ticket.status === 'active' ? 'confirmado' : ticket.status === 'used' ? 'usado' : ticket.status === 'cancelled' ? 'cancelado' : 'pendente',
           paymentMethod: 'Não informado',
@@ -1163,6 +1186,7 @@ const OrganizerSales = () => {
         };
       }) || [];
 
+      console.log('📊 Sales Debug - Vendas formatadas:', formattedSales.length);
       setSales(formattedSales);
     } catch (error) {
       console.error('❌ Erro inesperado ao buscar vendas:', error);
