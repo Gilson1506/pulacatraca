@@ -135,30 +135,115 @@ const DashboardOverview = () => {
 
       if (eventsError) throw eventsError;
 
-      const { data: sales, error: salesError } = await supabase
-        .from('transactions')
-        .select(`*, event:events!inner(organizer_id)`) 
+      // ✅ CORRIGIDO: Buscar dados das tabelas corretas para ingressos
+      const { data: ticketPurchases, error: purchasesError } = await supabase
+        .from('ticket_purchases')
+        .select(`
+          *,
+          event:events!inner(organizer_id),
+          transaction:transactions(amount, status, created_at)
+        `) 
         .eq('event.organizer_id', user.id)
         .order('created_at', { ascending: true });
 
-      if (salesError) throw salesError;
+      if (purchasesError) {
+        console.error('Erro ao buscar ticket_purchases:', purchasesError);
+        
+        // 🔍 Tentar buscar na tabela tickets diretamente
+        const { data: tickets, error: ticketsError } = await supabase
+          .from('tickets')
+          .select(`
+            *,
+            event:events!inner(organizer_id)
+          `) 
+          .eq('event.organizer_id', user.id)
+          .order('created_at', { ascending: true });
+          
+        if (!ticketsError && tickets) {
+          console.log('✅ Usando dados da tabela tickets:', tickets.length);
+          
+          const activeEventsCount = events?.filter(event => event.status === 'approved').length || 0;
+          const totalTicketsSold = tickets?.filter(ticket => ticket.status === 'active' || ticket.status === 'used').length || 0;
+          const pendingSales = 0; // Tickets não tem status pending
+          const totalRevenue = 0; // Não temos preço na tabela tickets
+          
+          console.log('📊 Stats da tabela tickets:', { totalTicketsSold, activeEventsCount });
+          
+          setStats({ totalRevenue, totalTicketsSold, activeEvents: activeEventsCount, pendingSales });
+          setRecentEvents(events?.slice(0, 3) || []);
+          return;
+        }
+        
+        // Fallback final para transactions
+        console.log('⚠️ Fallback para tabela transactions');
+        const { data: transactions, error: transError } = await supabase
+          .from('transactions')
+          .select(`*, event:events!inner(organizer_id)`) 
+          .eq('event.organizer_id', user.id)
+          .order('created_at', { ascending: true });
+        
+        if (transError) throw transError;
+        
+        const activeEventsCount = events?.filter(event => event.status === 'approved').length || 0;
+        const totalRevenue = transactions?.reduce((sum, trans) => sum + (trans.amount || 0), 0) || 0;
+        const totalTicketsSold = transactions?.filter(trans => trans.status === 'completed').length || 0;
+        const pendingSales = transactions?.filter(trans => trans.status === 'pending').length || 0;
+        
+        console.log('📊 Stats da tabela transactions:', { totalRevenue, totalTicketsSold, pendingSales });
+        
+        setStats({ totalRevenue, totalTicketsSold, activeEvents: activeEventsCount, pendingSales });
+        setRecentEvents(events?.slice(0, 3) || []);
+        return;
+      }
 
+      // ✅ CORRIGIDO: Calcular estatísticas baseadas em ingressos reais
       const activeEventsCount = events?.filter(event => event.status === 'approved').length || 0;
-      const totalRevenue = sales?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
-      const totalTicketsSold = sales?.filter(sale => sale.status === 'completed').length || 0;
-      const pendingSales = sales?.filter(sale => sale.status === 'pending').length || 0;
+      
+      // 🔍 DEBUG: Log dos dados recebidos
+      console.log('📊 Dashboard Debug - Dados recebidos:');
+      console.log('  - Eventos:', events?.length || 0);
+      console.log('  - Ticket Purchases:', ticketPurchases?.length || 0);
+      console.log('  - Ticket Purchases por status:', 
+        ticketPurchases?.reduce((acc, p) => {
+          acc[p.status] = (acc[p.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      );
+      
+      // Calcular receita total das compras confirmadas
+      const totalRevenue = ticketPurchases
+        ?.filter(purchase => purchase.status === 'confirmed')
+        ?.reduce((sum, purchase) => sum + (purchase.total_amount || 0), 0) || 0;
+      
+      // Contar ingressos vendidos (compras confirmadas * quantidade)
+      const totalTicketsSold = ticketPurchases
+        ?.filter(purchase => purchase.status === 'confirmed')
+        ?.reduce((sum, purchase) => sum + (purchase.quantity || 0), 0) || 0;
+      
+      // Contar vendas pendentes
+      const pendingSales = ticketPurchases?.filter(purchase => purchase.status === 'pending').length || 0;
+      
+      // 🔍 DEBUG: Log das estatísticas calculadas
+      console.log('📊 Dashboard Debug - Estatísticas calculadas:');
+      console.log('  - Total Revenue:', totalRevenue);
+      console.log('  - Total Tickets Sold:', totalTicketsSold);
+      console.log('  - Pending Sales:', pendingSales);
+      console.log('  - Active Events:', activeEventsCount);
 
       setStats({ totalRevenue, totalTicketsSold, activeEvents: activeEventsCount, pendingSales });
       setRecentEvents(events?.slice(0, 3) || []);
 
-      // Build simple monthly series from transactions
+      // ✅ CORRIGIDO: Build monthly series from ticket purchases
       const byMonth: Record<string, { revenue: number; tickets: number }> = {};
-      (sales || []).forEach(s => {
-        const d = new Date(s.created_at);
+      (ticketPurchases || []).forEach(purchase => {
+        const d = new Date(purchase.created_at);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         if (!byMonth[key]) byMonth[key] = { revenue: 0, tickets: 0 };
-        byMonth[key].revenue += s.amount || 0;
-        byMonth[key].tickets += s.status === 'completed' ? 1 : 0;
+        
+        if (purchase.status === 'confirmed') {
+          byMonth[key].revenue += purchase.total_amount || 0;
+          byMonth[key].tickets += purchase.quantity || 0;
+        }
       });
       const keys = Object.keys(byMonth).sort();
       setLabelsSeries(keys);
