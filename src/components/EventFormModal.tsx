@@ -431,14 +431,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         return true;
         
       case 5:
-        if (formData.tickets.length === 0) {
+        const tickets = formData.tickets || [];
+        if (tickets.length === 0) {
           const confirm = window.confirm('Nenhum ingresso foi criado. Deseja criar um evento sem ingressos?');
           return confirm;
         }
         
         // Validar ingressos
-        for (let i = 0; i < formData.tickets.length; i++) {
-          const ticket = formData.tickets[i];
+        for (let i = 0; i < tickets.length; i++) {
+          const ticket = tickets[i];
           if (!ticket.title.trim()) {
             alert(`Título do ingresso ${i + 1} é obrigatório`);
             return false;
@@ -551,8 +552,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       // Se o pai fornece onSubmit, delegar criação/edição ao pai
       if (onSubmit) {
-        const minimalPrice = formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price || 0)) : 0;
-        const totalQty = formData.tickets.reduce((acc, t) => acc + (t.quantity || 0), 0);
+        const ticketPricesForPayload = (formData.tickets || []).map(t => t.price || 0);
+        const minimalPrice = ticketPricesForPayload.length > 0 ? Math.min(...ticketPricesForPayload) : 0;
+        const totalQty = (formData.tickets || []).reduce((acc, t) => acc + (t.quantity || 0), 0);
 
         const payload = {
           id: event?.id,
@@ -568,7 +570,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           price: minimalPrice,
           totalTickets: totalQty,
           image: formData.image,
-          ticketTypes: formData.tickets.map(t => ({
+          ticketTypes: (formData.tickets || []).map(t => ({
             name: t.title,
             description: t.description,
             area: t.area,
@@ -747,8 +749,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       // Criar ingressos
       console.log('🎫 EventFormModal - Tickets no formData:', formData.tickets);
       
-      if (formData.tickets.length > 0) {
-        const ticketsData = formData.tickets.map(ticket => ({
+      const tickets = formData.tickets || [];
+      if (tickets.length > 0) {
+        const ticketsData = tickets.map(ticket => ({
           event_id: event.id,
           title: ticket.title,
           name: ticket.title,
@@ -791,7 +794,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         start_date: eventData.start_date,
         start_time: formData.start_time,
         ticket_type: eventData.ticket_type,
-        tickets_count: formData.tickets.length,
+        tickets_count: (formData.tickets || []).length,
         location_type: eventData.location_type,
         location: eventData.location,
         location_name: eventData.location_name,
@@ -985,24 +988,24 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           </button>
         </div>
         <div className="space-y-2">
-          {formData.important_info.map((info, index) => (
+          {(formData.important_info || []).map((info, index) => (
             <div key={index} className="flex gap-2">
               <input
                 type="text"
                 value={info}
                 onChange={(e) => {
-                  const newInfo = [...formData.important_info];
+                  const newInfo = [...(formData.important_info || [])];
                   newInfo[index] = e.target.value;
                   setFormData(prev => ({ ...prev, important_info: newInfo }));
                 }}
                 placeholder="Ex: Documento obrigatório, Chegue com antecedência..."
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               />
-              {formData.important_info.length > 1 && (
+              {(formData.important_info || []).length > 1 && (
                 <button
                   type="button"
                   onClick={() => {
-                    const newInfo = formData.important_info.filter((_, i) => i !== index);
+                    const newInfo = (formData.important_info || []).filter((_, i) => i !== index);
                     setFormData(prev => ({ ...prev, important_info: newInfo }));
                   }}
                   className="px-3 py-2 text-red-500 hover:text-red-600"
@@ -1036,24 +1039,24 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           </button>
         </div>
         <div className="space-y-2">
-          {formData.attractions.map((attraction, index) => (
+          {(formData.attractions || []).map((attraction, index) => (
             <div key={index} className="flex gap-2">
               <input
                 type="text"
                 value={attraction}
                 onChange={(e) => {
-                  const newAttractions = [...formData.attractions];
+                  const newAttractions = [...(formData.attractions || [])];
                   newAttractions[index] = e.target.value;
                   setFormData(prev => ({ ...prev, attractions: newAttractions }));
                 }}
                 placeholder="Ex: DJ John, Banda XYZ, Show de Luzes..."
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
               />
-              {formData.attractions.length > 1 && (
+              {(formData.attractions || []).length > 1 && (
                 <button
                   type="button"
                   onClick={() => {
-                    const newAttractions = formData.attractions.filter((_, i) => i !== index);
+                    const newAttractions = (formData.attractions || []).filter((_, i) => i !== index);
                     setFormData(prev => ({ ...prev, attractions: newAttractions }));
                   }}
                   className="px-3 py-2 text-red-500 hover:text-red-600"
@@ -1508,9 +1511,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       {/* Lista de ingressos */}
       <div className="space-y-6">
-        {formData.tickets.map((ticket, index) => (
+        {(formData.tickets || []).map((ticket, index) => (
           <div key={ticket.id} className="border border-gray-200 rounded-lg p-6 relative bg-gradient-to-r from-pink-50 to-purple-50">
-            {formData.tickets.length > 1 && (
+            {(formData.tickets || []).length > 1 && (
               <button
                 type="button"
                 onClick={() => removeTicket(ticket.id)}
