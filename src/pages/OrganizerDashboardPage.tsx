@@ -659,19 +659,48 @@ const OrganizerEvents = () => {
         onSubmit={async (data) => {
           try {
             if (data.id) {
-              // Atualizar evento existente
+              // ✅ CORRIGIDO: Atualizar evento existente com todos os campos
+              const totalTicketsCount = data.totalTickets || 0;
+              const fullAddress = data.location || '';
+              const imageMetadata = data.image ? {
+                url: data.image,
+                updated_at: new Date().toISOString(),
+                source: 'user_upload'
+              } : {};
+              
               const { error: eventError } = await supabase
                 .from('events')
                 .update({
+                  // ✅ Campos básicos
                   title: data.name,
-                  description: data.description,
+                  description: data.description || '',
                   start_date: `${data.date}T${data.time || '00:00'}:00`,
-                  end_date: data.endDate ? `${data.endDate}T${data.endTime || '23:59'}:00` : null,
+                  end_date: data.endDate ? 
+                    `${data.endDate}T${data.endTime || '23:59'}:00` : 
+                    `${data.date}T23:59:00`, // ✅ CORRIGIDO: sempre definir end_date
+                  
+                  // ✅ Campos de localização e categoria
                   location: data.location,
-                  category: data.category,
+                  category: data.category || 'evento', // ✅ CORRIGIDO: garantir categoria
+                  subject: data.category,
+                  address: fullAddress,
+                  
+                  // ✅ Campos de imagem
                   image: data.image,
+                  banner_metadata: imageMetadata,
+                  banner_alt_text: data.image ? `Banner do evento ${data.name}` : null,
+                  image_format: data.image ? data.image.split('.').pop()?.toLowerCase() : null,
+                  
+                  // ✅ Campos de controle de ingressos
+                  available_tickets: totalTicketsCount,
+                  total_tickets: totalTicketsCount,
+                  max_tickets_per_user: Math.max(...(data.ticketTypes?.map((t: any) => t.max_quantity || 5) || [5])),
+                  min_tickets_per_user: Math.min(...(data.ticketTypes?.map((t: any) => t.min_quantity || 1) || [1])),
+                  
+                  // ✅ Campos de preço e tags
                   price: data.price || 0,
-                  total_tickets: data.totalTickets,
+                  tags: data.category ? [data.category] : [],
+                  
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', data.id);
@@ -706,20 +735,60 @@ const OrganizerEvents = () => {
             } else {
               // Criação (fallback)
               const { data: userData } = await supabase.auth.getUser();
+              
+              // ✅ CORRIGIDO: Calcular campos derivados
+              const totalTicketsCount = data.totalTickets || 0;
+              const fullAddress = data.location || '';
+              const imageMetadata = data.image ? {
+                url: data.image,
+                uploaded_at: new Date().toISOString(),
+                source: 'user_upload'
+              } : {};
+              
               const { data: created, error: createError } = await supabase
                 .from('events')
                 .insert({
+                  // ✅ Campos obrigatórios básicos
                   title: data.name,
-                  description: data.description,
+                  description: data.description || '',
                   start_date: `${data.date}T${data.time || '00:00'}:00`,
-                  end_date: data.endDate ? `${data.endDate}T${data.endTime || '23:59'}:00` : null,
+                  end_date: data.endDate ? 
+                    `${data.endDate}T${data.endTime || '23:59'}:00` : 
+                    `${data.date}T23:59:00`, // ✅ CORRIGIDO: sempre definir end_date
+                  
+                  // ✅ Campos de localização e categoria
                   location: data.location,
-                  category: data.category,
+                  category: data.category || 'evento', // ✅ CORRIGIDO: garantir categoria
+                  subject: data.category,
+                  subcategory: null,
+                  
+                  // ✅ Campos de imagem e endereço
                   image: data.image,
+                  address: fullAddress,
+                  
+                  // ✅ NOVOS: Campos de controle de ingressos
+                  available_tickets: totalTicketsCount,
+                  total_tickets: totalTicketsCount,
+                  sold_tickets: 0,
+                  max_tickets_per_user: 5,
+                  min_tickets_per_user: 1,
+                  
+                  // ✅ NOVOS: Campos de metadados
+                  banner_metadata: imageMetadata,
+                  banner_alt_text: data.image ? `Banner do evento ${data.name}` : null,
+                  image_format: data.image ? data.image.split('.').pop()?.toLowerCase() : null,
+                  
+                  // ✅ NOVOS: Campos adicionais
+                  tags: data.category ? [data.category] : [],
+                  important_info: [],
+                  attractions: [],
+                  
+                  // ✅ Campos de controle
                   organizer_id: userData.user?.id || '',
                   created_by: userData.user?.id || '',
                   price: data.price || 0,
-                  total_tickets: data.totalTickets,
+                  ticket_type: 'paid',
+                  location_type: 'physical',
                   status: 'pending'
                 })
                 .select()

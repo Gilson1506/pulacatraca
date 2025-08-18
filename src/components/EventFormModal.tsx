@@ -596,19 +596,56 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         return;
       }
 
+      // Calcular dados dos ingressos
+      const totalTicketsCount = formData.tickets.reduce((acc, t) => acc + (t.quantity || 0), 0);
+      const minPrice = formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price || 0)) : 0;
+      
+      // Calcular datas de venda (primeira data de início e última de fim)
+      const salesDates = formData.tickets
+        .filter(t => t.sale_start_date && t.sale_start_time)
+        .map(t => new Date(`${t.sale_start_date}T${t.sale_start_time}:00`))
+        .sort((a, b) => a.getTime() - b.getTime());
+      
+      const salesEndDates = formData.tickets
+        .filter(t => t.sale_end_date && t.sale_end_time)
+        .map(t => new Date(`${t.sale_end_date}T${t.sale_end_time}:00`))
+        .sort((a, b) => b.getTime() - a.getTime());
+
+      // Gerar endereço completo
+      const fullAddress = formData.location_type === 'physical' ? 
+        [
+          formData.location_street,
+          formData.location_number,
+          formData.location_complement,
+          formData.location_neighborhood,
+          formData.location_city,
+          formData.location_state,
+          formData.location_cep
+        ].filter(Boolean).join(', ') : null;
+
+      // Extrair metadados da imagem se disponível
+      const imageMetadata = formData.image ? {
+        url: formData.image,
+        uploaded_at: new Date().toISOString(),
+        source: 'user_upload'
+      } : {};
+
       // Criar evento
       const eventData = {
+        // ✅ Campos obrigatórios básicos
         title: formData.title.trim(),
-        description: formData.description,
+        description: formData.description || '',
         start_date: `${formData.start_date}T${formData.start_time}:00`,
-        end_date: formData.end_date ? `${formData.end_date}T${formData.end_time || '23:59'}:00` : null,
+        end_date: formData.end_date ? 
+          `${formData.end_date}T${formData.end_time || '23:59'}:00` : 
+          `${formData.start_date}T23:59:00`, // ✅ CORRIGIDO: sempre definir end_date
         
-        // Campos de assunto e categoria
-        subject: formData.subject,
+        // ✅ Campos de assunto e categoria corrigidos
+        subject: formData.subject || null,
         subcategory: formData.category || null,
-        category: formData.subject || 'evento',
+        category: formData.category || formData.subject || 'evento', // ✅ CORRIGIDO: priorizar category
         
-        // Campos de localização
+        // ✅ Campos de localização
         location: formData.location_type === 'tbd' ? 'Local ainda será definido' : 
                  formData.location_type === 'online' ? 'Evento Online' :
                  `${formData.location_name || formData.location_street} ${formData.location_number || ''}, ${formData.location_city || ''} - ${formData.location_state || ''}`.trim(),
@@ -622,13 +659,37 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         location_neighborhood: formData.location_neighborhood || null,
         location_city: formData.location_city || null,
         location_state: formData.location_state || null,
+        address: fullAddress, // ✅ NOVO: endereço completo
         
-        // Campos de ingresso e imagem
+        // ✅ Campos de ingresso e imagem
         ticket_type: formData.ticket_type,
         image: formData.image || null,
-        price: formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price)) : 0,
+        price: minPrice,
         
-        // Campos de controle
+        // ✅ NOVOS: Campos de controle de ingressos
+        available_tickets: totalTicketsCount,
+        total_tickets: totalTicketsCount,
+        sold_tickets: 0,
+        max_tickets_per_user: Math.max(...formData.tickets.map(t => t.max_quantity || 5), 5),
+        min_tickets_per_user: Math.min(...formData.tickets.map(t => t.min_quantity || 1), 1),
+        
+        // ✅ NOVOS: Campos de venda
+        ticket_sales_start: salesDates.length > 0 ? salesDates[0].toISOString() : null,
+        ticket_sales_end: salesEndDates.length > 0 ? salesEndDates[0].toISOString() : null,
+        
+        // ✅ NOVOS: Campos de metadados da imagem
+        banner_metadata: imageMetadata,
+        banner_alt_text: `Banner do evento ${formData.title.trim()}`,
+        image_size: 0, // Será atualizado se tivermos o tamanho
+        image_format: formData.image ? formData.image.split('.').pop()?.toLowerCase() : null,
+        
+        // ✅ NOVOS: Campos adicionais
+        tags: formData.subject ? [formData.subject, formData.category].filter(Boolean) : [],
+        important_info: [], // Pode ser expandido futuramente
+        attractions: [], // Pode ser expandido futuramente
+        classification: null, // Pode ser adicionado no formulário
+        
+        // ✅ Campos de controle
         organizer_id: user.id,
         created_by: user.id,
         status: 'pending',
