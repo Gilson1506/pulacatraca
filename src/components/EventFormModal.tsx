@@ -543,18 +543,42 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
   // Submeter formulário
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       console.log('🎫 EventFormModal - handleSubmit iniciado');
+      console.log('🎫 EventFormModal - user:', user);
+      console.log('🎫 EventFormModal - formData type:', typeof formData);
       console.log('🎫 EventFormModal - formData completo:', formData);
+      
+      // ✅ Verificação de segurança do formData
+      if (!formData || typeof formData !== 'object') {
+        throw new Error('FormData inválido ou undefined');
+      }
+      
+      // ✅ Verificação de segurança dos arrays
+      const safeTickets = Array.isArray(formData.tickets) ? formData.tickets : [];
+      const safeImportantInfo = Array.isArray(formData.important_info) ? formData.important_info : [];
+      const safeAttractions = Array.isArray(formData.attractions) ? formData.attractions : [];
+      
+      console.log('🎫 Arrays seguros:', {
+        tickets: safeTickets.length,
+        important_info: safeImportantInfo.length,
+        attractions: safeAttractions.length
+      });
 
       // Se o pai fornece onSubmit, delegar criação/edição ao pai
       if (onSubmit) {
-        const ticketPricesForPayload = (formData.tickets || []).map(t => t.price || 0);
+        console.log('🎫 Usando onSubmit do pai');
+        const ticketPricesForPayload = safeTickets.map(t => (t && t.price) || 0);
         const minimalPrice = ticketPricesForPayload.length > 0 ? Math.min(...ticketPricesForPayload) : 0;
-        const totalQty = (formData.tickets || []).reduce((acc, t) => acc + (t.quantity || 0), 0);
+        const totalQty = safeTickets.reduce((acc, t) => acc + ((t && t.quantity) || 0), 0);
+        
+        console.log('🎫 Cálculos do payload:', { minimalPrice, totalQty, ticketsCount: safeTickets.length });
 
         const payload = {
           id: event?.id,
@@ -570,7 +594,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           price: minimalPrice,
           totalTickets: totalQty,
           image: formData.image,
-          ticketTypes: (formData.tickets || []).map(t => ({
+          ticketTypes: safeTickets.map(t => ({
             name: t.title,
             description: t.description,
             area: t.area,
@@ -620,21 +644,27 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         return;
       }
 
-      // ✅ Calcular dados dos ingressos (com proteção contra arrays vazios)
-      const totalTicketsCount = formData.tickets?.reduce((acc, t) => acc + (t.quantity || 0), 0) || 0;
-      const ticketPrices = formData.tickets?.map(t => t.price || 0) || [0];
+      console.log('🎫 Iniciando cálculos dos ingressos...');
+      
+      // ✅ Calcular dados dos ingressos (usando arrays seguros)
+      const totalTicketsCount = safeTickets.reduce((acc, t) => acc + ((t && t.quantity) || 0), 0);
+      const ticketPrices = safeTickets.map(t => (t && t.price) || 0);
       const minPrice = ticketPrices.length > 0 ? Math.min(...ticketPrices) : 0;
       
-      // ✅ Calcular datas de venda (com proteção contra arrays vazios)
-      const salesDates = (formData.tickets || [])
-        .filter(t => t.sale_start_date && t.sale_start_time)
+      console.log('🎫 Cálculos básicos:', { totalTicketsCount, minPrice, ticketsLength: safeTickets.length });
+      
+      // ✅ Calcular datas de venda (usando arrays seguros)
+      const salesDates = safeTickets
+        .filter(t => t && t.sale_start_date && t.sale_start_time)
         .map(t => new Date(`${t.sale_start_date}T${t.sale_start_time}:00`))
         .sort((a, b) => a.getTime() - b.getTime());
       
-      const salesEndDates = (formData.tickets || [])
-        .filter(t => t.sale_end_date && t.sale_end_time)
+      const salesEndDates = safeTickets
+        .filter(t => t && t.sale_end_date && t.sale_end_time)
         .map(t => new Date(`${t.sale_end_date}T${t.sale_end_time}:00`))
         .sort((a, b) => b.getTime() - a.getTime());
+        
+      console.log('🎫 Datas de venda:', { salesDates: salesDates.length, salesEndDates: salesEndDates.length });
 
       // Gerar endereço completo
       const fullAddress = formData.location_type === 'physical' ? 
@@ -704,12 +734,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         total_tickets: totalTicketsCount,
         sold_tickets: 0,
         max_tickets_per_user: (() => {
-          const maxValues = (formData.tickets || []).map(t => t.max_quantity || 5);
-          return maxValues.length > 0 ? Math.max(...maxValues, 5) : 5;
+          console.log('🎫 Calculando max_tickets_per_user...');
+          const maxValues = safeTickets.map(t => (t && t.max_quantity) || 5);
+          const result = maxValues.length > 0 ? Math.max(...maxValues, 5) : 5;
+          console.log('🎫 max_tickets_per_user:', result);
+          return result;
         })(),
         min_tickets_per_user: (() => {
-          const minValues = (formData.tickets || []).map(t => t.min_quantity || 1);
-          return minValues.length > 0 ? Math.min(...minValues, 1) : 1;
+          console.log('🎫 Calculando min_tickets_per_user...');
+          const minValues = safeTickets.map(t => (t && t.min_quantity) || 1);
+          const result = minValues.length > 0 ? Math.min(...minValues, 1) : 1;
+          console.log('🎫 min_tickets_per_user:', result);
+          return result;
         })(),
         
         // ✅ NOVOS: Campos de venda
@@ -727,8 +763,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           const tagList = [formData.subject, formData.category].filter(Boolean);
           return tagList.length > 0 ? tagList : [];
         })(),
-        important_info: (formData.important_info || []).filter(info => info && info.trim() !== ''),
-        attractions: (formData.attractions || []).filter(attraction => attraction && attraction.trim() !== ''),
+        important_info: safeImportantInfo.filter(info => info && typeof info === 'string' && info.trim() !== ''),
+        attractions: safeAttractions.filter(attraction => attraction && typeof attraction === 'string' && attraction.trim() !== ''),
         classification: null, // Pode ser adicionado no formulário
         
         // ✅ Campos de controle (garantir obrigatórios)
@@ -737,6 +773,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         status: 'pending', // ✅ NOT NULL - sempre definido
         created_at: new Date().toISOString() // ✅ NOT NULL - sempre definido
       };
+
+      console.log('🎫 EventData final antes da inserção:', eventData);
+      console.log('🎫 Tipos dos campos críticos:', {
+        title: typeof eventData.title,
+        end_date: typeof eventData.end_date,
+        location: typeof eventData.location,
+        category: typeof eventData.category,
+        price: typeof eventData.price,
+        important_info: typeof eventData.important_info,
+        attractions: typeof eventData.attractions
+      });
 
       const { data: event, error: eventError } = await supabase
         .from('events')
@@ -749,9 +796,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       // Criar ingressos
       console.log('🎫 EventFormModal - Tickets no formData:', formData.tickets);
       
-      const tickets = formData.tickets || [];
-      if (tickets.length > 0) {
-        const ticketsData = tickets.map(ticket => ({
+      console.log('🎫 Criando ingressos...');
+      if (safeTickets.length > 0) {
+        const ticketsData = safeTickets.map(ticket => ({
           event_id: event.id,
           title: ticket.title,
           name: ticket.title,
@@ -794,7 +841,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         start_date: eventData.start_date,
         start_time: formData.start_time,
         ticket_type: eventData.ticket_type,
-        tickets_count: (formData.tickets || []).length,
+        tickets_count: safeTickets.length,
         location_type: eventData.location_type,
         location: eventData.location,
         location_name: eventData.location_name,
