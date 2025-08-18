@@ -593,7 +593,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         return;
       }
 
-      // Validações básicas
+      // ✅ Validações básicas OBRIGATÓRIAS (NOT NULL)
       if (!formData.title.trim()) {
         alert('Nome do evento é obrigatório');
         return;
@@ -601,6 +601,20 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       if (!formData.start_date || !formData.start_time) {
         alert('Data e hora de início são obrigatórias');
+        return;
+      }
+
+      // ✅ NOVA: Validação de categoria obrigatória
+      if (!formData.category && !formData.subject) {
+        alert('Assunto ou categoria é obrigatório');
+        return;
+      }
+
+      // ✅ NOVA: Validação de localização obrigatória
+      if (formData.location_type === 'physical' && 
+          !formData.location_name && !formData.location_street && 
+          !formData.location_city && !formData.location_state) {
+        alert('Para eventos físicos, informe pelo menos o nome do local ou cidade');
         return;
       }
 
@@ -640,23 +654,31 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       // Criar evento
       const eventData = {
-        // ✅ Campos obrigatórios básicos
-        title: formData.title.trim(),
-        description: formData.description || '',
+        // ✅ Campos obrigatórios básicos (NOT NULL)
+        title: formData.title.trim() || 'Evento sem nome', // ✅ Garantir nunca vazio
+        description: formData.description || null, // Pode ser NULL
         start_date: `${formData.start_date}T${formData.start_time}:00`,
         end_date: formData.end_date ? 
           `${formData.end_date}T${formData.end_time || '23:59'}:00` : 
-          `${formData.start_date}T23:59:00`, // ✅ CORRIGIDO: sempre definir end_date
+          `${formData.start_date}T23:59:00`, // ✅ SEMPRE definir end_date (NOT NULL)
         
         // ✅ Campos de assunto e categoria corrigidos
-        subject: formData.subject || null,
-        subcategory: formData.category || null,
-        category: formData.category || formData.subject || 'evento', // ✅ CORRIGIDO: priorizar category
+        subject: formData.subject || null, // Pode ser NULL
+        subcategory: formData.category || null, // Pode ser NULL
+        category: formData.category || formData.subject || 'evento', // ✅ NOT NULL - sempre definir
         
-        // ✅ Campos de localização
+        // ✅ Campos de localização (garantir que location nunca seja vazio)
         location: formData.location_type === 'tbd' ? 'Local ainda será definido' : 
                  formData.location_type === 'online' ? 'Evento Online' :
-                 `${formData.location_name || formData.location_street} ${formData.location_number || ''}, ${formData.location_city || ''} - ${formData.location_state || ''}`.trim(),
+                 (() => {
+                   const locationParts = [
+                     formData.location_name || formData.location_street,
+                     formData.location_number,
+                     formData.location_city,
+                     formData.location_state
+                   ].filter(Boolean);
+                   return locationParts.length > 0 ? locationParts.join(', ') : 'Local a definir';
+                 })(),
         location_type: formData.location_type,
         location_search: formData.location_search || null,
         location_name: formData.location_name || null,
@@ -670,9 +692,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         address: fullAddress, // ✅ NOVO: endereço completo
         
         // ✅ Campos de ingresso e imagem
-        ticket_type: formData.ticket_type,
-        image: formData.image || null,
-        price: minPrice,
+        ticket_type: formData.ticket_type || 'paid', // Garantir valor padrão
+        image: formData.image || null, // Pode ser NULL
+        price: minPrice >= 0 ? minPrice : 0, // ✅ NOT NULL - garantir >= 0
         
         // ✅ NOVOS: Campos de controle de ingressos
         available_tickets: totalTicketsCount,
@@ -697,11 +719,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         attractions: formData.attractions.filter(attraction => attraction.trim() !== ''),
         classification: null, // Pode ser adicionado no formulário
         
-        // ✅ Campos de controle
-        organizer_id: user.id,
-        created_by: user.id,
-        status: 'pending',
-        created_at: new Date().toISOString()
+        // ✅ Campos de controle (garantir obrigatórios)
+        organizer_id: user.id, // ✅ NOT NULL - sempre definido
+        created_by: user.id || null, // Pode ser NULL
+        status: 'pending', // ✅ NOT NULL - sempre definido
+        created_at: new Date().toISOString() // ✅ NOT NULL - sempre definido
       };
 
       const { data: event, error: eventError } = await supabase

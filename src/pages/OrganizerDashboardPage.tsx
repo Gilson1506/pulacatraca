@@ -751,17 +751,17 @@ const OrganizerEvents = () => {
               const { error: eventError } = await supabase
                 .from('events')
                 .update({
-                  // ✅ Campos básicos
-                  title: data.name,
-                  description: data.description || '',
+                  // ✅ Campos básicos (NOT NULL)
+                  title: data.name || 'Evento sem nome', // ✅ Garantir nunca vazio
+                  description: data.description || null, // Pode ser NULL
                   start_date: `${data.date}T${data.time || '00:00'}:00`,
                   end_date: data.endDate ? 
                     `${data.endDate}T${data.endTime || '23:59'}:00` : 
-                    `${data.date}T23:59:00`, // ✅ CORRIGIDO: sempre definir end_date
+                    `${data.date}T23:59:00`, // ✅ NOT NULL - sempre definir
                   
-                  // ✅ Campos de localização e categoria
-                  location: data.location,
-                  category: data.category || 'evento', // ✅ CORRIGIDO: garantir categoria
+                  // ✅ Campos de localização e categoria (NOT NULL)
+                  location: data.location || 'Local a definir', // ✅ NOT NULL - garantir nunca vazio
+                  category: data.category || 'evento', // ✅ NOT NULL - sempre definir
                   subject: data.category,
                   address: fullAddress,
                   
