@@ -275,25 +275,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       
       console.log('🔄 Iniciando upload:', fileName);
 
-      // Verificar se o bucket existe
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      console.log('📦 Buckets disponíveis:', buckets);
-      
-      if (bucketsError) {
-        console.error('❌ Erro ao listar buckets:', bucketsError);
-      }
-
-      // Tentar criar o bucket se não existir
-      const { data: bucketData, error: bucketError } = await supabase.storage
-        .createBucket('event_banners', {
-          public: true,
-          allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-          fileSizeLimit: 5242880 // 5MB
-        });
-
-      if (bucketError && !bucketError.message.includes('already exists')) {
-        console.error('❌ Erro ao criar bucket:', bucketError);
-      }
+      // Assume o bucket 'event_banners' já existe (criado via painel/CLI).
+      // Upload direto; se o bucket não existir, o upload abaixo retornará erro informativo.
 
       // Upload para Supabase Storage
       const { data, error } = await supabase.storage
