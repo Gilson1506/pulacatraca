@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
+  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera, Search
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
 // QrScanner removido - conflitava com html5-qrcode
@@ -891,6 +891,7 @@ const OrganizerSales = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [filter, setFilter] = useState<'todos' | 'pendente' | 'confirmado' | 'cancelado'>('todos');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [searchTerm, setSearchTerm] = useState('');
   const [sales, setSales] = useState<Sale[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   
@@ -1067,9 +1068,21 @@ const OrganizerSales = () => {
       const matchesFilter = filter === 'todos' || sale.status === filter;
       const matchesDate = !dateRange.start || !dateRange.end || 
         (sale.date >= dateRange.start && sale.date <= dateRange.end);
-      return matchesFilter && matchesDate;
+      
+      // Filtro por evento selecionado
+      const matchesEvent = !selectedEvent || sale.eventName === selectedEvent.name;
+      
+      // Busca por texto (nome do comprador, código do ingresso, nome do evento, email)
+      const matchesSearch = !searchTerm || 
+        sale.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sale.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sale.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sale.ticketCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (sale.userEmail && sale.userEmail.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      return matchesFilter && matchesDate && matchesEvent && matchesSearch;
     });
-  }, [sales, filter, dateRange]);
+  }, [sales, filter, dateRange, selectedEvent, searchTerm]);
 
   // Calcular totais
   const totalRevenue = useMemo(() => 
@@ -1081,6 +1094,22 @@ const OrganizerSales = () => {
     filteredSales.filter((sale: Sale) => sale.status === 'pendente').length,
     [filteredSales]
   );
+
+  // Função para destacar texto da busca
+  const highlightSearchTerm = (text: string) => {
+    if (!searchTerm || !text) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} className="bg-yellow-200 px-1 rounded">
+          {part}
+        </mark>
+      ) : part
+    );
+  };
 
   const updateTicketStatus = async (ticketId: string, newStatus: 'confirmado' | 'cancelado') => {
     try {
@@ -1199,6 +1228,16 @@ const OrganizerSales = () => {
       doc.setFontSize(11);
       currentY += 10;
       doc.text(`Status: ${filter === 'todos' ? 'Todos' : filter.charAt(0).toUpperCase() + filter.slice(1)}`, margin, currentY);
+      
+      if (selectedEvent) {
+        currentY += 10;
+        doc.text(`Evento: ${selectedEvent.name}`, margin, currentY);
+      }
+      
+      if (searchTerm) {
+        currentY += 10;
+        doc.text(`Busca: "${searchTerm}"`, margin, currentY);
+      }
       
       if (dateRange.start && dateRange.end) {
         currentY += 10;
@@ -1346,46 +1385,141 @@ const OrganizerSales = () => {
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <select
-            value={selectedEvent?.id || ''}
-            onChange={(e) => {
-              const event = events.find(event => event.id === e.target.value);
-              setSelectedEvent(event);
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-          >
-            <option value="">Todos os Eventos</option>
-            {events.map(event => (
-              <option key={event.id} value={event.id}>{event.name}</option>
-            ))}
-          </select>
-
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-          >
-            <option value="todos">Todos os Status</option>
-            <option value="pendente">Pendentes</option>
-            <option value="confirmado">Confirmados</option>
-            <option value="cancelado">Cancelados</option>
-          </select>
+        <div className="flex flex-col gap-4">
+          {/* Busca por texto */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar por comprador, código, evento ou email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchTerm('');
+                  }
+                }}
+              />
+            </div>
+            {(searchTerm || selectedEvent || filter !== 'todos' || dateRange.start || dateRange.end) && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedEvent(undefined);
+                  setFilter('todos');
+                  setDateRange({ start: '', end: '' });
+                }}
+                className="px-4 py-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                title="Limpar filtros"
+              >
+                <X className="h-4 w-4" />
+                Limpar
+              </button>
+            )}
+          </div>
           
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
+          {/* Filtros */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            <select
+              value={selectedEvent?.id || ''}
+              onChange={(e) => {
+                const event = events.find(event => event.id === e.target.value);
+                setSelectedEvent(event);
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            >
+              <option value="">Todos os Eventos</option>
+              {events.map(event => (
+                <option key={event.id} value={event.id}>{event.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as any)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            >
+              <option value="todos">Todos os Status</option>
+              <option value="pendente">Pendentes</option>
+              <option value="confirmado">Confirmados</option>
+              <option value="cancelado">Cancelados</option>
+            </select>
+            
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Busca rápida */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 self-center">Busca rápida:</span>
+          <button
+            onClick={() => setFilter('pendente')}
+            className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium hover:bg-orange-200 transition-colors"
+          >
+            Pendentes
+          </button>
+          <button
+            onClick={() => setFilter('confirmado')}
+            className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium hover:bg-green-200 transition-colors"
+          >
+            Confirmados
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date().toISOString().split('T')[0];
+              setDateRange({ start: today, end: today });
+            }}
+            className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors"
+          >
+            Hoje
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date();
+              const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+              setDateRange({ 
+                start: lastWeek.toISOString().split('T')[0], 
+                end: today.toISOString().split('T')[0] 
+              });
+            }}
+            className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium hover:bg-purple-200 transition-colors"
+          >
+            Última semana
+          </button>
+        </div>
+      </div>
+
+      {/* Resultados da busca */}
+      {(searchTerm || selectedEvent || filter !== 'todos' || dateRange.start || dateRange.end) && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-blue-800">
+            <Search className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              {filteredSales.length} resultado{filteredSales.length !== 1 ? 's' : ''} encontrado{filteredSales.length !== 1 ? 's' : ''}
+              {searchTerm && ` para "${searchTerm}"`}
+              {selectedEvent && ` no evento "${selectedEvent.name}"`}
+              {filter !== 'todos' && ` com status "${filter}"`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Sales Display */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1412,25 +1546,25 @@ const OrganizerSales = () => {
                         <Calendar className="h-5 w-5 text-pink-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
+                        <div className="text-sm font-medium text-gray-900">{highlightSearchTerm(sale.eventName)}</div>
                         <div className="text-sm text-gray-500">{sale.ticketType}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="text-sm font-medium text-gray-900">{sale.buyerName}</div>
-                    <div className="text-sm text-gray-500">{sale.buyerEmail}</div>
+                    <div className="text-sm font-medium text-gray-900">{highlightSearchTerm(sale.buyerName)}</div>
+                    <div className="text-sm text-gray-500">{highlightSearchTerm(sale.buyerEmail)}</div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="text-sm font-medium text-gray-900">{sale.userName}</div>
-                    <div className="text-sm text-gray-500">{sale.userEmail}</div>
+                    <div className="text-sm font-medium text-gray-900">{highlightSearchTerm(sale.userName)}</div>
+                    <div className="text-sm text-gray-500">{highlightSearchTerm(sale.userEmail || '')}</div>
                     {sale.isUsed && sale.usedAt && (
                       <div className="text-xs text-green-600">Usado em: {sale.usedAt}</div>
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                      {sale.ticketCode}
+                      {highlightSearchTerm(sale.ticketCode)}
                     </div>
                   </td>
                   <td className="px-6 py-4">
