@@ -1179,6 +1179,7 @@ const OrganizerSales = () => {
           id: ticket.id,
           eventId: ticket.event_id,
           eventName: event?.title || 'Evento não encontrado',
+          eventImage: event?.image || null, // ✅ NOVO: Imagem do evento para exibir banner
           buyerName: buyer.name || ticket.assigned_user_name || 'Nome não informado',
           buyerEmail: buyer.email || ticket.assigned_user_email || 'Email não informado',
           userName: ticketUser.name || ticket.assigned_user_name || 'Usuário não informado', // ✅ PESSOA QUE USA O INGRESSO
@@ -1629,8 +1630,32 @@ const OrganizerSales = () => {
                 <tr key={sale.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
-                        <Calendar className="h-5 w-5 text-pink-600" />
+                      <div className="w-10 h-10 rounded-lg overflow-hidden mr-3 flex-shrink-0">
+                        {(() => {
+                          const event = events.find(e => e.id === sale.eventId);
+                          return event?.image ? (
+                            <img 
+                              src={event.image} 
+                              alt={sale.eventName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback para ícone se imagem falhar
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement.innerHTML = `
+                                  <div class="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
+                                    <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                  </div>
+                                `;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
+                              <Calendar className="h-5 w-5 text-pink-600" />
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
@@ -2700,12 +2725,36 @@ const OrganizerCheckIns = () => {
                 <tr key={checkIn.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3">
-                        <Calendar className="h-5 w-5 text-pink-600" />
+                      <div className="w-10 h-10 rounded-lg overflow-hidden mr-3 flex-shrink-0">
+                        {(() => {
+                          const event = events.find(e => e.id === checkIn.eventId);
+                          return event?.image ? (
+                            <img 
+                              src={event.image} 
+                              alt={`Banner do evento`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback para ícone se imagem falhar
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement.innerHTML = `
+                                  <div class="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
+                                    <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                  </div>
+                                `;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-pink-100 rounded-lg flex items-center justify-center">
+                              <Calendar className="h-5 w-5 text-pink-600" />
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{checkIn.eventId}</div>
-                        <div className="text-sm text-gray-500">{checkIn.eventId}</div>
+                        <div className="text-sm text-gray-500">Check-in</div>
                       </div>
                     </div>
                   </td>
