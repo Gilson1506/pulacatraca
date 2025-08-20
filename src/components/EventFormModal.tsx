@@ -79,6 +79,27 @@ interface EventFormModalProps {
   onSubmit?: (eventData: any) => void;
 }
 
+// ✅ Funções auxiliares fora do componente para evitar problemas de escopo
+const calculateMaxTicketsPerUser = (tickets: TicketData[]): number => {
+  console.log('🎫 Calculando max_tickets_per_user...');
+  const maxValues = tickets.map(function(ticket) {
+    return (ticket && ticket.max_quantity) || 5;
+  });
+  const result = maxValues.length > 0 ? Math.max(...maxValues, 5) : 5;
+  console.log('🎫 max_tickets_per_user:', result);
+  return result;
+};
+
+const calculateMinTicketsPerUser = (tickets: TicketData[]): number => {
+  console.log('🎫 Calculando min_tickets_per_user...');
+  const minValues = tickets.map(function(ticket) {
+    return (ticket && ticket.min_quantity) || 1;
+  });
+  const result = minValues.length > 0 ? Math.min(...minValues, 1) : 1;
+  console.log('🎫 min_tickets_per_user:', result);
+  return result;
+};
+
 const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEventCreated, event, onSubmit }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
@@ -574,11 +595,38 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       // Se o pai fornece onSubmit, delegar criação/edição ao pai
       if (onSubmit) {
         console.log('🎫 Usando onSubmit do pai');
-        const ticketPricesForPayload = safeTickets.map(t => (t && t.price) || 0);
+        
+        // ✅ Declarar variáveis uma por vez para evitar TDZ
+        const ticketPricesForPayload = safeTickets.map(function(ticket) {
+          return (ticket && ticket.price) || 0;
+        });
         const minimalPrice = ticketPricesForPayload.length > 0 ? Math.min(...ticketPricesForPayload) : 0;
-        const totalQty = safeTickets.reduce((acc, t) => acc + ((t && t.quantity) || 0), 0);
+        const totalQty = safeTickets.reduce(function(acc, ticket) {
+          return acc + ((ticket && ticket.quantity) || 0);
+        }, 0);
         
         console.log('🎫 Cálculos do payload:', { minimalPrice, totalQty, ticketsCount: safeTickets.length });
+
+        // ✅ Mapear ticket types de forma mais segura
+        const mappedTicketTypes = safeTickets.map(function(ticket) {
+          return {
+            name: ticket.title,
+            description: ticket.description,
+            area: ticket.area,
+            price: ticket.price,
+            price_feminine: ticket.price_feminine,
+            quantity: ticket.quantity,
+            min_quantity: ticket.min_quantity,
+            max_quantity: ticket.max_quantity,
+            has_half_price: ticket.has_half_price,
+            sale_period_type: ticket.sale_period_type,
+            sale_start_date: ticket.sale_start_date,
+            sale_start_time: ticket.sale_start_time,
+            sale_end_date: ticket.sale_end_date,
+            sale_end_time: ticket.sale_end_time,
+            availability: ticket.availability,
+          };
+        });
 
         const payload = {
           id: event?.id,
@@ -594,23 +642,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           price: minimalPrice,
           totalTickets: totalQty,
           image: formData.image,
-          ticketTypes: safeTickets.map(t => ({
-            name: t.title,
-            description: t.description,
-            area: t.area,
-            price: t.price,
-            price_feminine: t.price_feminine,
-            quantity: t.quantity,
-            min_quantity: t.min_quantity,
-            max_quantity: t.max_quantity,
-            has_half_price: t.has_half_price,
-            sale_period_type: t.sale_period_type,
-            sale_start_date: t.sale_start_date,
-            sale_start_time: t.sale_start_time,
-            sale_end_date: t.sale_end_date,
-            sale_end_time: t.sale_end_time,
-            availability: t.availability,
-          }))
+          ticketTypes: mappedTicketTypes
         };
 
         await onSubmit(payload);
@@ -647,22 +679,38 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       console.log('🎫 Iniciando cálculos dos ingressos...');
       
       // ✅ Calcular dados dos ingressos (usando arrays seguros)
-      const totalTicketsCount = safeTickets.reduce((acc, t) => acc + ((t && t.quantity) || 0), 0);
-      const ticketPrices = safeTickets.map(t => (t && t.price) || 0);
+      const totalTicketsCount = safeTickets.reduce(function(acc, ticket) {
+        return acc + ((ticket && ticket.quantity) || 0);
+      }, 0);
+      const ticketPrices = safeTickets.map(function(ticket) {
+        return (ticket && ticket.price) || 0;
+      });
       const minPrice = ticketPrices.length > 0 ? Math.min(...ticketPrices) : 0;
       
       console.log('🎫 Cálculos básicos:', { totalTicketsCount, minPrice, ticketsLength: safeTickets.length });
       
       // ✅ Calcular datas de venda (usando arrays seguros)
       const salesDates = safeTickets
-        .filter(t => t && t.sale_start_date && t.sale_start_time)
-        .map(t => new Date(`${t.sale_start_date}T${t.sale_start_time}:00`))
-        .sort((a, b) => a.getTime() - b.getTime());
+        .filter(function(ticket) {
+          return ticket && ticket.sale_start_date && ticket.sale_start_time;
+        })
+        .map(function(ticket) {
+          return new Date(`${ticket.sale_start_date}T${ticket.sale_start_time}:00`);
+        })
+        .sort(function(a, b) {
+          return a.getTime() - b.getTime();
+        });
       
       const salesEndDates = safeTickets
-        .filter(t => t && t.sale_end_date && t.sale_end_time)
-        .map(t => new Date(`${t.sale_end_date}T${t.sale_end_time}:00`))
-        .sort((a, b) => b.getTime() - a.getTime());
+        .filter(function(ticket) {
+          return ticket && ticket.sale_end_date && ticket.sale_end_time;
+        })
+        .map(function(ticket) {
+          return new Date(`${ticket.sale_end_date}T${ticket.sale_end_time}:00`);
+        })
+        .sort(function(a, b) {
+          return b.getTime() - a.getTime();
+        });
         
       console.log('🎫 Datas de venda:', { salesDates: salesDates.length, salesEndDates: salesEndDates.length });
 
@@ -733,20 +781,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         available_tickets: totalTicketsCount,
         total_tickets: totalTicketsCount,
         sold_tickets: 0,
-        max_tickets_per_user: (() => {
-          console.log('🎫 Calculando max_tickets_per_user...');
-          const maxValues = safeTickets.map(t => (t && t.max_quantity) || 5);
-          const result = maxValues.length > 0 ? Math.max(...maxValues, 5) : 5;
-          console.log('🎫 max_tickets_per_user:', result);
-          return result;
-        })(),
-        min_tickets_per_user: (() => {
-          console.log('🎫 Calculando min_tickets_per_user...');
-          const minValues = safeTickets.map(t => (t && t.min_quantity) || 1);
-          const result = minValues.length > 0 ? Math.min(...minValues, 1) : 1;
-          console.log('🎫 min_tickets_per_user:', result);
-          return result;
-        })(),
+        max_tickets_per_user: calculateMaxTicketsPerUser(safeTickets),
+        min_tickets_per_user: calculateMinTicketsPerUser(safeTickets),
         
         // ✅ NOVOS: Campos de venda
         ticket_sales_start: salesDates.length > 0 ? salesDates[0].toISOString() : null,
@@ -798,27 +834,29 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       
       console.log('🎫 Criando ingressos...');
       if (safeTickets.length > 0) {
-        const ticketsData = safeTickets.map(ticket => ({
-          event_id: event.id,
-          title: ticket.title,
-          name: ticket.title,
-          price: ticket.price,
-          price_masculine: ticket.price,
-          price_feminine: ticket.price_feminine || ticket.price * 0.9,
-          area: ticket.area || 'Pista',
-          quantity: ticket.quantity,
-          available_quantity: ticket.quantity,
-          description: ticket.description || null,
-          sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
-          sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time}:00` : null,
-          sale_period_type: ticket.sale_period_type || 'date',
-          min_quantity: ticket.min_quantity || 1,
-          max_quantity: ticket.max_quantity || 5,
-          availability: ticket.availability || 'public',
-          has_half_price: ticket.has_half_price || false,
-          ticket_type: 'paid',
-          status: 'active'
-        }));
+        const ticketsData = safeTickets.map(function(ticket) {
+          return {
+            event_id: event.id,
+            title: ticket.title,
+            name: ticket.title,
+            price: ticket.price,
+            price_masculine: ticket.price,
+            price_feminine: ticket.price_feminine || ticket.price * 0.9,
+            area: ticket.area || 'Pista',
+            quantity: ticket.quantity,
+            available_quantity: ticket.quantity,
+            description: ticket.description || null,
+            sale_start_date: ticket.sale_start_date ? `${ticket.sale_start_date}T${ticket.sale_start_time}:00` : null,
+            sale_end_date: ticket.sale_end_date ? `${ticket.sale_end_date}T${ticket.sale_end_time}:00` : null,
+            sale_period_type: ticket.sale_period_type || 'date',
+            min_quantity: ticket.min_quantity || 1,
+            max_quantity: ticket.max_quantity || 5,
+            availability: ticket.availability || 'public',
+            has_half_price: ticket.has_half_price || false,
+            ticket_type: 'paid',
+            status: 'active'
+          };
+        });
 
         console.log('🎫 EventFormModal - Dados dos tickets para inserir:', ticketsData);
         
