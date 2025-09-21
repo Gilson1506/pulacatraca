@@ -583,6 +583,16 @@ const EventPage = () => {
       case 'informacoes':
         return (
           <div className="space-y-6">
+            {/* Descrição do Evento */}
+            {event?.description && event.description !== 'Descrição não disponível' && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-lg mb-3 text-blue-800">DESCRIÇÃO DO EVENTO</h3>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {event.description}
+                </div>
+              </div>
+            )}
+            
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-lg mb-3">INFORMAÇÕES</h3>
               <ul className="space-y-2 text-sm">
