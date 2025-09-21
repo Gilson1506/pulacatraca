@@ -17,6 +17,7 @@ interface Event {
   id: string;
   title: string;
   description: string;
+  eventPolicy: string;
   date: string;
   time: string;
   location: string;
@@ -72,6 +73,7 @@ interface SupabaseEvent {
   id: string;
   title: string;
   description: string;
+  descricion?: string;
   date: string;
   time: string;
   location: string;
@@ -280,6 +282,7 @@ const EventPage = () => {
           id,
           title,
           description,
+          descricion,
           start_date,
           end_date,
           location,
@@ -376,6 +379,7 @@ const EventPage = () => {
         id: eventData.id,
         title: eventData.title,
         description: eventData.description || 'Descrição não disponível',
+        eventPolicy: eventData.descricion || eventData.description || 'Não informado',
         date: eventData.start_date?.split('T')[0] || '',
         time: eventData.start_date?.split('T')[1]?.substring(0, 5) || '',
         location: eventData.location_name || eventData.location || 'Local não informado',
@@ -593,6 +597,11 @@ const EventPage = () => {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">POLÍTICA DE EVENTOS</h3>
+              <p className="text-sm whitespace-pre-wrap">{event?.eventPolicy || 'Não informado'}</p>
             </div>
             
             <div className="bg-gray-50 p-4 rounded-lg">
