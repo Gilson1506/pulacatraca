@@ -505,10 +505,10 @@ export default function Ticket() {
     // Navegar para a página do evento
     if (event?.id) {
       console.log('🎯 Navegando para evento:', event.id);
-      navigate(`/evento/${event.id}`);
+      navigate(`/event/${event.id}`);
     } else if (ticket?.event_id) {
       console.log('🎯 Navegando para evento via ticket:', ticket.event_id);
-      navigate(`/evento/${ticket.event_id}`);
+      navigate(`/event/${ticket.event_id}`);
     } else {
       console.error('❌ ID do evento não encontrado');
       console.log('🔍 Dados disponíveis:', { event, ticket });
@@ -668,6 +668,8 @@ export default function Ticket() {
   const handleTransferTicket = async (email) => {
     try {
       console.log('🔄 Iniciando transferência para:', email);
+      console.log('📋 Dados do ingresso:', ticket);
+      console.log('👤 Usuário atual do ingresso:', ticketUser);
       
       // Verificar se o usuário está logado
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -678,11 +680,21 @@ export default function Ticket() {
         };
       }
 
+      // Verificar se temos todos os dados necessários
+      if (!ticket || !ticketUser) {
+        return { 
+          success: false, 
+          message: 'Dados do ingresso não encontrados. Recarregue a página e tente novamente.' 
+        };
+      }
+
       // Verificar se o ingresso pode ser transferido
       const canTransfer = await TicketTransferService.canTransferTicket(
         ticketId, // ID do ingresso atual
         currentUser.id
       );
+
+      console.log('🔍 Resultado da verificação de transferência:', canTransfer);
 
       if (!canTransfer.can_transfer) {
         return { 
@@ -715,6 +727,8 @@ export default function Ticket() {
         currentUser.id
       );
 
+      console.log('📤 Resultado da transferência:', transferResult);
+
       if (transferResult.success) {
         // Transferência bem-sucedida
         console.log('✅ Transferência realizada com sucesso');
@@ -731,6 +745,11 @@ export default function Ticket() {
             userName: targetUser.full_name || targetUser.email.split('@')[0]
           });
         }, 200);
+
+        // Recarregar dados do ingresso para refletir a mudança
+        setTimeout(() => {
+          fetchTicketData();
+        }, 500);
 
         return { 
           success: true, 
@@ -869,17 +888,19 @@ export default function Ticket() {
       
               <div ref={ticketRef} data-ticket-ref="true" className="flex flex-col lg:flex-row w-full max-w-[1000px] lg:h-[350px] rounded-lg shadow-lg overflow-hidden relative bg-transparent">
         {/* Lado esquerdo - mantém layout vertical em todas as telas */}
-        <div className="flex flex-1 bg-[url('/parte2backgraund.png')] bg-cover bg-center bg-no-repeat p-4 lg:p-8 justify-center items-center relative min-h-[300px] lg:min-h-0">
+        <div className="flex flex-1 bg-[url('/parte2backgraund.png')] bg-cover bg-center bg-no-repeat p-4 lg:p-8 relative min-h-[300px] lg:min-h-0">
           <div className="absolute inset-0 bg-black bg-opacity-10"></div>
-          <div className="flex flex-col items-center gap-4 lg:gap-3 text-center relative z-10 max-w-md">
-            <div className="text-xs lg:text-xs tracking-[2px] font-semibold text-black uppercase">
+          
+          {/* Desktop: conteúdo centralizado */}
+          <div className="hidden lg:flex flex-col items-center justify-center gap-4 lg:gap-6 text-center relative z-10 max-w-md w-full">
+            <div className="text-xs lg:text-sm tracking-[2px] font-semibold text-black uppercase">
               {event?.title || 'EVENTO'}
             </div>
-            <div className="text-[40px] lg:text-[42px] font-black text-black leading-none">
+            <div className="text-[40px] lg:text-[56px] font-black text-black leading-none">
               {event?.location_name || 'LOCAL'}
             </div>
-            <div className="text-center space-y-2 lg:space-y-2">
-              <div className="inline-block px-3 lg:px-3 py-2 lg:py-1.5 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-sm">
+            <div className="text-center space-y-2 lg:space-y-3">
+              <div className="inline-block px-3 lg:px-4 py-2 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-base">
                 {event?.start_date ? new Date(event.start_date).toLocaleDateString('pt-BR', { 
                   day: '2-digit', 
                   month: 'long', 
@@ -889,25 +910,57 @@ export default function Ticket() {
                   minute: '2-digit' 
                 }) : 'HORA NÃO DEFINIDA'}
               </div>
-              <div className="flex flex-col gap-2 lg:gap-1.5 justify-center">
-                <div className="px-3 lg:px-3 py-2 lg:py-1.5 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-sm">
+              <div className="flex flex-col gap-2 justify-center">
+                <div className="px-3 lg:px-4 py-2 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-base">
                   VALOR: R${ticket?.price || event?.price || 0}
                 </div>
-                <div className="px-3 lg:px-3 py-2 lg:py-1.5 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-sm">
+                <div className="px-3 lg:px-4 py-2 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-base">
                   {event?.location_street ? `${event.location_street}${event.location_number ? `, ${event.location_number}` : ''}` : 'RUA NÃO DEFINIDA'}
-                </div>
-                
-                {/* Logo posicionada após a rua - apenas em mobile */}
-                <div className="flex justify-center mt-3 lg:hidden">
-                  <img src="/logo-com-qr.png" alt="Logo com QR" className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 object-contain" />
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Logo com QR - apenas em desktop */}
-          <div className="absolute bottom-4 right-1 relative z-10 hidden lg:block">
-            <img src="/logo-com-qr.png" alt="Logo com QR" className="w-36 h-36 xl:w-40 xl:h-40 object-contain" />
+          {/* Mobile: conteúdo em coluna com logo por baixo */}
+          <div className="lg:hidden flex flex-col items-center justify-start w-full h-full pt-8">
+            <div className="flex flex-col items-center gap-4 text-center relative z-10 max-w-md">
+              <div className="text-xs lg:text-sm tracking-[2px] font-semibold text-black uppercase">
+                {event?.title || 'EVENTO'}
+              </div>
+              <div className="text-[40px] lg:text-[56px] font-black text-black leading-none">
+                {event?.location_name || 'LOCAL'}
+              </div>
+              <div className="text-center space-y-2 lg:space-y-3">
+                <div className="inline-block px-3 lg:px-4 py-2 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-base">
+                  {event?.start_date ? new Date(event.start_date).toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  }).toUpperCase() : 'DATA NÃO DEFINIDA'} - {event?.start_date ? new Date(event.start_date).toLocaleTimeString('pt-BR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  }) : 'HORA NÃO DEFINIDA'}
+                </div>
+                <div className="flex flex-col gap-2 justify-center">
+                  <div className="px-3 lg:px-4 py-2 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-base">
+                    VALOR: R${ticket?.price || event?.price || 0}
+                  </div>
+                  <div className="px-3 lg:px-4 py-2 border-2 border-black rounded-md font-bold bg-transparent text-black text-sm lg:text-base">
+                    {event?.location_street ? `${event.location_street}${event.location_number ? `, ${event.location_number}` : ''}` : 'RUA NÃO DEFINIDA'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Logo com QR - Mobile (por baixo dos dados) */}
+            <div className="mt-auto mb-6 flex justify-center">
+              <img src="/logo-com-qr.png" alt="Logo com QR" className="w-44 h-44 object-contain" />
+            </div>
+          </div>
+          
+          {/* Logo com QR - Desktop (posição original) */}
+          <div className="absolute bottom-6 right-4 relative z-10 hidden lg:block">
+            <img src="/logo-com-qr.png" alt="Logo com QR" className="w-48 h-48 object-contain" />
           </div>
         </div>
 
@@ -922,7 +975,7 @@ export default function Ticket() {
           <div className="absolute inset-0 bg-black bg-opacity-20"></div>
 
           {/* Título QR */}
-          <div className="relative text-lg lg:text-base font-bold mb-2 lg:mb-1 text-black">QR CODE</div>
+          <div className="relative text-lg lg:text-base font-bold mb-2 lg:mb-1 text-white">QR CODE</div>
 
           {/* QR Code maior - se adapta ao tamanho da tela */}
           <div className="relative bg-white p-3 lg:p-2 rounded-lg mb-3 lg:mb-2">
@@ -966,7 +1019,7 @@ export default function Ticket() {
               </div>
               
               <div className="flex items-center">
-                <img src="/bunacodata1.png" alt="Separador" className="w-10 h-16 lg:w-12 lg:h-20" />
+                <img src="/bunacodata1.png" alt="Separador" className="w-14 h-24 lg:w-16 lg:h-28" />
               </div>
               
               <div className="flex flex-col items-center">
@@ -977,7 +1030,7 @@ export default function Ticket() {
               </div>
               
               <div className="flex items-center">
-                <img src="/bunecodata2.jpg" alt="Separador" className="w-10 h-16 lg:w-12 lg:h-20" />
+                <img src="/bunecodata2.jpg" alt="Separador" className="w-14 h-24 lg:w-16 lg:h-28" />
               </div>
               
               <div className="flex flex-col items-center">
@@ -993,8 +1046,8 @@ export default function Ticket() {
 
       {/* Botões abaixo */}
       <div className="mt-6 lg:mt-8 flex flex-col lg:flex-row gap-4 lg:gap-6">
-        {/* Botão TRANSFERIR - só aparece quando não há utilizador definido */}
-        {!isUserDefined && (
+        {/* Botão TRANSFERIR - só aparece quando HÁ utilizador definido (ingresso pode ser transferido) */}
+        {isUserDefined && ticket && (
           <button 
             onClick={() => setIsTransferModalOpen(true)}
             className="px-8 lg:px-10 py-3 lg:py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-bold hover:from-pink-500 hover:to-pink-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 border-2 border-pink-400 text-sm lg:text-base"
@@ -1076,8 +1129,29 @@ export default function Ticket() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Transferir Ingresso #{ticketId}
+                  Transferir Ingresso
                 </h3>
+                
+                {/* Informações do ingresso */}
+                {ticket && (
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
+                    <div className="text-sm text-gray-600 mb-2">
+                      <strong>Evento:</strong> {event?.title || 'N/A'}
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">
+                      <strong>Proprietário Atual:</strong> {ticketUser?.name || ticketUser?.email || 'N/A'}
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">
+                      <strong>Status:</strong> <span className="capitalize">{ticket?.status || 'N/A'}</span>
+                    </div>
+                    {ticket?.event_ticket_types && (
+                      <div className="text-sm text-gray-600">
+                        <strong>Tipo:</strong> {ticket.event_ticket_types.name || 'N/A'}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <p className="text-gray-600 text-sm">
                   Digite o email do usuário PulaKatraca que receberá este ingresso
                 </p>
