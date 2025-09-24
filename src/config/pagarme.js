@@ -1,3 +1,13 @@
+// Função para validar URL
+const isValidUrl = (url) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 // Configurações do Pagar.me
 export const PAGARME_CONFIG = {
   // Chaves de API (usando VITE_ para compatibilidade)
@@ -15,7 +25,12 @@ export const PAGARME_CONFIG = {
          // Configurações de cartão
      CARD: {
        capture: true, // Captura automática
-       postbackUrl: import.meta.env.VITE_WEBHOOK_URL || 'https://seudominio.com/webhook/pagarme',
+       postbackUrl: (() => {
+         const webhookUrl = import.meta.env.VITE_WEBHOOK_URL || 'https://pulacatraca.vercel.app/api/webhook/pagarme';
+         const isValid = isValidUrl(webhookUrl);
+         console.log('🔍 Webhook URL validation:', { webhookUrl, isValid });
+         return isValid ? webhookUrl : null;
+       })(),
      },
     
     // Configurações de PIX

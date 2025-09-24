@@ -314,7 +314,8 @@ class PagarmeService {
    */
   getClientIP() {
     // Em produção, isso deve vir do backend ou de um serviço externo
-    return '127.0.0.1';
+    // Retorna null para evitar URLs inválidas
+    return null;
   }
 
   /**
