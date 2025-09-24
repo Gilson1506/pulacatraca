@@ -92,7 +92,7 @@ const Footer = () => {
                   <button onClick={handleMeusIngressos} className="hover:text-pink-600">Meus ingressos</button>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-pink-600">Termos de uso</a>
+                  <button onClick={() => navigate('/termos')} className="hover:text-pink-600">Termos de uso</button>
                 </li>
                 <li>
                   <button onClick={handlePolitica} className="hover:text-pink-600">Política de Privacidade</button>
@@ -174,7 +174,7 @@ const Footer = () => {
                 <button onClick={handleMeusIngressos} className="hover:text-pink-600 transition-colors">Meus ingressos</button>
               </li>
               <li>
-                <a href="#" className="hover:text-pink-600 transition-colors">Termos de uso</a>
+                <button onClick={() => navigate('/termos')} className="hover:text-pink-600 transition-colors">Termos de uso</button>
               </li>
               <li>
                 <button onClick={handlePolitica} className="hover:text-pink-600 transition-colors">Política de Privacidade</button>

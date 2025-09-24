@@ -16,6 +16,7 @@ import TicketPage from './pages/TicketPage2';
 import ABTestingDashboard, { useABTestingDashboardShortcut } from './components/ABTestingDashboard';
 import FAQPage from './pages/FAQPage';
 import PolicyPage from './pages/PolicyPage';
+import TermsOfUsePage from './pages/TermsOfUsePage';
 import CheckInResultPage from './pages/CheckInResultPage';
 import SearchPage from './pages/SearchPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -45,6 +46,7 @@ const AppRoutes = () => {
           <Route path="/organizer-dashboard/*" element={<OrganizerDashboardPage />} />
           <Route path="/duvidas" element={<FAQPage />} />
           <Route path="/politica" element={<PolicyPage />} />
+          <Route path="/termos" element={<TermsOfUsePage />} />
           <Route path="/checkin/resultado" element={<CheckInResultPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
