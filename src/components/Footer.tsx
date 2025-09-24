@@ -7,17 +7,6 @@ const Footer = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const handleAreaProdutor = () => {
-    if (!user) {
-      navigate('/organizer-register');
-    } else {
-      navigate('/organizer-dashboard');
-    }
-  };
-
-  const handleAreaParceiro = () => {
-    navigate('/login');
-  };
 
   const handleCadastreEvento = () => {
     if (!user) {
@@ -83,12 +72,6 @@ const Footer = () => {
             <div>
               <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
               <ul className="space-y-2 text-sm">
-                <li>
-                  <button onClick={handleAreaProdutor} className="hover:text-pink-600">Área do produtor</button>
-                </li>
-                <li>
-                  <button onClick={handleAreaParceiro} className="hover:text-pink-600">Área do parceiro</button>
-                </li>
                 <li>
                   <button onClick={handleCadastreEvento} className="hover:text-pink-600">Cadastre seu evento</button>
                 </li>
@@ -171,12 +154,6 @@ const Footer = () => {
           <div className="md:mt-12">
             <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <button onClick={handleAreaProdutor} className="hover:text-pink-600 transition-colors">Área do produtor</button>
-              </li>
-              <li>
-                <button onClick={handleAreaParceiro} className="hover:text-pink-600 transition-colors">Área do parceiro</button>
-              </li>
               <li>
                 <button onClick={handleCadastreEvento} className="hover:text-pink-600 transition-colors">Cadastre seu evento</button>
               </li>
