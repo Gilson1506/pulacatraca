@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Calendar, Clock, MapPin, Ticket, Plus, Minus, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight, Link, Image, Type, Palette } from 'lucide-react';
+import { X, Upload, Plus, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight, Link } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -49,8 +49,8 @@ interface TicketData {
   id: string;
   title: string;
   quantity: number;
-  price: number;
-  price_feminine: number;
+  price: number | null;
+  price_feminine: number | null;
   area: string;
   has_half_price: boolean;
   sale_period_type: 'date' | 'batch';
@@ -79,10 +79,9 @@ interface EventFormModalProps {
   onClose: () => void;
   onEventCreated?: () => void;
   event?: any;
-  onSubmit?: (eventData: any) => void;
 }
 
-const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEventCreated, event, onSubmit }) => {
+const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEventCreated, event }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +112,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       }
       
       return timestamp;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao formatar timestamp:', error);
       return null;
     }
@@ -179,8 +178,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         id: 'ticket_default',
         title: 'Ingresso Geral',
         quantity: 100,
-        price: 0,
-        price_feminine: 0,
+        price: null,
+        price_feminine: null,
         area: 'Pista',
         has_half_price: false,
         sale_period_type: 'date',
@@ -272,8 +271,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               id: t.id,
               title: t.title || t.name || '',
               quantity: t.quantity || t.available_quantity || 0,
-              price: t.price_masculine ?? t.price ?? 0,
-              price_feminine: t.price_feminine ?? 0,
+              price: t.price_masculine ?? t.price ?? null,
+              price_feminine: t.price_feminine ?? null,
               area: t.area || 'Pista',
               has_half_price: !!t.has_half_price,
               sale_period_type: (t.sale_period_type as any) || 'date',
@@ -359,7 +358,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       }
 
       // Tentar criar o bucket se não existir
-      const { data: bucketData, error: bucketError } = await supabase.storage
+      const { error: bucketError } = await supabase.storage
         .createBucket('event_banners', {
           public: true,
           allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
@@ -376,11 +375,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true, // Permitir sobrescrever
-          onUploadProgress: (progress) => {
-            const percent = (progress.loaded / progress.total) * 100;
-            setUploadProgress(percent);
-            console.log(`📊 Upload progress: ${percent.toFixed(1)}%`);
-          }
+          // onUploadProgress: (progress) => {
+          //   const percent = (progress.loaded / progress.total) * 100;
+          //   setUploadProgress(percent);
+          //   console.log(`📊 Upload progress: ${percent.toFixed(1)}%`);
+          // }
         });
 
       if (error) {
@@ -405,7 +404,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         event.target.value = '';
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro no upload:', error);
       setUploadProgress(0);
       setImagePreview('');
@@ -434,7 +433,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     if (descriptionRef.current) {
       setFormData(prev => ({ 
         ...prev, 
-        description: descriptionRef.current?.innerHTML || '' 
+        description: descriptionRef.current?.innerText || descriptionRef.current?.textContent || '' 
       }));
     }
   };
@@ -518,7 +517,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             alert(`Quantidade do ingresso ${i + 1} deve ser maior que zero`);
             return false;
           }
-          if (formData.ticket_type === 'paid' && ticket.price < 0) {
+          if (formData.ticket_type === 'paid' && (ticket.price ?? 0) < 0) {
             alert(`Preço do ingresso ${i + 1} não pode ser negativo`);
             return false;
           }
@@ -543,8 +542,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       id: `ticket_${Date.now()}`,
       title: '',
       quantity: 100,
-      price: 0,
-      price_feminine: 0,
+      price: null,
+      price_feminine: null,
       area: 'Pista',
       has_half_price: false,
       sale_period_type: 'date',
@@ -683,7 +682,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             if (!ticket.title?.trim()) {
               validationErrors.push(`Título do ingresso ${index + 1} é obrigatório`);
             }
-            if (ticket.price < 0) {
+            if ((ticket.price ?? 0) < 0) {
               validationErrors.push(`Preço do ingresso ${index + 1} não pode ser negativo`);
             }
             if (ticket.quantity <= 0) {
@@ -827,7 +826,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro geral:', error);
       
       let errorMessage = 'Erro desconhecido ao criar evento';
@@ -886,7 +885,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 className="max-h-48 mx-auto rounded-lg"
                 style={{ 
                   objectFit: 'cover',
-                  imageRendering: 'high-quality',
                   filter: 'contrast(1.02) saturate(1.05)'
                 }}
               />
@@ -1264,16 +1262,16 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       <div
         ref={descriptionRef}
         contentEditable
-        className="min-h-[200px] p-4 border-x border-b border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+        className="min-h-[200px] p-4 border-x border-b border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-pink-500 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none"
         onInput={() => {
           if (descriptionRef.current) {
             setFormData(prev => ({ 
               ...prev, 
-              description: descriptionRef.current?.innerHTML || '' 
+              description: descriptionRef.current?.innerText || descriptionRef.current?.textContent || '' 
             }));
           }
         }}
-        placeholder="Descreva seu evento aqui..."
+        data-placeholder="Descreva seu evento aqui..."
         style={{ minHeight: '200px' }}
       />
     </div>
@@ -1515,7 +1513,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       {/* Lista de ingressos */}
       <div className="space-y-6">
-        {formData.tickets.map((ticket, index) => (
+        {formData.tickets.map((ticket, _index) => (
           <div key={ticket.id} className="border border-gray-200 rounded-lg p-6 relative bg-gradient-to-r from-pink-50 to-purple-50">
             {formData.tickets.length > 1 && (
               <button
@@ -1562,19 +1560,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 Área do Ingresso
               </label>
-              <select
+              <input
+                type="text"
                 value={ticket.area}
                 onChange={(e) => updateTicket(ticket.id, { area: e.target.value })}
+                placeholder="Ex: Pista, Camarote, Área VIP, Backstage"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                <option value="Pista">Pista</option>
-                <option value="Área VIP">Área VIP</option>
-                <option value="Camarote">Camarote</option>
-                <option value="Backstage">Backstage</option>
-                <option value="Área Premium">Área Premium</option>
-                <option value="Front Stage">Front Stage</option>
-                <option value="Open Bar">Open Bar</option>
-              </select>
+              />
               <p className="text-xs text-gray-500 mt-1">
                 Exemplo: Pista, Camarote, Área VIP, Backstage
               </p>
@@ -1609,7 +1601,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                               <td className="border border-gray-300 px-3 py-2">
                                 <input
                                   type="number"
-                                  value={batch.price_masculine}
+                                  value={batch.price_masculine || ''}
                                   onChange={(e) => {
                                     const newBatches = [...ticket.batches];
                                     newBatches[batchIndex].price_masculine = parseFloat(e.target.value) || 0;
@@ -1617,13 +1609,14 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                                   }}
                                   step="0.01"
                                   min="0"
+                                  placeholder="Preço"
                                   className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
                                 />
                               </td>
                               <td className="border border-gray-300 px-3 py-2">
                                 <input
                                   type="number"
-                                  value={batch.price_feminine}
+                                  value={batch.price_feminine || ''}
                                   onChange={(e) => {
                                     const newBatches = [...ticket.batches];
                                     newBatches[batchIndex].price_feminine = parseFloat(e.target.value) || 0;
@@ -1631,6 +1624,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                                   }}
                                   step="0.01"
                                   min="0"
+                                  placeholder="Preço"
                                   className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
                                 />
                               </td>
@@ -1648,10 +1642,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                         </label>
                         <input
                           type="number"
-                          value={ticket.price}
+                          value={ticket.price || ''}
                           onChange={(e) => updateTicket(ticket.id, { price: parseFloat(e.target.value) || 0 })}
                           step="0.01"
                           min="0"
+                          placeholder="Digite o preço"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                         />
                       </div>
@@ -1661,10 +1656,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                         </label>
                         <input
                           type="number"
-                          value={ticket.price_feminine}
+                          value={ticket.price_feminine || ''}
                           onChange={(e) => updateTicket(ticket.id, { price_feminine: parseFloat(e.target.value) || 0 })}
                           step="0.01"
                           min="0"
+                          placeholder="Digite o preço"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                         />
                       </div>

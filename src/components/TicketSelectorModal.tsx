@@ -91,10 +91,10 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
     if (tickets.length > 0) {
       console.log('🎫 TicketSelectorModal - Tickets recebidos:', tickets);
       
-      // Processar tickets para adicionar preço feminino se não existir
+      // Processar tickets mantendo preços exatos do banco
       const processed = tickets.map(ticket => {
         let currentPrice = ticket.price;
-        let currentPriceFeminine = ticket.price_feminine || (ticket.price * 0.9);
+        let currentPriceFeminine = ticket.price_feminine;
         
         // Se há lotes, usar preço do lote atual
         if (ticket.sale_period_type === 'batch' && ticket.current_batch) {
@@ -219,7 +219,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             selectedTickets.push({
               ticketId: ticket?.id,
               ticketName: ticket?.name,
-              price: ticket?.price_feminine || ticket?.price || 0,
+              price: ticket?.price_feminine || 0,
               quantity: selection.feminineQuantity,
               gender: 'feminine',
               area: ticket?.area,
@@ -332,7 +332,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
             selectedTickets.push({
               ticketId: ticket?.id,
               ticketName: ticket?.name,
-              price: ticket?.price_feminine || ticket?.price || 0,
+              price: ticket?.price_feminine || 0,
               quantity: selection.feminineQuantity,
               gender: 'feminine',
               area: ticket?.area,

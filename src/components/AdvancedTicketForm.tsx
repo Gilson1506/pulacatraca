@@ -138,18 +138,13 @@ const AdvancedTicketForm: React.FC<AdvancedTicketFormProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Área do Ingresso *
           </label>
-          <select
+          <input
+            type="text"
             value={ticket.area}
             onChange={(e) => updateField('area', e.target.value)}
+            placeholder="Ex: Pista, Camarote, Área VIP, Backstage"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-          >
-            <option value="Pista">Pista</option>
-            <option value="Camarote">Camarote</option>
-            <option value="Área VIP">Área VIP</option>
-            <option value="Backstage">Backstage</option>
-            <option value="Premium">Premium</option>
-            <option value="Open Bar">Open Bar</option>
-          </select>
+          />
         </div>
       </div>
 
@@ -167,8 +162,9 @@ const AdvancedTicketForm: React.FC<AdvancedTicketFormProps> = ({
               type="number"
               step="0.01"
               min="0"
-              value={ticket.price}
+              value={ticket.price || ''}
               onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)}
+              placeholder="Digite o preço"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
           </div>
@@ -181,8 +177,9 @@ const AdvancedTicketForm: React.FC<AdvancedTicketFormProps> = ({
               type="number"
               step="0.01"
               min="0"
-              value={ticket.price_feminine}
+              value={ticket.price_feminine || ''}
               onChange={(e) => updateField('price_feminine', parseFloat(e.target.value) || 0)}
+              placeholder="Digite o preço"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
           </div>

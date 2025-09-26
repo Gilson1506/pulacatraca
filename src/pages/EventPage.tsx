@@ -342,6 +342,8 @@ const EventPage = () => {
             id: t.id,
             name: t.title || t.name,
             price: t.price,
+            price_masculine: t.price_masculine,
+            price_feminine: t.price_feminine,
             quantity: t.quantity,
             available: t.available_quantity,
             status: t.status
@@ -539,7 +541,7 @@ const EventPage = () => {
         time: startTime,
         location: eventData.location_name || eventData.location || 'Local não informado',
         address: formattedAddress,
-        addressDetailed: formattedAddressDetailed,
+        addressDetailed: Array.isArray(formattedAddressDetailed) ? formattedAddressDetailed : [formattedAddressDetailed],
         dateLabel: startDate.toLocaleDateString('pt-BR', {
           day: 'numeric',
           month: 'long',
@@ -550,7 +552,7 @@ const EventPage = () => {
           id: ticket.id,
           name: ticket.title || ticket.name,
           price: ticket.price_masculine || ticket.price,
-          price_feminine: ticket.price_feminine || ticket.price * 0.9,
+          price_feminine: ticket.price_feminine,
           available: Math.max(ticket.available_quantity || 0, ticket.quantity || 0),
           area: ticket.area || 'Pista',
           description: ticket.description || '',
@@ -594,11 +596,11 @@ const EventPage = () => {
               `Tipos disponíveis: ${ticketsData.length}`,
               ...ticketsData.map(ticket => {
                 const priceMasc = ticket.price_masculine || ticket.price;
-                const priceFem = ticket.price_feminine || ticket.price * 0.9;
+                const priceFem = ticket.price_feminine;
                 const availableQty = ticket.available_quantity || ticket.quantity || 0;
                 const totalQty = ticket.quantity || 0;
                 const priceText = priceMasc > 0 
-                  ? `Masc: R$ ${priceMasc.toFixed(2)} | Fem: R$ ${priceFem.toFixed(2)}`
+                  ? `Masc: R$ ${priceMasc.toFixed(2)}${priceFem ? ` | Fem: R$ ${priceFem.toFixed(2)}` : ''}`
                   : 'Gratuito';
                 const statusText = availableQty > 0 ? `${availableQty} disponíveis` : 'Esgotado';
                 return `${ticket.title || ticket.name} (${ticket.area || 'Pista'}): ${statusText} - ${priceText}`;
@@ -628,7 +630,7 @@ const EventPage = () => {
           id: ticket.id,
           name: ticket.title || ticket.name,
           price: ticket.price_masculine || ticket.price,
-          price_feminine: ticket.price_feminine || ticket.price * 0.9,
+          price_feminine: ticket.price_feminine,
           quantity: Math.max(ticket.available_quantity || 0, ticket.quantity || 0),
           description: ticket.description || '',
           area: ticket.area || 'Pista',
@@ -741,21 +743,16 @@ const EventPage = () => {
         return (
           <div className="space-y-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-lg mb-3 text-blue-800">POLÍTICAS DO EVENTO</h3>
+              <h3 className="font-semibold text-lg mb-3 text-blue-800">DESCRIÇÃO DO EVENTO</h3>
               <div className="space-y-2 text-sm text-blue-700">
                 {event?.description ? (
                   <div className="whitespace-pre-line">
                     {event.description.split('\n').map((line, index) => (
-                      <p key={index}>{line.trim() ? `• ${line.trim()}` : ''}</p>
+                      <p key={index}>{line.trim() ? line.trim() : ''}</p>
                     ))}
                   </div>
                 ) : (
-                  <>
-                    <p>• Proibido entrada de bebidas alcoólicas</p>
-                    <p>• Proibido fumar em áreas fechadas</p>
-                    <p>• Evento sujeito a alterações</p>
-                    <p>• Chegue com antecedência</p>
-                  </>
+                  <p>Descrição não disponível para este evento.</p>
                 )}
               </div>
             </div>
