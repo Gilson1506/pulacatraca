@@ -633,7 +633,7 @@ const OrganizerEvents = () => {
         // Contar tickets vendidos por evento
         ticketsData?.forEach(ticket => {
           if (ticket.status === 'active' || ticket.status === 'used') {
-            ticketCounts[ticket.event_id] = (ticketCounts[ticket.event_id] || 0) + 1;
+          ticketCounts[ticket.event_id] = (ticketCounts[ticket.event_id] || 0) + 1;
           }
         });
         
@@ -665,7 +665,7 @@ const OrganizerEvents = () => {
         
         // Debug: Log da receita do evento específico
         console.log(`💰 Evento ${event.title}: Receita = R$ ${eventRevenue}, Tickets = ${eventTicketsSold}`);
-        
+
         return {
           id: event.id,
           title: event.title,
@@ -991,9 +991,9 @@ const OrganizerEvents = () => {
         }}
         event={selectedEvent}
         onEventCreated={async () => {
-          await fetchEvents();
-          setSelectedEvent(undefined);
-          setShowEventFormModal(false);
+            await fetchEvents();
+            setSelectedEvent(undefined);
+            setShowEventFormModal(false);
         }}
       />
 
