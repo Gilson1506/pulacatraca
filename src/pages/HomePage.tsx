@@ -4,7 +4,7 @@ import EventCard from '../components/EventCard';
 import LiveChat from '../components/LiveChat';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
-import EventCarousel from '../components/EventCarousel';
+import EventCarouselNew from '../components/EventCarouselNew';
  
 const HomePage = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -38,7 +38,7 @@ const HomePage = () => {
     },
     {
       id: '3',
-      title: 'ARRAIÁ DO PULAKATRACA',
+      title: 'ARRAIÁ DO PULA CATRACA',
       date: '2025-07-20',
       location: 'Belo Horizonte', // Apenas cidade
       image: 'https://i.postimg.cc/x1hQHbrW/Imagem-Whats-App-2025-07-14-s-20-38-34-99ab0e70.jpg',
@@ -144,9 +144,9 @@ const HomePage = () => {
     <div className="min-h-screen bg-gray-50 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       
 
-      {/* Hero Carousel anterior */}
+      {/* Hero Carousel */}
       <div className="container mx-auto px-4">
-        <EventCarousel />
+        <EventCarouselNew />
       </div>
 
       {/* Events Section */}
