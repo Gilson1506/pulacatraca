@@ -41,8 +41,8 @@ const Footer = () => {
       <div className="w-full h-4 bg-gradient-to-b from-gray-300/80 via-gray-200/70 to-transparent" />
 
       <div className="container mx-auto px-4 py-4">
-        {/* Mobile: layout compacto e horizontal para menus */}
-        <div className="md:hidden">
+        {/* Mobile/Tablet: layout compacto e horizontal para menus */}
+        <div className="lg:hidden">
           {/* Logo + descrição + redes */}
           <div>
             <img
@@ -126,7 +126,7 @@ const Footer = () => {
         </div>
 
         {/* Desktop: manter estrutura em 4 colunas */}
-        <div className="hidden md:grid md:grid-cols-4 gap-6 items-start">
+        <div className="hidden lg:grid lg:grid-cols-4 gap-6 items-start">
           {/* Coluna 1: Logo, descrição, redes sociais */}
           <div>
             <img
@@ -151,7 +151,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 2: Links úteis */}
-          <div className="md:mt-12">
+          <div className="lg:mt-12">
             <h3 className="text-gray-900 font-semibold mb-3">Links úteis</h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -164,7 +164,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 3: pulakatraca */}
-          <div className="md:mt-12">
+          <div className="lg:mt-12">
             <h3 className="text-gray-900 font-semibold mb-3">pulakatraca</h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -183,7 +183,7 @@ const Footer = () => {
           </div>
 
           {/* Coluna 4: Fique por dentro (newsletter) */}
-          <div className="md:mt-12">
+          <div className="lg:mt-12">
             <h3 className="text-gray-900 font-semibold mb-3">Fique por dentro</h3>
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               Se inscreva na nossa lista de e-mail e fique por dentro dos próximos eventos da sua região.

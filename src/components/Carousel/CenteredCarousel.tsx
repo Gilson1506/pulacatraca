@@ -37,16 +37,16 @@ const CenteredCarousel: React.FC<CenteredCarouselProps> = ({
     <div className="relative w-full">
 
       {/* Swiper Container */}
-      <div className="px-2 sm:px-2 lg:px-8">
-        <div className="mx-4 sm:mx-4 lg:mx-40">
+      <div className="w-full">
+        <div className="w-full">
         <Swiper
           modules={[Autoplay]}
           onSwiper={(swiper) => {
             swiperRef.current = swiper
           }}
           onSlideChange={handleSlideChange}
-          spaceBetween={-60}
-          slidesPerView={1.2}
+          spaceBetween={-20}
+          slidesPerView={1.1}
           centeredSlides={true}
           loop={options.length > 1}
           autoplay={autoplay ? { delay: autoplayDelay, disableOnInteraction: false } : false}
@@ -54,19 +54,19 @@ const CenteredCarousel: React.FC<CenteredCarouselProps> = ({
           breakpoints={{
             640: {
               slidesPerView: 1.2,
-              spaceBetween: -60,
+              spaceBetween: -40,
             },
             768: {
-              slidesPerView: 1.2,
-              spaceBetween: -60,
+              slidesPerView: 1.3,
+              spaceBetween: -50,
             },
             1024: {
-              slidesPerView: 1.8,
-              spaceBetween: -120,
+              slidesPerView: 1.6,
+              spaceBetween: -80,
             },
             1280: {
-              slidesPerView: 2.0,
-              spaceBetween: -140,
+              slidesPerView: 1.8,
+              spaceBetween: -100,
             },
           }}
           className="centered-carousel"

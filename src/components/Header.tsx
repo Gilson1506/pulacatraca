@@ -40,7 +40,7 @@ const Header: React.FC = () => {
       }`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between h-24 w-full">
+          <div className="hidden lg:flex items-center justify-between h-24 w-full">
             <div className="flex items-center flex-shrink-0">
               <Link to="/" className="flex items-center space-x-3 flex-shrink-0">
                 <img
@@ -50,7 +50,7 @@ const Header: React.FC = () => {
                 />
               </Link>
             </div>
-            <div className="hidden md:flex flex-1 justify-center items-center space-x-8">
+            <div className="hidden lg:flex flex-1 justify-center items-center space-x-8">
               {!isEventPage && (
                 <div className="flex-1 flex flex-col items-center justify-center px-4">
                   <div className="flex w-full max-w-xl items-center gap-2">
@@ -135,8 +135,8 @@ const Header: React.FC = () => {
               )}
             </div>
           </div>
-          {/* Mobile Header */}
-          <div className="md:hidden flex items-center justify-between h-12">
+          {/* Mobile/Tablet Header */}
+          <div className="lg:hidden flex items-center justify-between h-12">
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <img
@@ -182,7 +182,7 @@ const Header: React.FC = () => {
             </div>
           </div>
           {isMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-200">
+            <div className="lg:hidden py-4 border-t border-gray-200">
               <div className="space-y-2">
                 {!user && (
                   <Link
