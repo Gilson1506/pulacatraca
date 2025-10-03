@@ -216,10 +216,19 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
           
           // Adicionar ingressos femininos
           if (selection.feminineQuantity > 0) {
+            console.log('🎫 Processando ingresso feminino (usuário não logado):', {
+              ticketId: ticket?.id,
+              ticketName: ticket?.name,
+              price_feminine: ticket?.price_feminine,
+              price: ticket?.price,
+              fallbackPrice: ticket?.price_feminine || ticket?.price || 0,
+              quantity: selection.feminineQuantity
+            });
+            
             selectedTickets.push({
               ticketId: ticket?.id,
               ticketName: ticket?.name,
-              price: ticket?.price_feminine || 0,
+              price: ticket?.price_feminine || ticket?.price || 0,
               quantity: selection.feminineQuantity,
               gender: 'feminine',
               area: ticket?.area,
@@ -329,10 +338,19 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
           
           // Adicionar ingressos femininos
           if (selection.feminineQuantity > 0) {
+            console.log('🎫 Processando ingresso feminino (usuário logado):', {
+              ticketId: ticket?.id,
+              ticketName: ticket?.name,
+              price_feminine: ticket?.price_feminine,
+              price: ticket?.price,
+              fallbackPrice: ticket?.price_feminine || ticket?.price || 0,
+              quantity: selection.feminineQuantity
+            });
+            
             selectedTickets.push({
               ticketId: ticket?.id,
               ticketName: ticket?.name,
-              price: ticket?.price_feminine || 0,
+              price: ticket?.price_feminine || ticket?.price || 0,
               quantity: selection.feminineQuantity,
               gender: 'feminine',
               area: ticket?.area,
@@ -565,6 +583,13 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                             <p className="text-gray-800 font-bold text-sm sm:text-lg">
                               R$ {(ticket.price_feminine || ticket.price).toFixed(2).replace('.', ',')}
                             </p>
+                            {console.log('🎫 Exibindo preço feminino no modal:', {
+                              ticketId: ticket.id,
+                              ticketName: ticket.name,
+                              price_feminine: ticket.price_feminine,
+                              price: ticket.price,
+                              finalPrice: ticket.price_feminine || ticket.price
+                            })}
                           </div>
                           
                           <div className="flex items-center space-x-3">

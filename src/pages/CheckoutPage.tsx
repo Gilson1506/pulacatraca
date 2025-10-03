@@ -179,8 +179,30 @@ const CheckoutPage = () => {
 
   // Calcular subtotal baseado nos tickets selecionados
   const subtotal = selectedTickets && selectedTickets.length > 0 
-    ? selectedTickets.reduce((sum: number, ticket: any) => sum + (ticket.price * ticket.quantity), 0)
-    : (ticket ? ticket.price * quantity : 0);
+    ? selectedTickets.reduce((sum: number, ticket: any) => {
+        const price = parseFloat(ticket.price) || 0;
+        const qty = parseInt(ticket.quantity) || 0;
+        const total = price * qty;
+        console.log('🔍 Calculando ticket:', { price, qty, total, ticket });
+        return sum + total;
+      }, 0)
+    : (ticket ? (parseFloat(ticket.price) || 0) * quantity : 0);
+
+  // Debug do subtotal
+  console.log('🔍 DEBUG CheckoutPage - Cálculo do subtotal:', {
+    selectedTickets,
+    selectedTicketsLength: selectedTickets?.length,
+    ticket,
+    quantity,
+    subtotal,
+    calculation: selectedTickets && selectedTickets.length > 0 
+      ? selectedTickets.map((t: any) => ({ 
+          price: parseFloat(t.price) || 0, 
+          quantity: parseInt(t.quantity) || 0, 
+          total: (parseFloat(t.price) || 0) * (parseInt(t.quantity) || 0) 
+        }))
+      : [{ price: parseFloat(ticket?.price) || 0, quantity, total: (parseFloat(ticket?.price) || 0) * quantity }]
+  });
     
   let taxaCompra = 0;
   if (subtotal < 30) {
@@ -931,17 +953,34 @@ Seus ingressos serão processados automaticamente.`,
                             {selectedTicket.sector && ` • ${selectedTicket.sector}`}
                           </p>
                           <p className="text-lg font-bold text-pink-600">
-                            R$ {selectedTicket.price.toFixed(2)}
+                            R$ {(parseFloat(selectedTicket.price) || 0).toFixed(2)}
                             {selectedTicket.gender === 'feminine' && ' (Feminino)'}
                             {selectedTicket.gender === 'masculine' && ' (Masculino)'}
                           </p>
+                          {console.log('🎫 Exibindo preço no checkout:', {
+                            ticketId: selectedTicket.ticketId,
+                            ticketName: selectedTicket.ticketName,
+                            price: selectedTicket.price,
+                            gender: selectedTicket.gender,
+                            quantity: selectedTicket.quantity,
+                            parsedPrice: parseFloat(selectedTicket.price) || 0
+                          })}
                         </div>
                         <div className="text-right">
                           <span className="text-sm text-gray-600">Quantidade:</span>
                           <div className="text-lg font-bold text-gray-800">{selectedTicket.quantity}</div>
                           <div className="text-sm text-gray-600">
-                            Subtotal: R$ {(selectedTicket.price * selectedTicket.quantity).toFixed(2)}
+                            Subtotal: R$ {((parseFloat(selectedTicket.price) || 0) * (parseInt(selectedTicket.quantity) || 0)).toFixed(2)}
                           </div>
+                          {console.log('🎫 Calculando subtotal no checkout:', {
+                            ticketId: selectedTicket.ticketId,
+                            ticketName: selectedTicket.ticketName,
+                            price: selectedTicket.price,
+                            quantity: selectedTicket.quantity,
+                            parsedPrice: parseFloat(selectedTicket.price) || 0,
+                            parsedQuantity: parseInt(selectedTicket.quantity) || 0,
+                            subtotal: (parseFloat(selectedTicket.price) || 0) * (parseInt(selectedTicket.quantity) || 0)
+                          })}
                         </div>
                       </div>
                     ))}
@@ -950,8 +989,8 @@ Seus ingressos serão processados automaticamente.`,
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold text-gray-700">Total:</span>
                         <span className="text-2xl font-bold text-pink-600">
-                          R$ {totalAmount ? totalAmount.toFixed(2) : 
-                              selectedTickets.reduce((sum, ticket) => sum + (ticket.price * ticket.quantity), 0).toFixed(2)}
+                          R$ {totalAmount ? (parseFloat(totalAmount.toString()) || 0).toFixed(2) : 
+                              selectedTickets.reduce((sum, ticket) => sum + ((parseFloat(ticket.price) || 0) * (parseInt(ticket.quantity) || 0)), 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -961,7 +1000,7 @@ Seus ingressos serão processados automaticamente.`,
                   <div className="flex justify-between items-center">
                     <div>
                       <h3 className="font-semibold text-gray-700 drop-shadow-sm">{ticket.name}</h3>
-                      <p className="text-lg font-bold text-pink-600 drop-shadow-sm">R$ {ticket.price.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-pink-600 drop-shadow-sm">R$ {(parseFloat(ticket.price) || 0).toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-3 bg-gray-100 rounded-full p-1">
                       <button onClick={() => handleQuantityChange(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
@@ -1042,22 +1081,24 @@ Seus ingressos serão processados automaticamente.`,
                 <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Resumo</h2>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 drop-shadow-sm">Subtotal ({quantity} {quantity > 1 ? 'ingressos' : 'ingresso'})</span>
-                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {subtotal.toFixed(2)}</span>
+                    <span className="text-gray-600 drop-shadow-sm">
+                      Subtotal ({selectedTickets ? selectedTickets.reduce((sum, t) => sum + t.quantity, 0) : quantity} {(selectedTickets ? selectedTickets.reduce((sum, t) => sum + t.quantity, 0) : quantity) > 1 ? 'ingressos' : 'ingresso'})
+                    </span>
+                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {(parseFloat(subtotal.toString()) || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">Taxa de Compra</span>
-                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {taxaCompra.toFixed(2)}</span>
+                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {(parseFloat(taxaCompra.toString()) || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">Taxa de Pagamento</span>
-                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {taxaPagamento.toFixed(2)}</span>
+                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {(parseFloat(taxaPagamento.toString()) || 0).toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="border-t my-4"></div>
                 <div className="flex justify-between font-semibold text-lg drop-shadow">
                   <span>Total</span>
-                  <span>R$ {totalPrice.toFixed(2)}</span>
+                  <span>R$ {(parseFloat(totalPrice.toString()) || 0).toFixed(2)}</span>
                 </div>
                 <LoadingButton
                   onClick={handleCheckout}
