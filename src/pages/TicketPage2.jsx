@@ -563,7 +563,7 @@ export default function Ticket() {
             name,
             price_masculine,
             price_feminine,
-            area
+            price_type      
           ),
           ticket_users (
             id,
@@ -953,14 +953,14 @@ export default function Ticket() {
             </div>
             
             {/* Logo com QR - Mobile (por baixo dos dados) */}
-            <div className="mt-auto mb-6 flex justify-center">
-              <img src="/logo-com-qr.png" alt="Logo com QR" className="w-44 h-44 object-contain" />
+            <div className="mt-auto mb-2">
+              <img src="/logo-com-qr.png" alt="Logo com QR" className="w-34 h-35" />
             </div>
           </div>
           
           {/* Logo com QR - Desktop (posição original) */}
-          <div className="absolute bottom-6 right-4 relative z-10 hidden lg:block">
-            <img src="/logo-com-qr.png" alt="Logo com QR" className="w-48 h-48 object-contain" />
+          <div className="absolute top-32 right-2 relative z-20 hidden lg:block">
+            <img src="/logo-com-qr.png" alt="Logo com QR" className="w-30 h-20" />
           </div>
         </div>
 
