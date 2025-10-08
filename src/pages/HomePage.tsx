@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EventCard from '../components/EventCard';
 
-import LiveChat from '../components/LiveChat';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
 import EventCarouselNew from '../components/EventCarouselNew';
@@ -141,11 +140,11 @@ const HomePage = () => {
   };
  
   return (
-    <div className="min-h-screen bg-gray-50 font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
+    <div className="min-h-screen bg-gray-50 font-sans overflow-x-hidden" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       
 
       {/* Hero Carousel */}
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 overflow-x-hidden">
         <EventCarouselNew />
       </div>
 
@@ -170,8 +169,7 @@ const HomePage = () => {
         )}
       </div>
 
-      {/* Live Chat */}
-      <LiveChat />
+      {/* Live Chat removido em favor do Tawk.to */}
     </div>
   );
 };

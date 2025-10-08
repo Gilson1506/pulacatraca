@@ -17,7 +17,21 @@ const Footer = () => {
   };
 
   const handleContatoSuporte = () => {
-    window.location.href = 'https://wa.me/5531999999999';
+    const phoneNumber = '5511968033591';
+    const message = 'Olá! Gostaria de mais informações sobre os eventos do Pulakatraca.';
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Detectar se é mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    let whatsappUrl;
+    if (isMobile) {
+      whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+    } else {
+      whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+    }
+    
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleDuvidas = () => {

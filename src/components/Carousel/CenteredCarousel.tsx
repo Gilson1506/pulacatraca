@@ -34,31 +34,35 @@ const CenteredCarousel: React.FC<CenteredCarouselProps> = ({
   }
 
   return (
-    <div className="relative w-full overflow-hidden">
+    <div className="relative w-full overflow-visible">
 
       {/* Swiper Container */}
-      <div className="w-full overflow-hidden">
-        <div className="w-full overflow-hidden">
+      <div className="w-full overflow-visible">
+        <div className="w-full overflow-visible">
         <Swiper
           modules={[Autoplay]}
           onSwiper={(swiper) => {
             swiperRef.current = swiper
           }}
           onSlideChange={handleSlideChange}
-          spaceBetween={0}
-          slidesPerView={1.1}
+          spaceBetween={-32}
+          slidesPerView={1.2}
           centeredSlides={true}
+          centeredSlidesBounds={true}
+          slidesOffsetBefore={12}
+          slidesOffsetAfter={12}
           loop={options.length > 1}
           autoplay={autoplay ? { delay: autoplayDelay, disableOnInteraction: false } : false}
           speed={800}
+          style={{ overflow: 'visible' }}
           breakpoints={{
             640: {
               slidesPerView: 1.2,
-              spaceBetween: -20,
+              spaceBetween: -26,
             },
             768: {
               slidesPerView: 1.3,
-              spaceBetween: -30,
+              spaceBetween: -34,
             },
             1024: {
               slidesPerView: 1.6,

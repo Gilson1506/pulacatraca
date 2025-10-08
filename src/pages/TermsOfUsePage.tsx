@@ -115,7 +115,7 @@ const TermsOfUsePage = () => {
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">10. Contato</h3>
                 <p className="text-gray-700 leading-relaxed">
                   Para dúvidas sobre estes Termos de Uso, entre em contato conosco através do nosso 
-                  <a href="https://wa.me/5531999999999" className="text-pink-600 hover:text-pink-700 underline">
+                  <a href="https://wa.me/5511968033591?text=Olá! Tenho dúvidas sobre os Termos de Uso do Pulakatraca." className="text-pink-600 hover:text-pink-700 underline">
                     WhatsApp
                   </a> ou através da seção de contato em nossa plataforma.
                 </p>

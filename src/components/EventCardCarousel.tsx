@@ -28,7 +28,7 @@ const EventCardCarousel: React.FC<EventCardCarouselProps> = ({ event }) => {
 
   return (
     <Link to={`/event/${event.id}`} className="block h-full">
-      <div className="relative h-[200px] sm:h-[450px] md:h-[500px] lg:h-[420px] rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-3xl mx-2">
+      <div className="relative h-[200px] sm:h-[450px] md:h-[500px] lg:h-[420px] rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-3xl mx-0.8 sm:mx-2">
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -36,8 +36,8 @@ const EventCardCarousel: React.FC<EventCardCarouselProps> = ({ event }) => {
             backgroundImage: `url(${event.image || '/placeholder-event.jpg'})`,
           }}
         >
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-transparent" />
+          {/* Gradient Overlay - mais sutil para maior nitidez da imagem */}
+          <div className="absolute inset-0 bg-gradient-to-br from-black/35 via-black/20 to-transparent" />
           
           {/* Content */}
           <div className="relative h-full flex flex-col justify-between p-6 sm:p-8">

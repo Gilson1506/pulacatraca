@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -95,7 +95,7 @@ const MapInline: React.FC<{ destinationAddress: string }> = ({ destinationAddres
   const [error, setError] = useState<string | null>(null);
   const [loadingMap, setLoadingMap] = useState(false);
 
-  const token = (import.meta as any).env?.VITE_MAPBOX_ACCESS_TOKEN || (import.meta as any).env?.VITE_MAPBOX_TOKEN || '';
+  const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || import.meta.env.VITE_MAPBOX_TOKEN || '';
 
   useEffect(() => {
     if (!token) {
@@ -195,7 +195,7 @@ const MapInline: React.FC<{ destinationAddress: string }> = ({ destinationAddres
 
   return (
     <div className="relative">
-      <div className="w-full h-[40vh] sm:h-[50vh] md:h-[60vh] rounded-xl overflow-hidden border border-gray-200 shadow-sm" ref={containerRef} />
+      <div className="w-full h-[40vh] sm:h-[50vh] md:h-[60vh] rounded-xl overflow-hidden shadow-sm" ref={containerRef} />
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-red-600 text-sm font-medium">
           {error}
@@ -209,7 +209,7 @@ const MapInline: React.FC<{ destinationAddress: string }> = ({ destinationAddres
       {/* Botão bússola */}
       <button
         onClick={flyToRoute}
-        className="absolute top-3 right-3 z-10 rounded-full bg-white/90 hover:bg-white text-gray-700 shadow p-2 border border-gray-200"
+        className="absolute top-3 right-3 z-10 rounded-full bg-white/90 hover:bg-white text-gray-700 shadow p-2 "
         aria-label="Recentrar mapa"
         title="Recentrar mapa"
       >
@@ -266,7 +266,6 @@ const EventPage = () => {
   };
 
   const fetchEvent = async () => {
-    // Declarar variáveis no escopo da função
     let attractions: string[] = [];
     let importantInfo: string[] = [];
     let classification: string = 'LIVRE';
@@ -274,12 +273,12 @@ const EventPage = () => {
     try {
       setIsLoadingEvent(true);
       if (!eventId) {
-        console.log('EventPage - ID do evento não fornecido'); // Log para debug
+        console.log('EventPage - ID do evento não fornecido');
         navigate('/');
         return;
       }
 
-      console.log('EventPage - Buscando evento com ID:', eventId); // Log para debug
+      console.log('EventPage - Buscando evento com ID:', eventId);
 
       const { data: eventData, error } = await supabase
         .from('events')
@@ -319,45 +318,58 @@ const EventPage = () => {
           updated_at
         `)
         .eq('id', eventId)
-        .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
+        .eq('status', 'approved')
         .single();
 
-      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
+      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO (USANDO VIEW COM BATCHES)
       console.log('EventPage - Buscando tipos de ingressos para evento:', eventId);
       
-      const { data: ticketsData, error: ticketsError } = await supabase
-        .from('event_ticket_types')
+      let ticketsData = [];
+      let ticketsError = null;
+      
+      // 👈 TENTA A VIEW PRIMEIRO (ticket_types_with_batches)
+      const { data: viewData, error: viewError } = await supabase
+        .from('ticket_types_with_batches') // 👈 NOME DA VIEW (muda pra 'events_with_ticket_types' se for essa)
         .select('*')
         .eq('event_id', eventId)
-        .eq('status', 'active')
-        .order('price', { ascending: true });
+        .eq('status', 'active');
 
-      // Log para debug dos tipos de ingressos
-      if (ticketsError) {
-        console.error('EventPage - Erro ao buscar tipos de ingressos:', ticketsError);
+      if (viewError) {
+        console.warn('EventPage - Erro na view ticket_types_with_batches, tentando tabela direta:', viewError);
+        // Fallback: usa tabela direta sem batches
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('event_ticket_types')
+          .select('*')
+          .eq('event_id', eventId)
+          .eq('status', 'active');
+        
+        ticketsData = fallbackData || [];
+        ticketsError = fallbackError;
       } else {
-        console.log('EventPage - Tipos de ingressos encontrados:', ticketsData?.length || 0);
-        if (ticketsData && ticketsData.length > 0) {
-          console.log('EventPage - Detalhes dos ingressos:', ticketsData.map(t => ({
-            id: t.id,
-            name: t.title || t.name,
-            price: t.price,
-            price_masculine: t.price_masculine,
-            price_feminine: t.price_feminine,
-            quantity: t.quantity,
-            available: t.available_quantity,
-            status: t.status
-          })));
-        }
+        ticketsData = viewData || [];
+      }
+
+      // 👈 LOGS EXTRA PRA DEBUG
+      console.log('EventPage - Query executada. Erro?', !!ticketsError);
+      console.log('EventPage - ticketsData raw:', ticketsData);
+      console.log('EventPage - Número de tickets:', ticketsData.length);
+      if (ticketsData.length > 0) {
+        console.log('EventPage - Primeiro ticket exemplo:', ticketsData[0]);
+        console.log('EventPage - Tem batches?', ticketsData[0].batches && ticketsData[0].batches.length > 0);
+      } else {
+        console.log('⚠️ EventPage - NENHUM TICKET ENCONTRADO! Verifique:');
+        console.log('- event_id correto? (UUID matching na tabela)');
+        console.log('- Tem dados em event_ticket_types com status=\'active\' e event_id=', eventId);
+        console.log('- View criada? Rode o SQL pra criar ticket_types_with_batches');
       }
 
       if (error) {
-        console.error('EventPage - Erro ao buscar evento:', error); // Log para debug
+        console.error('EventPage - Erro ao buscar evento:', error);
         throw error;
       }
 
       if (!eventData) {
-        console.log('EventPage - Nenhum evento encontrado com ID:', eventId); // Log para debug
+        console.log('EventPage - Nenhum evento encontrado com ID:', eventId);
         navigate('/');
         return;
       }
@@ -552,15 +564,7 @@ const EventPage = () => {
           id: ticket.id,
           name: ticket.title || ticket.name,
           price: ticket.price_masculine || ticket.price,
-          price_feminine: ticket.price_feminine,
-          available: Math.max(ticket.available_quantity || 0, ticket.quantity || 0),
-          area: ticket.area || 'Pista',
-          description: ticket.description || '',
-          has_half_price: ticket.has_half_price || false,
-          min_quantity: ticket.min_quantity || 1,
-          max_quantity: ticket.max_quantity || 5,
-          batches: [],
-          current_batch: null
+          available: Math.max(ticket.available_quantity || 0, ticket.quantity || 0)
         })) : [
           {
             id: '1',
@@ -571,7 +575,7 @@ const EventPage = () => {
         ],
         sections: [
           {
-            name: 'Informações do Evento',
+            name: 'Evento',
             details: [
               ...(eventData.subject ? [`Assunto: ${eventData.subject}`] : []),
               ...(eventData.subcategory ? [`Subcategoria: ${eventData.subcategory}`] : []),
@@ -623,42 +627,58 @@ const EventPage = () => {
 
       setEvent(formattedEvent);
       
-      // Processar tickets se existirem (otimizado para evitar duplicações)
+      // Processar tickets pro modal
       if (ticketsData && ticketsData.length > 0) {
-        // Criar estrutura específica para o TicketSelectorModal
-        const modalTickets = ticketsData.map(ticket => ({
-          id: ticket.id,
-          name: ticket.title || ticket.name,
-          price: ticket.price_masculine || ticket.price,
-          price_feminine: ticket.price_feminine,
-          quantity: Math.max(ticket.available_quantity || 0, ticket.quantity || 0),
-          description: ticket.description || '',
-          area: ticket.area || 'Pista',
-          sector: ticket.sector,
-          benefits: ticket.benefits || [],
-          has_half_price: ticket.has_half_price || false,
-          min_quantity: ticket.min_quantity || 1,
-          max_quantity: ticket.max_quantity || 5,
-          ticket_type: ticket.ticket_type || 'paid',
-          status: ticket.status || 'active',
-          batches: [],
-          current_batch: null,
-          sale_period_type: ticket.sale_period_type || 'date',
-          availability: ticket.availability || 'public'
-        }));
+        const now = new Date();
+        const modalTickets = ticketsData.map(ticket => {
+          let currentBatch = null;
+          if (ticket.batches && ticket.batches.length > 0) {
+            currentBatch = ticket.batches.find((batch: any) => {
+              const start = new Date(batch.sale_start_date);
+              const end = new Date(batch.sale_end_date || '9999-12-31T23:59:59Z');
+              return now >= start && now <= end && batch.quantity > 0;
+            }) || ticket.batches[0];
+          }
+
+          return {
+            id: ticket.id,
+            event_id: ticket.event_id,
+            name: ticket.title || ticket.name,
+            title: ticket.title,
+            description: ticket.description,
+            price: ticket.price_masculine || ticket.price || 0,
+            price_masculine: ticket.price_masculine,
+            price_feminine: ticket.price_feminine,
+            price_type: ticket.price_type || 'unissex',
+            quantity: ticket.quantity || 0,
+            available_quantity: ticket.available_quantity || 0,
+            min_quantity: ticket.min_quantity,
+            max_quantity: ticket.max_quantity,
+            has_half_price: ticket.has_half_price,
+            half_price_title: ticket.half_price_title,
+            half_price_quantity: ticket.half_price_quantity,
+            half_price_price: ticket.half_price_price,
+            half_price_price_feminine: ticket.half_price_price_feminine,
+            sector: ticket.sector,
+            benefits: ticket.benefits || [],
+            ticket_type: ticket.ticket_type || 'paid',
+            status: ticket.status || 'active',
+            sale_start_date: ticket.sale_start_date,
+            sale_end_date: ticket.sale_end_date,
+            sale_period_type: ticket.sale_period_type || 'date',
+            availability: ticket.availability || 'public',
+            service_fee_type: ticket.service_fee_type || 'buyer',
+            batches: ticket.batches || [],
+            current_batch: currentBatch,
+            stripe_price_id: ticket.stripe_price_id
+          };
+        });
         
         setAvailableTickets(modalTickets);
-        console.log('🎫 Tipos de ingressos carregados para modal:', modalTickets.length);
-        console.log('🎫 Detalhes dos ingressos:', modalTickets.map(t => ({
-          id: t.id,
-          name: t.name,
-          price: t.price,
-          quantity: t.quantity,
-          status: t.status
-        })));
+        console.log('🎫 Tickets pro modal (com batches):', modalTickets.length, modalTickets);
       } else {
         setAvailableTickets([]);
-        console.log('⚠️ Nenhum tipo de ingresso encontrado para este evento');
+        console.log('⚠️ Nenhum ticket pro modal');
       }
       
     } catch (error) {
@@ -732,7 +752,8 @@ const EventPage = () => {
     });
   };
 
-  const formatTime = (time: string) => {
+  const formatTime = (time?: string) => {
+    if (!time || typeof time !== 'string') return 'Horário não informado';
     const [hours, minutes] = time.split(':');
     return `${hours}h${minutes}`;
   };
@@ -742,9 +763,9 @@ const EventPage = () => {
       case 'informacoes':
         return (
           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-lg mb-3 text-blue-800">DESCRIÇÃO DO EVENTO</h3>
-              <div className="space-y-2 text-sm text-blue-700">
+            <div className="bg-white p-4 rounded-lg ">
+              <h3 className="font-semibold text-lg mb-3 text-gray-800">SOBRE O EVENTO</h3>
+              <div className="space-y-2 text-sm text-gray-700">
                 {event?.description ? (
                   <div className="whitespace-pre-line">
                     {event.description.split('\n').map((line, index) => (
@@ -757,8 +778,8 @@ const EventPage = () => {
               </div>
             </div>
             
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-3">REGRAS DE TROCA DE UTILIZADOR</h3>
+            <div className="bg-white p-4 rounded-lg ">
+              <h3 className="font-semibold text-lg mb-3 text-gray-800">REGRAS DE TROCA DE UTILIZADOR</h3>
               <p className="text-sm">O ingresso do tipo INDIVIDUAL pode ter seu utilizador alterado até 1x no prazo máximo de 0h antes do início do evento.</p>
               <button className="mt-3 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
                 <Share2 className="h-4 w-4 inline mr-2" />
@@ -774,12 +795,12 @@ const EventPage = () => {
       case 'setores-e-areas':
         return (
           <div className="space-y-4">
-            {event?.sections.map((section, index) => (
-              <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg mb-3">{section.name}</h3>
+            {(event?.sections || []).map((section, index) => (
+              <div key={index} className="bg-white p-4 rounded-lg ">
+                <h3 className="font-semibold text-lg mb-3 text-gray-800">{section.name}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
-                  {section.details.map((detail, idx) => (
-                    <div key={idx} className="bg-white p-3 rounded text-sm text-center border border-gray-200">
+                  {(section.details || []).map((detail, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded text-sm text-center ">
                       {detail}
                     </div>
                   ))}
@@ -794,12 +815,11 @@ const EventPage = () => {
       case 'atracoes':
         return (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-3">ATRAÇÕES</h3>
+            <div className="bg-white p-4 rounded-lg ">
               {event?.attractions && event.attractions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {event.attractions.map((attraction, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-lg font-medium border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div key={idx} className="bg-white p-4 rounded-lg font-medium  shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center space-x-2">
                         <span className="text-pink-500 text-lg">🎵</span>
                         <span>{attraction}</span>
@@ -808,8 +828,8 @@ const EventPage = () => {
                   ))}
                 </div>
               ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 text-center">
+                <div className="bg-gray-50  rounded-lg p-4">
+                  <p className="text-sm text-gray-800 text-center">
                     <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
                     <br />
                     <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
@@ -822,25 +842,24 @@ const EventPage = () => {
       case 'importante':
         return (
           <div className="space-y-4">
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+            <div className="bg-white  p-4 rounded-lg">
               <div className="flex">
-                <AlertCircle className="h-5 w-5 text-yellow-400 mr-3 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-3">INFORMAÇÕES IMPORTANTES</h3>
                   {event?.importantNotes && event.importantNotes.length > 0 ? (
                     <div className="space-y-3">
                       {event.importantNotes.map((note, idx) => (
-                        <div key={idx} className="bg-white p-3 rounded-lg border border-yellow-200 shadow-sm">
+                        <div key={idx} className="bg-gray-50 p-3 rounded-lg  shadow-sm">
                           <div className="flex items-start space-x-2">
-                            <span className="text-yellow-500 text-lg mt-0.5">⚠️</span>
+                            <span className="text-gray-500 text-lg mt-0.5">⚠️</span>
                             <span className="text-sm text-gray-800">{note}</span>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 text-center">
+                    <div className="bg-gray-50  rounded-lg p-4">
+                      <p className="text-sm text-gray-800 text-center">
                         <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
                         <br />
                         <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
@@ -854,16 +873,15 @@ const EventPage = () => {
         );
       case 'classificacao':
         return (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-lg mb-3">CLASSIFICAÇÃO ETÁRIA</h3>
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-lg p-6 shadow-sm">
+          <div className="bg-white p-4 rounded-lg ">
+            <div className="bg-white  rounded-lg p-6 shadow-sm">
               <div className="flex items-center justify-center space-x-3">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+                <CheckCircle className="h-8 w-8 text-gray-600" />
                 <div className="text-center">
-                  <span className="text-2xl font-bold text-green-800">
+                  <span className="text-2xl font-bold text-gray-800">
                     {event?.classification || 'LIVRE'}
                   </span>
-                  <p className="text-sm text-green-700 mt-1">
+                  <p className="text-sm text-gray-700 mt-1">
                     {event?.classification === '18' ? 'Maiores de 18 anos' :
                      event?.classification === '16' ? 'Maiores de 16 anos' :
                      event?.classification === '14' ? 'Maiores de 14 anos' :
@@ -879,12 +897,11 @@ const EventPage = () => {
       case 'contato':
         return (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-4">Atendimento</h3>
+            <div className="bg-white p-4 rounded-lg ">
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-gray-400" />
-                  <span>{event?.contactInfo.phone}</span>
+                  <span>{event?.contactInfo?.phone || '(11) 99999-9999'}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
@@ -892,8 +909,8 @@ const EventPage = () => {
                     <span className="font-medium">Horários de atendimento:</span>
                   </div>
                   <div className="ml-8 space-y-1">
-                    {event?.contactInfo.hours && event.contactInfo.hours.length > 0 ? (
-                      event.contactInfo.hours.map((hour, idx) => (
+                    {(event?.contactInfo?.hours || []).length > 0 ? (
+                      (event.contactInfo.hours || []).map((hour, idx) => (
                         <p key={idx} className="text-sm text-gray-600">{hour}</p>
                       ))
                     ) : (
@@ -1153,7 +1170,6 @@ const EventPage = () => {
                   ref={el => sectionRefs.current['informacoes'] = el}
                   className="transition-all duration-500"
                 >
-                  <h2 className="text-xl font-semibold mb-4 text-gray-800">INFORMAÇÕES</h2>
                   {getTabContent('informacoes')}
                 </div>
 

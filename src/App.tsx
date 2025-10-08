@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { SearchProvider } from './contexts/SearchContext';
 import AppRoutes from './AppRoutes';
 import CookieConsent from './components/CookieConsent';
+import WhatsAppButton from './components/WhatsAppButton';
 
 function App() {
   return (
@@ -25,6 +26,13 @@ function App() {
             console.log('❌ Cookies rejeitados - Tracking desativado');
             // Aqui você pode desativar todos os trackings
           }}
+        />
+
+        {/* Botão flutuante do WhatsApp */}
+        <WhatsAppButton 
+          phoneNumber="5511968033591"
+          message="Olá! Gostaria de mais informações sobre os eventos do Pulakatraca."
+          position="bottom-right"
         />
       </SearchProvider>
     </AuthProvider>
