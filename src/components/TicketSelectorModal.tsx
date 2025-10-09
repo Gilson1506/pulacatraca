@@ -105,33 +105,54 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
     if (tickets.length > 0) {
       console.log('🎫 Tickets recebidos:', tickets);
       
-      const processed = tickets
-        .filter(ticket => ticket.status === 'active' && ticket.available_quantity > 0)
-        .map(ticket => {
-          // Determinar preço atual baseado em sale_period_type e batches
-          let currentPrice = ticket.price;
-          let currentPriceMasc = ticket.price_masculine || ticket.price;
-          let currentPriceFem = ticket.price_feminine || ticket.price;
-          
-          if (ticket.sale_period_type === 'batch' && ticket.batches && ticket.batches.length > 0) {
-            // Assumir o primeiro batch ativo ou o atual
-            const currentBatch = ticket.batches.find(b => new Date(b.sale_start_date || '') <= new Date() && new Date() <= new Date(b.sale_end_date || ''));
-            if (currentBatch) {
-              currentPrice = currentBatch.price || currentPrice;
-              currentPriceMasc = currentBatch.price || currentPriceMasc;
-              currentPriceFem = currentBatch.price_feminine || currentPriceFem;
-            }
-          }
-          
-          return {
-            ...ticket,
-            price: currentPrice,
-            price_masculine: currentPriceMasc,
-            price_feminine: currentPriceFem,
-          };
+      // Agrupar tickets por nome/título para mostrar lotes na ordem
+      const ticketsByTitle = tickets.reduce((acc, ticket) => {
+        const title = ticket.title || ticket.name;
+        if (!acc[title]) {
+          acc[title] = [];
+        }
+        acc[title].push(ticket);
+        return acc;
+      }, {} as Record<string, typeof tickets>);
+
+      const processed = Object.entries(ticketsByTitle)
+        .flatMap(([title, ticketGroup]) => {
+          // Ordenar por batch_info.batch_number se existir, senão por ID
+          return ticketGroup
+            .sort((a, b) => {
+              const aBatchNum = (a as any).batch_info?.batch_number || 0;
+              const bBatchNum = (b as any).batch_info?.batch_number || 0;
+              return aBatchNum - bBatchNum;
+            })
+            .map(ticket => {
+              // Para tickets com lotes, usar informações do batch
+              if ((ticket as any).is_batch_ticket && (ticket as any).batch_info) {
+                const batchInfo = (ticket as any).batch_info;
+                return {
+                  ...ticket,
+                  name: `${title} - ${batchInfo.batch_number === 1 ? '1º Lote' : 
+                         batchInfo.batch_number === 2 ? '2º Lote' :
+                         batchInfo.batch_number === 3 ? '3º Lote' :
+                         `${batchInfo.batch_number}º Lote`}`,
+                  batch_status: batchInfo.batch_status,
+                  is_available: batchInfo.is_available
+                };
+              }
+              
+              // Para tickets sem lotes, manter como está
+              return {
+                ...ticket,
+                batch_status: ticket.status === 'active' ? 'active' : 'inactive',
+                is_available: ticket.status === 'active' && ticket.available_quantity > 0
+              };
+            });
+        })
+        .filter(ticket => {
+          // Mostrar apenas tickets que estão disponíveis OU que são lotes (para mostrar status)
+          return (ticket as any).is_available || (ticket as any).is_batch_ticket;
         });
       
-      console.log('🎫 Tickets processados:', processed);
+      console.log('🎫 Tickets processados com lotes ordenados:', processed);
       
       setProcessedTickets(processed);
       setSelections(
@@ -283,7 +304,13 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
     }
   };
 
-  const isTicketAvailable = (ticket: TicketData) => {
+  const isTicketAvailable = (ticket: TicketData & { batch_status?: string; is_available?: boolean }) => {
+    // Se é um ticket com batch, usar as informações do batch
+    if ((ticket as any).is_batch_ticket) {
+      return (ticket as any).is_available === true;
+    }
+    
+    // Para tickets sem lotes, usar lógica original
     const now = new Date();
     const start = ticket.sale_start_date ? new Date(ticket.sale_start_date) : null;
     const end = ticket.sale_end_date ? new Date(ticket.sale_end_date) : null;
@@ -346,7 +373,44 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                 const displayName = ticket.title || ticket.name;
                 const displayPrice = ticket.price;
                 const showLimited = ticket.available_quantity < ticket.quantity / 2;
-                const currentBatch = ticket.batches?.[0]; // Simplificado
+                const batchStatus = (ticket as any).batch_status;
+                const isBatchTicket = (ticket as any).is_batch_ticket;
+
+                // Determinar status e ícone para lotes
+                let statusText = '';
+                let statusIcon = '';
+                let statusClass = '';
+                
+                if (isBatchTicket) {
+                  switch (batchStatus) {
+                    case 'upcoming':
+                      statusText = 'Indisponível';
+                      statusIcon = '⏳';
+                      statusClass = 'bg-yellow-100 text-yellow-700';
+                      break;
+                    case 'ended':
+                    case 'sold_out':
+                      statusText = 'Esgotado';
+                      statusIcon = '❌';
+                      statusClass = 'bg-red-100 text-red-700';
+                      break;
+                    case 'active':
+                      if (isAvailable) {
+                        statusText = 'Disponível';
+                        statusIcon = '✅';
+                        statusClass = 'bg-green-100 text-green-700';
+                      } else {
+                        statusText = 'Esgotado';
+                        statusIcon = '❌';
+                        statusClass = 'bg-red-100 text-red-700';
+                      }
+                      break;
+                    default:
+                      statusText = 'Indisponível';
+                      statusIcon = '❓';
+                      statusClass = 'bg-gray-100 text-gray-700';
+                  }
+                }
 
                 return (
                   <div 
@@ -362,14 +426,11 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                         {ticket.description && (
                           <p className="text-gray-600 text-xs mt-1">{ticket.description}</p>
                         )}
-                        {showLimited && (
+                        {showLimited && isAvailable && (
                           <div className="flex items-center gap-1 mt-1">
                             <Clock className="w-3 h-3 text-yellow-500" />
                             <span className="text-yellow-600 text-xs font-medium">LIMITADO ⏳</span>
                           </div>
-                        )}
-                        {currentBatch && (
-                          <p className="text-gray-500 text-xs mt-1">Lote {currentBatch.batch_number}</p>
                         )}
                       </div>
                       
@@ -396,7 +457,17 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Esgotado</span>
+                          <div className="flex flex-col items-end space-y-1">
+                            <span className={`px-2 py-1 text-xs rounded-full ${statusClass}`}>
+                              {statusIcon} {statusText}
+                            </span>
+                            {isBatchTicket && batchStatus === 'upcoming' && (
+                              <span className="text-xs text-gray-500">
+                                {(ticket as any).batch_info?.sale_start_date && 
+                                  `Inicia ${new Date((ticket as any).batch_info.sale_start_date).toLocaleDateString('pt-BR')}`}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

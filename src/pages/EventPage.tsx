@@ -321,46 +321,171 @@ const EventPage = () => {
         .eq('status', 'approved')
         .single();
 
-      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO (USANDO VIEW COM BATCHES)
+      // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
       console.log('EventPage - Buscando tipos de ingressos para evento:', eventId);
       
       let ticketsData = [];
       let ticketsError = null;
       
-      // 👈 TENTA A VIEW PRIMEIRO (ticket_types_with_batches)
-      const { data: viewData, error: viewError } = await supabase
-        .from('ticket_types_with_batches') // 👈 NOME DA VIEW (muda pra 'events_with_ticket_types' se for essa)
+      // Usar a VIEW ticket_types_with_batches que já combina tickets + lotes
+      const { data: ticketsDataRaw, error: ticketsErrorRaw } = await supabase
+        .from('ticket_types_with_batches')
         .select('*')
         .eq('event_id', eventId)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('created_at', { ascending: true });
+      
+      ticketsData = ticketsDataRaw || [];
+      ticketsError = ticketsErrorRaw;
 
-      if (viewError) {
-        console.warn('EventPage - Erro na view ticket_types_with_batches, tentando tabela direta:', viewError);
-        // Fallback: usa tabela direta sem batches
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('event_ticket_types')
-          .select('*')
-          .eq('event_id', eventId)
-          .eq('status', 'active');
+      // Processar os lotes que vêm como JSON na VIEW
+      if (ticketsData.length > 0) {
+        console.log('EventPage - Processando tickets com lotes da VIEW...');
+        const now = new Date();
         
-        ticketsData = fallbackData || [];
-        ticketsError = fallbackError;
-      } else {
-        ticketsData = viewData || [];
+        ticketsData = ticketsData.map(ticket => {
+          let processedBatches = [];
+          
+          // Se há lotes no campo JSON
+          if (ticket.batches && Array.isArray(ticket.batches)) {
+            processedBatches = ticket.batches.map((batch: any) => {
+              // Combinar data e hora para verificação precisa
+              let startDateTime = null;
+              let endDateTime = null;
+              
+              if (batch.sale_start_date) {
+                startDateTime = new Date(batch.sale_start_date);
+                if (batch.sale_start_time) {
+                  const [hours, minutes] = batch.sale_start_time.split(':');
+                  startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                }
+              }
+              
+              if (batch.sale_end_date) {
+                endDateTime = new Date(batch.sale_end_date);
+                if (batch.sale_end_time) {
+                  const [hours, minutes] = batch.sale_end_time.split(':');
+                  endDateTime.setHours(parseInt(hours), parseInt(minutes), 59, 999);
+                } else {
+                  endDateTime.setHours(23, 59, 59, 999);
+                }
+              }
+              
+              const availableQty = batch.quantity || 0;
+              
+              // Determinar status baseado em datas e disponibilidade
+              let batchStatus = 'active';
+              if (startDateTime && now < startDateTime) {
+                batchStatus = 'upcoming'; // Ainda não iniciou
+              } else if (endDateTime && now > endDateTime) {
+                batchStatus = 'ended'; // Passou da data de fim
+              } else if (availableQty <= 0) {
+                batchStatus = 'sold_out'; // Esgotado
+              }
+              
+              return {
+                ...batch,
+                batch_status: batchStatus,
+                is_available: batchStatus === 'active' && availableQty > 0,
+                // Para lotes, usar preço do lote se disponível, senão do ticket
+                display_price: batch.price || ticket.price_masculine || ticket.price || 0,
+                display_price_feminine: batch.price_feminine || ticket.price_feminine,
+                // Usar price_type do lote se disponível, senão do ticket
+                price_type: batch.price_type || ticket.price_type || 'unissex',
+                // Manter referências às datas para exibição
+                sale_start_datetime: startDateTime,
+                sale_end_datetime: endDateTime
+              };
+            });
+          }
+          
+          return {
+            ...ticket,
+            batches: processedBatches
+          };
+        });
+        
+        console.log('EventPage - Tickets processados da VIEW:', ticketsData.map(t => ({
+          title: t.title,
+          batches: t.batches.map((b: any) => ({
+            batch_number: b.batch_number,
+            status: b.batch_status,
+            available: b.quantity,
+            price: b.display_price
+          }))
+        })));
       }
 
       // 👈 LOGS EXTRA PRA DEBUG
       console.log('EventPage - Query executada. Erro?', !!ticketsError);
+      if (ticketsError) {
+        console.error('EventPage - Erro na busca de tickets:', ticketsError);
+      }
       console.log('EventPage - ticketsData raw:', ticketsData);
       console.log('EventPage - Número de tickets:', ticketsData.length);
+      
       if (ticketsData.length > 0) {
         console.log('EventPage - Primeiro ticket exemplo:', ticketsData[0]);
-        console.log('EventPage - Tem batches?', ticketsData[0].batches && ticketsData[0].batches.length > 0);
+        console.log('EventPage - Tem batches?', (ticketsData[0] as any).batches && (ticketsData[0] as any).batches.length > 0);
       } else {
         console.log('⚠️ EventPage - NENHUM TICKET ENCONTRADO! Verifique:');
-        console.log('- event_id correto? (UUID matching na tabela)');
+        console.log('- event_id correto? (UUID matching na tabela):', eventId);
         console.log('- Tem dados em event_ticket_types com status=\'active\' e event_id=', eventId);
-        console.log('- View criada? Rode o SQL pra criar ticket_types_with_batches');
+        
+        // Debug adicional: buscar todos os tipos de tickets para este evento (independente do status)
+        const { data: allTickets, error: allTicketsError } = await supabase
+          .from('event_ticket_types')
+          .select('*')
+          .eq('event_id', eventId);
+        
+        console.log('EventPage - Todos os tipos de tickets para este evento (qualquer status):', allTickets);
+        if (allTicketsError) {
+          console.error('EventPage - Erro ao buscar todos os tickets:', allTicketsError);
+        }
+        
+        // Debug adicional: verificar se a tabela existe e tem dados
+        const { data: anyTickets, error: anyTicketsError } = await supabase
+          .from('event_ticket_types')
+          .select('event_id, status')
+          .limit(5);
+        
+        console.log('EventPage - Exemplo de dados na tabela event_ticket_types:', anyTickets);
+        if (anyTicketsError) {
+          console.error('EventPage - Erro ao verificar tabela event_ticket_types:', anyTicketsError);
+        }
+        
+        // Fallback: tentar buscar da tabela 'tickets' diretamente
+        console.log('EventPage - Tentando fallback: buscar da tabela tickets...');
+        const { data: fallbackTickets, error: fallbackError } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('event_id', eventId)
+          .eq('status', 'active');
+        
+        if (!fallbackError && fallbackTickets && fallbackTickets.length > 0) {
+          console.log('EventPage - Fallback funcionou! Encontrados', fallbackTickets.length, 'tickets na tabela tickets');
+          // Converter formato da tabela tickets para o formato esperado
+          ticketsData = fallbackTickets.map(ticket => ({
+            id: ticket.id,
+            event_id: ticket.event_id,
+            title: ticket.name || ticket.title || 'Ingresso',
+            name: ticket.name || ticket.title || 'Ingresso',
+            description: ticket.description,
+            price: ticket.price || 0,
+            price_masculine: ticket.price || 0,
+            price_feminine: ticket.price_feminine,
+            quantity: ticket.quantity || 0,
+            available_quantity: ticket.available_quantity || ticket.quantity || 0,
+            status: ticket.status,
+            area: ticket.sector,
+            sector: ticket.sector,
+            batches: []
+          }));
+        } else if (fallbackError) {
+          console.error('EventPage - Erro no fallback tickets:', fallbackError);
+        } else {
+          console.log('EventPage - Fallback também não encontrou tickets');
+        }
       }
 
       if (error) {
@@ -575,7 +700,7 @@ const EventPage = () => {
         ],
         sections: [
           {
-            name: 'Evento',
+            name: 'Informações do Evento',
             details: [
               ...(eventData.subject ? [`Assunto: ${eventData.subject}`] : []),
               ...(eventData.subcategory ? [`Subcategoria: ${eventData.subcategory}`] : []),
@@ -594,27 +719,124 @@ const EventPage = () => {
               ...(eventData.end_date && eventData.end_date !== eventData.start_date ? [`Término: ${formattedEndDate} às ${endTime}`] : [])
             ]
           },
-          {
-            name: 'Ingressos',
-            details: ticketsData && ticketsData.length > 0 ? [
-              `Tipos disponíveis: ${ticketsData.length}`,
-              ...ticketsData.map(ticket => {
-                const priceMasc = ticket.price_masculine || ticket.price;
-                const priceFem = ticket.price_feminine;
-                const availableQty = ticket.available_quantity || ticket.quantity || 0;
-                const totalQty = ticket.quantity || 0;
-                const priceText = priceMasc > 0 
-                  ? `Masc: R$ ${priceMasc.toFixed(2)}${priceFem ? ` | Fem: R$ ${priceFem.toFixed(2)}` : ''}`
-                  : 'Gratuito';
-                const statusText = availableQty > 0 ? `${availableQty} disponíveis` : 'Esgotado';
-                return `${ticket.title || ticket.name} (${ticket.area || 'Pista'}): ${statusText} - ${priceText}`;
-              })
-            ] : [
-              `Ingressos disponíveis: ${eventData.available_tickets || eventData.total_tickets || 0}`,
-              `Total de ingressos: ${eventData.total_tickets || 0}`,
-              `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2)}`}`
-            ]
-          }
+          // Seção dinâmica baseada nos tickets reais com lotes detalhados
+          ...(ticketsData && ticketsData.length > 0 ? [
+            {
+              name: 'Setores e Áreas',
+              details: ticketsData.flatMap((ticket: any) => {
+                const sectorName = ticket.sector;
+                const ticketName = ticket.title || ticket.name;
+                
+                // Se não há lotes, mostrar apenas o ticket básico
+                if (!ticket.batches || ticket.batches.length === 0) {
+                  const priceMasc = ticket.price_masculine || ticket.price || 0;
+                  const priceFem = ticket.price_feminine;
+                  const availableQty = ticket.available_quantity || ticket.quantity || 0;
+                  const totalQty = ticket.quantity || 0;
+                  const priceType = ticket.price_type || 'unissex';
+                  
+                  let priceText = '';
+                  if (priceMasc > 0) {
+                    // Verificar se é por gênero e se há preços diferentes
+                    if (priceType === 'gender_separate' && priceFem && priceFem !== priceMasc) {
+                      priceText = `Masc: R$ ${priceMasc.toFixed(2).replace('.', ',')} | Fem: R$ ${priceFem.toFixed(2).replace('.', ',')}`;
+                    } else {
+                      // Ingresso unissex ou mesmo preço para ambos gêneros
+                      priceText = `R$ ${priceMasc.toFixed(2).replace('.', ',')}`;
+                    }
+                  } else {
+                    priceText = 'Gratuito';
+                  }
+                  
+                  const statusText = availableQty > 0 ? `${availableQty}/${totalQty} disponíveis` : 'Esgotado';
+                  const displayName = sectorName ? `${sectorName}: ${ticketName}` : ticketName;
+                  
+                  return [`${displayName} - ${priceText} - ${statusText}`];
+                }
+                
+                // Se há lotes, mostrar cada lote separadamente
+                return ticket.batches.map((batch: any) => {
+                  const priceMasc = batch.display_price || ticket.price_masculine || ticket.price || 0;
+                  const priceFem = batch.display_price_feminine || ticket.price_feminine;
+                  const availableQty = batch.available_quantity || 0;
+                  const totalQty = batch.quantity || 0;
+                  const priceType = batch.price_type || ticket.price_type || 'unissex';
+                  
+                  let priceText = '';
+                  if (priceMasc > 0) {
+                    // Verificar se é por gênero e se há preços diferentes
+                    if (priceType === 'gender_separate' && priceFem && priceFem !== priceMasc) {
+                      priceText = `Masc: R$ ${priceMasc.toFixed(2).replace('.', ',')} | Fem: R$ ${priceFem.toFixed(2).replace('.', ',')}`;
+                    } else {
+                      // Ingresso unissex ou mesmo preço para ambos gêneros
+                      priceText = `R$ ${priceMasc.toFixed(2).replace('.', ',')}`;
+                    }
+                  } else {
+                    priceText = 'Gratuito';
+                  }
+                  
+                  // Status do lote baseado na data e disponibilidade
+                  let statusText = '';
+                  let statusIcon = '';
+                  let batchStatusInfo = '';
+                  
+                  switch (batch.batch_status) {
+                    case 'upcoming':
+                      statusText = 'Indisponível';
+                      statusIcon = '⏳';
+                      if (batch.sale_start_datetime) {
+                        const dateStr = batch.sale_start_datetime.toLocaleDateString('pt-BR');
+                        const timeStr = batch.sale_start_datetime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        batchStatusInfo = ` (Inicia ${dateStr} às ${timeStr})`;
+                      } else if (batch.sale_start_date) {
+                        batchStatusInfo = ` (Inicia ${new Date(batch.sale_start_date).toLocaleDateString('pt-BR')})`;
+                      }
+                      break;
+                    case 'ended':
+                      statusText = 'Esgotado';
+                      statusIcon = '❌';
+                      if (batch.sale_end_datetime) {
+                        const dateStr = batch.sale_end_datetime.toLocaleDateString('pt-BR');
+                        const timeStr = batch.sale_end_datetime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        batchStatusInfo = ` (Terminou ${dateStr} às ${timeStr})`;
+                      }
+                      break;
+                    case 'sold_out':
+                      statusText = 'Esgotado';
+                      statusIcon = '❌';
+                      break;
+                    case 'active':
+                      statusText = availableQty > 0 ? `${availableQty}/${totalQty} disponíveis` : 'Esgotado';
+                      statusIcon = availableQty > 0 ? '✅' : '❌';
+                      break;
+                    default:
+                      statusText = 'Indisponível';
+                      statusIcon = '❓';
+                  }
+                  
+                  // Nome do lote (1º, 2º, 3º, etc.)
+                  const batchNumberText = batch.batch_number === 1 ? '1º Lote' : 
+                                        batch.batch_number === 2 ? '2º Lote' :
+                                        batch.batch_number === 3 ? '3º Lote' :
+                                        `${batch.batch_number}º Lote`;
+                  
+                  const displayName = sectorName ? `${sectorName}: ${ticketName}` : ticketName;
+                  
+                  return `${statusIcon} ${batchNumberText} - ${displayName} - ${priceText} - ${statusText}${batchStatusInfo}`;
+                });
+              }),
+              note: ticketsData.length > 1 ? `${ticketsData.length} tipos de ingressos com lotes disponíveis` : undefined
+            }
+          ] : [
+            {
+              name: 'Ingressos',
+              details: [
+                `Ingressos disponíveis: ${eventData.available_tickets || eventData.total_tickets || 0}`,
+                `Total de ingressos: ${eventData.total_tickets || 0}`,
+                `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2).replace('.', ',')}`}`
+              ]
+            }
+          ])
         ],
         attractions: attractions,
         importantNotes: importantInfo,
@@ -627,31 +849,64 @@ const EventPage = () => {
 
       setEvent(formattedEvent);
       
-      // Processar tickets pro modal
+      // Processar tickets pro modal com lotes completos
       if (ticketsData && ticketsData.length > 0) {
-        const now = new Date();
-        const modalTickets = ticketsData.map(ticket => {
-          let currentBatch = null;
-          if (ticket.batches && ticket.batches.length > 0) {
-            currentBatch = ticket.batches.find((batch: any) => {
-              const start = new Date(batch.sale_start_date);
-              const end = new Date(batch.sale_end_date || '9999-12-31T23:59:59Z');
-              return now >= start && now <= end && batch.quantity > 0;
-            }) || ticket.batches[0];
+        const modalTickets = ticketsData.map((ticket: any) => {
+          // Se não há lotes, usar dados básicos do ticket
+          if (!ticket.batches || ticket.batches.length === 0) {
+            return {
+              id: ticket.id,
+              event_id: ticket.event_id,
+              name: ticket.title || ticket.name,
+              title: ticket.title,
+              description: ticket.description,
+              price: ticket.price_masculine || ticket.price || 0,
+              price_masculine: ticket.price_masculine || ticket.price || 0,
+              price_feminine: ticket.price_feminine,
+              price_type: ticket.price_type || 'unissex',
+              quantity: ticket.quantity || 0,
+              available_quantity: ticket.available_quantity || 0,
+              min_quantity: ticket.min_quantity,
+              max_quantity: ticket.max_quantity,
+              has_half_price: ticket.has_half_price,
+              half_price_title: ticket.half_price_title,
+              half_price_quantity: ticket.half_price_quantity,
+              half_price_price: ticket.half_price_price,
+              half_price_price_feminine: ticket.half_price_price_feminine,
+              sector: ticket.sector,
+              area: ticket.sector,
+              benefits: ticket.benefits || [],
+              ticket_type: ticket.ticket_type || 'paid',
+              status: ticket.status || 'active',
+              sale_start_date: ticket.sale_start_date,
+              sale_end_date: ticket.sale_end_date,
+              sale_period_type: ticket.sale_period_type || 'date',
+              availability: ticket.availability || 'public',
+              service_fee_type: ticket.service_fee_type || 'buyer',
+              batches: [],
+              is_batch_ticket: false,
+              stripe_price_id: ticket.stripe_price_id
+            };
           }
 
-          return {
-            id: ticket.id,
+          // Se há lotes, criar um ticket para cada lote disponível
+          return ticket.batches.map((batch: any) => ({
+            id: `${ticket.id}_batch_${batch.id}`,
+            original_ticket_id: ticket.id,
+            batch_id: batch.id,
             event_id: ticket.event_id,
-            name: ticket.title || ticket.name,
+            name: `${ticket.title || ticket.name} - ${batch.batch_number === 1 ? '1º Lote' : 
+                   batch.batch_number === 2 ? '2º Lote' :
+                   batch.batch_number === 3 ? '3º Lote' :
+                   `${batch.batch_number}º Lote`}`,
             title: ticket.title,
             description: ticket.description,
-            price: ticket.price_masculine || ticket.price || 0,
-            price_masculine: ticket.price_masculine,
-            price_feminine: ticket.price_feminine,
+            price: batch.display_price || ticket.price_masculine || ticket.price || 0,
+            price_masculine: batch.display_price || ticket.price_masculine || ticket.price || 0,
+            price_feminine: batch.display_price_feminine || ticket.price_feminine,
             price_type: ticket.price_type || 'unissex',
-            quantity: ticket.quantity || 0,
-            available_quantity: ticket.available_quantity || 0,
+            quantity: batch.quantity || 0,
+            available_quantity: batch.available_quantity || 0,
             min_quantity: ticket.min_quantity,
             max_quantity: ticket.max_quantity,
             has_half_price: ticket.has_half_price,
@@ -660,19 +915,36 @@ const EventPage = () => {
             half_price_price: ticket.half_price_price,
             half_price_price_feminine: ticket.half_price_price_feminine,
             sector: ticket.sector,
+            area: ticket.sector,
             benefits: ticket.benefits || [],
             ticket_type: ticket.ticket_type || 'paid',
-            status: ticket.status || 'active',
-            sale_start_date: ticket.sale_start_date,
-            sale_end_date: ticket.sale_end_date,
+            status: batch.batch_status === 'active' ? 'active' : 'inactive',
+            sale_start_date: batch.sale_start_date,
+            sale_end_date: batch.sale_end_date,
             sale_period_type: ticket.sale_period_type || 'date',
             availability: ticket.availability || 'public',
             service_fee_type: ticket.service_fee_type || 'buyer',
-            batches: ticket.batches || [],
-            current_batch: currentBatch,
+            batches: [],
+            batch_info: {
+              batch_number: batch.batch_number,
+              batch_status: batch.batch_status,
+              is_available: batch.is_available,
+              sale_start_date: batch.sale_start_date,
+              sale_end_date: batch.sale_end_date
+            },
+            is_batch_ticket: true,
             stripe_price_id: ticket.stripe_price_id
-          };
-        });
+          }));
+        }).flat(); // Achatar array de arrays
+        
+        console.log('EventPage - Tickets processados para modal:', modalTickets.map(t => ({
+          name: t.name,
+          price: t.price,
+          available: t.available_quantity,
+          status: t.status,
+          is_batch: t.is_batch_ticket,
+          batch_info: t.batch_info
+        })));
         
         setAvailableTickets(modalTickets);
         console.log('🎫 Tickets pro modal (com batches):', modalTickets.length, modalTickets);
@@ -762,10 +1034,10 @@ const EventPage = () => {
     switch (tab) {
       case 'informacoes':
         return (
-          <div className="space-y-6">
-            <div className="bg-white p-4 rounded-lg ">
-              <h3 className="font-semibold text-lg mb-3 text-gray-800">SOBRE O EVENTO</h3>
-              <div className="space-y-2 text-sm text-gray-700">
+          <div className="space-y-3">
+            <div className="bg-white p-3 rounded-lg">
+              <h3 className="font-semibold text-base mb-2 text-gray-800">SOBRE O EVENTO</h3>
+              <div className="text-sm text-gray-700">
                 {event?.description ? (
                   <div className="whitespace-pre-line">
                     {event.description.split('\n').map((line, index) => (
@@ -778,35 +1050,31 @@ const EventPage = () => {
               </div>
             </div>
             
-            <div className="bg-white p-4 rounded-lg ">
-              <h3 className="font-semibold text-lg mb-3 text-gray-800">REGRAS DE TROCA DE UTILIZADOR</h3>
-              <p className="text-sm">O ingresso do tipo INDIVIDUAL pode ter seu utilizador alterado até 1x no prazo máximo de 0h antes do início do evento.</p>
-              <button className="mt-3 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
+            <div className="bg-white p-3 rounded-lg">
+              <h3 className="font-semibold text-base mb-2 text-gray-800">REGRAS DE TROCA DE UTILIZADOR</h3>
+              <p className="text-sm mb-2">O ingresso do tipo INDIVIDUAL pode ter seu utilizador alterado até 1x no prazo máximo de 0h antes do início do evento.</p>
+              <button className="bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
                 <Share2 className="h-4 w-4 inline mr-2" />
                 Como transferir o seu ingresso
               </button>
             </div>
-
-
-
-
           </div>
         );
       case 'setores-e-areas':
         return (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {(event?.sections || []).map((section, index) => (
-              <div key={index} className="bg-white p-4 rounded-lg ">
-                <h3 className="font-semibold text-lg mb-3 text-gray-800">{section.name}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
+              <div key={index} className="bg-white p-3 rounded-lg">
+                <h3 className="font-semibold text-base mb-2 text-gray-800">{section.name}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 mb-2">
                   {(section.details || []).map((detail, idx) => (
-                    <div key={idx} className="bg-white p-3 rounded text-sm text-center ">
+                    <div key={idx} className="bg-gray-50 p-2 rounded text-sm text-center">
                       {detail}
                     </div>
                   ))}
                 </div>
                 {section.note && (
-                  <p className="text-sm text-gray-600 italic mt-3">{section.note}</p>
+                  <p className="text-sm text-gray-600 italic mt-2">{section.note}</p>
                 )}
               </div>
             ))}
@@ -814,71 +1082,67 @@ const EventPage = () => {
         );
       case 'atracoes':
         return (
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-lg ">
-              {event?.attractions && event.attractions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {event.attractions.map((attraction, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-lg font-medium  shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-pink-500 text-lg">🎵</span>
-                        <span>{attraction}</span>
-                      </div>
+          <div className="bg-white p-3 rounded-lg">
+            {event?.attractions && event.attractions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {event.attractions.map((attraction, idx) => (
+                  <div key={idx} className="bg-gray-50 p-3 rounded-lg font-medium shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-pink-500 text-base">🎵</span>
+                      <span className="text-sm">{attraction}</span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gray-50  rounded-lg p-4">
-                  <p className="text-sm text-gray-800 text-center">
-                    <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
-                    <br />
-                    <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
-                  </p>
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm text-gray-800 text-center">
+                  <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
+                  <br />
+                  <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
+                </p>
+              </div>
+            )}
           </div>
         );
       case 'importante':
         return (
-          <div className="space-y-4">
-            <div className="bg-white  p-4 rounded-lg">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  {event?.importantNotes && event.importantNotes.length > 0 ? (
-                    <div className="space-y-3">
-                      {event.importantNotes.map((note, idx) => (
-                        <div key={idx} className="bg-gray-50 p-3 rounded-lg  shadow-sm">
-                          <div className="flex items-start space-x-2">
-                            <span className="text-gray-500 text-lg mt-0.5">⚠️</span>
-                            <span className="text-sm text-gray-800">{note}</span>
-                          </div>
+          <div className="bg-white p-3 rounded-lg">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                {event?.importantNotes && event.importantNotes.length > 0 ? (
+                  <div className="space-y-2">
+                    {event.importantNotes.map((note, idx) => (
+                      <div key={idx} className="bg-gray-50 p-2 rounded-lg shadow-sm">
+                        <div className="flex items-start space-x-2">
+                          <span className="text-gray-500 text-base mt-0.5">⚠️</span>
+                          <span className="text-sm text-gray-800">{note}</span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50  rounded-lg p-4">
-                      <p className="text-sm text-gray-800 text-center">
-                        <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
-                        <br />
-                        <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm text-gray-800 text-center">
+                      <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
+                      <br />
+                      <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         );
       case 'classificacao':
         return (
-          <div className="bg-white p-4 rounded-lg ">
-            <div className="bg-white  rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-center space-x-3">
-                <CheckCircle className="h-8 w-8 text-gray-600" />
+          <div className="bg-white p-3 rounded-lg">
+            <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle className="h-6 w-6 text-gray-600" />
                 <div className="text-center">
-                  <span className="text-2xl font-bold text-gray-800">
+                  <span className="text-xl font-bold text-gray-800">
                     {event?.classification || 'LIVRE'}
                   </span>
                   <p className="text-sm text-gray-700 mt-1">
@@ -896,34 +1160,32 @@ const EventPage = () => {
         );
       case 'contato':
         return (
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-lg ">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                  <span>{event?.contactInfo?.phone || '(11) 99999-9999'}</span>
+          <div className="bg-white p-3 rounded-lg">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Phone className="h-5 w-5 text-gray-400" />
+                <span className="text-sm">{event?.contactInfo?.phone || '(11) 99999-9999'}</span>
+              </div>
+              <div>
+                <div className="flex items-center space-x-2 mb-1">
+                  <Clock className="h-5 w-5 text-gray-400" />
+                  <span className="font-medium text-sm">Horários de atendimento:</span>
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5 text-gray-400" />
-                    <span className="font-medium">Horários de atendimento:</span>
-                  </div>
-                  <div className="ml-8 space-y-1">
-                    {(event?.contactInfo?.hours || []).length > 0 ? (
-                      (event.contactInfo.hours || []).map((hour, idx) => (
-                        <p key={idx} className="text-sm text-gray-600">{hour}</p>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-600">Horários não informados</p>
-                    )}
-                  </div>
+                <div className="ml-7">
+                  {(event?.contactInfo?.hours || []).length > 0 ? (
+                    (event?.contactInfo?.hours || []).map((hour, idx) => (
+                      <p key={idx} className="text-sm text-gray-600">{hour}</p>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-600">Horários não informados</p>
+                  )}
                 </div>
               </div>
-              <button className="mt-4 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
-                <Info className="h-4 w-4 inline mr-2" />
-                Clique aqui para ver as perguntas frequentes sobre o evento
-              </button>
             </div>
+            <button className="mt-3 bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
+              <Info className="h-4 w-4 inline mr-2" />
+              Clique aqui para ver as perguntas frequentes sobre o evento
+            </button>
           </div>
         );
       default:
@@ -1175,7 +1437,7 @@ const EventPage = () => {
 
                 {/* Mapa de rota inline (Mapbox) */}
                 <div className="transition-all duration-500">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-800">COMO CHEGAR</h2>
+                  <h2 className="text-lg font-semibold mb-3 text-gray-800">COMO CHEGAR</h2>
                   <MapInline destinationAddress={event.addressDetailed && event.addressDetailed.length > 0 ? event.addressDetailed.join(', ') : event.address} />
                 </div>
 
@@ -1184,7 +1446,7 @@ const EventPage = () => {
                   ref={el => sectionRefs.current['setores-e-areas'] = el}
                   className="transition-all duration-500"
                 >
-                  <h2 className="text-xl font-semibold mb-4 text-gray-800">SETORES E ÁREAS</h2>
+                  <h2 className="text-lg font-semibold mb-3 text-gray-800">SETORES E ÁREAS</h2>
                   {getTabContent('setores-e-areas')}
                 </div>
 
@@ -1193,7 +1455,7 @@ const EventPage = () => {
                   ref={el => sectionRefs.current['atracoes'] = el}
                   className="transition-all duration-500"
                 >
-                  <h2 className="text-xl font-semibold mb-4 text-gray-800">ATRAÇÕES</h2>
+                  <h2 className="text-lg font-semibold mb-3 text-gray-800">ATRAÇÕES</h2>
                   {getTabContent('atracoes')}
                 </div>
 
@@ -1202,7 +1464,7 @@ const EventPage = () => {
                   ref={el => sectionRefs.current['importante'] = el}
                   className="transition-all duration-500"
                 >
-                  <h2 className="text-xl font-semibold mb-4">IMPORTANTE</h2>
+                  <h2 className="text-lg font-semibold mb-3">IMPORTANTE</h2>
                   {getTabContent('importante')}
                 </div>
 
@@ -1211,7 +1473,7 @@ const EventPage = () => {
                   ref={el => sectionRefs.current['classificacao'] = el}
                   className="transition-all duration-500"
                 >
-                  <h2 className="text-xl font-semibold mb-4">CLASSIFICAÇÃO</h2>
+                  <h2 className="text-lg font-semibold mb-3">CLASSIFICAÇÃO</h2>
                   {getTabContent('classificacao')}
                 </div>
 
@@ -1220,7 +1482,7 @@ const EventPage = () => {
                   ref={el => sectionRefs.current['contato'] = el}
                   className="transition-all duration-500"
                 >
-                  <h2 className="text-xl font-semibold mb-4">CONTATO</h2>
+                  <h2 className="text-lg font-semibold mb-3">CONTATO</h2>
                   {getTabContent('contato')}
                 </div>
               </div>

@@ -811,9 +811,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           
           // Metadados
           organizer_id: user.id,
-          status: 'pending',
+          status: event?.id ? event.status : 'pending', // Preservar status atual durante edição
           service_fee_type: formData.service_fee_type,
-          created_at: new Date().toISOString()
+          created_at: event?.id ? event.created_at : new Date().toISOString() // Preservar data de criação durante edição
         };
         
         // 7. LOGS DETALHADOS PARA DEBUG

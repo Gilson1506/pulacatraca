@@ -1,0 +1,112 @@
+create table public.event_ticket_types (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  event_id uuid not null,
+  name text not null,
+  description text null,
+  price numeric(10, 2) not null default 0,
+  quantity integer not null default 0,
+  available_quantity integer not null default 0,
+  min_quantity integer null,
+  max_quantity integer null,
+  has_half_price boolean null default false,
+  sector text null,
+  benefits text[] null,
+  ticket_type text null default 'paid'::text,
+  status text null default 'active'::text,
+  sale_start_date timestamp with time zone null,
+  sale_end_date timestamp with time zone null,
+  stripe_price_id text null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  title character varying(45) null,
+  price_masculine numeric(10, 2) null default 0,
+  price_feminine numeric(10, 2) null default 0,
+  sale_period_type character varying(10) null default 'date'::character varying,
+  availability character varying(20) null default 'public'::character varying,
+  service_fee_type character varying(20) null default 'buyer'::character varying,
+  character_limit integer null default 45,
+  description_limit integer null default 100,
+  transferable boolean null default true,
+  max_transfers integer null default 1,
+  price_type character varying(20) null default 'unissex'::character varying,
+  half_price_title character varying(45) null,
+  half_price_quantity integer null default 0,
+  half_price_price numeric(10, 2) null,
+  half_price_price_feminine numeric(10, 2) null,
+  constraint event_ticket_types_pkey primary key (id),
+  constraint event_ticket_types_event_id_fkey foreign KEY (event_id) references events (id) on delete CASCADE,
+  constraint event_ticket_types_sale_period_type_check check (
+    (
+      (sale_period_type)::text = any (
+        (
+          array[
+            'date'::character varying,
+            'batch'::character varying
+          ]
+        )::text[]
+      )
+    )
+  ),
+  constraint event_ticket_types_service_fee_type_check check (
+    (
+      (service_fee_type)::text = any (
+        (
+          array[
+            'buyer'::character varying,
+            'seller'::character varying
+          ]
+        )::text[]
+      )
+    )
+  ),
+  constraint event_ticket_types_status_check check (
+    (
+      status = any (
+        array[
+          'active'::text,
+          'inactive'::text,
+          'sold_out'::text
+        ]
+      )
+    )
+  ),
+  constraint event_ticket_types_availability_check check (
+    (
+      (availability)::text = any (
+        (
+          array[
+            'public'::character varying,
+            'restricted'::character varying,
+            'manual'::character varying
+          ]
+        )::text[]
+      )
+    )
+  ),
+  constraint event_ticket_types_ticket_type_check check (
+    (
+      ticket_type = any (array['paid'::text, 'free'::text])
+    )
+  ),
+  constraint event_ticket_types_price_type_check check (
+    (
+      (price_type)::text = any (
+        (
+          array[
+            'unissex'::character varying,
+            'gender_separate'::character varying
+          ]
+        )::text[]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_event_ticket_types_event_id on public.event_ticket_types using btree (event_id) TABLESPACE pg_default;
+
+create index IF not exists idx_event_ticket_types_status on public.event_ticket_types using btree (status) TABLESPACE pg_default;
+
+create trigger trigger_update_available_quantity BEFORE INSERT
+or
+update on event_ticket_types for EACH row
+execute FUNCTION update_available_quantity ();
