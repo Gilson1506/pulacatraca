@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import LoadingButton from '../components/LoadingButton';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate } from 'react-router-dom';
+import { useModal } from '../contexts/ModalContext';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -554,10 +555,16 @@ const OrganizerEvents = () => {
   const [search, setSearch] = useState('');
   const [showEventFormModal, setShowEventFormModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
+  const { setIsModalOpen } = useModal();
 
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Sincronizar o estado global do modal com o estado local de exibição
+  useEffect(() => {
+    setIsModalOpen(showEventFormModal);
+  }, [showEventFormModal, setIsModalOpen]);
 
   const fetchEvents = async () => {
     try {
@@ -974,7 +981,10 @@ const OrganizerEvents = () => {
           <p className="text-gray-600">Gerencie todos os seus eventos em um só lugar</p>
         </div>
         <button 
-          onClick={() => setShowEventFormModal(true)}
+          onClick={() => {
+            setShowEventFormModal(true);
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-medium"
         >
           <PlusCircle className="h-5 w-5" />
@@ -988,12 +998,14 @@ const OrganizerEvents = () => {
         onClose={() => {
           setShowEventFormModal(false);
           setSelectedEvent(undefined);
+          setIsModalOpen(false);
         }}
         event={selectedEvent}
         onEventCreated={async () => {
             await fetchEvents();
             setSelectedEvent(undefined);
             setShowEventFormModal(false);
+            setIsModalOpen(false);
         }}
       />
 
@@ -1099,6 +1111,7 @@ const OrganizerEvents = () => {
                     onClick={() => {
                       setSelectedEvent(event);
                       setShowEventFormModal(true);
+                      setIsModalOpen(true);
                     }}
                     className="flex-1 px-3 py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors text-sm font-medium"
                   >
@@ -3273,12 +3286,13 @@ const OrganizerDashboardPage = () => {
   const [active, setActive] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const { setIsModalOpen } = useModal();
 
   const handleSetActive = (v: string) => {
     setActive(v);
     setSidebarOpen(false);
+    setIsModalOpen(false);
   };
-
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
       {/* Mobile top bar */}

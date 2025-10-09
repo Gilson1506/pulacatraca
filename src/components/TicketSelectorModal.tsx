@@ -371,7 +371,6 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                         {currentBatch && (
                           <p className="text-gray-500 text-xs mt-1">Lote {currentBatch.batch_number}</p>
                         )}
-                        <p className="text-gray-500 text-xs">Em até 12x + taxas</p>
                       </div>
                       
                       <div className="flex items-center space-x-4">

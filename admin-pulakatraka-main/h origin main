@@ -1,0 +1,5 @@
+[33m9d2a9a6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: corrigir erros do dashboard e integração Supabase
+[33m0774d8f[m[33m ([m[1;31morigin/main[m[33m)[m fix: melhora validação das variáveis de ambiente do Supabase
+[33mcf48f2d[m fix: melhora processo de autenticação e logs para debug
+[33m8c086ac[m fix: melhora logs e tratamento de variáveis de ambiente
+[33me640c9c[m fix: adiciona página de erro e melhora tratamento de erros de configuração

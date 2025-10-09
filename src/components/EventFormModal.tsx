@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, Plus, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight, Link } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-
+import Toast from './Toast';
 
 interface EventFormData {
   // Seção 1: Informações básicas
@@ -217,9 +217,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
   const [imagePreview, setImagePreview] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-
-  // Pré-preencher quando estiver editando
   useEffect(() => {
     const prefill = async () => {
       if (!event) return;
@@ -831,31 +830,59 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           throw new Error('Usuário não autenticado. Faça login novamente.');
         }
         
-        // 9. INSERIR NO SUPABASE
-        const { data: event, error: insertError } = await supabase
-          .from('events')
-          .insert([payload])
-          .select()
-          .single();
+        // 9. ✅ INSERIR OU ATUALIZAR NO SUPABASE
+        let eventData;
         
-        if (insertError) {
-          console.error('❌ Erro ao inserir evento:', insertError);
-          throw new Error(`Erro ao criar evento: ${insertError.message}`);
+        if (event?.id) {
+          // ✅ MODO EDIÇÃO: Atualizar evento existente
+          console.log('📝 Atualizando evento existente:', event.id);
+          const { data, error: updateError } = await supabase
+            .from('events')
+            .update(payload)
+            .eq('id', event.id)
+            .select()
+            .single();
+          
+          if (updateError) {
+            console.error('❌ Erro ao atualizar evento:', updateError);
+            throw new Error(`Erro ao atualizar evento: ${updateError.message}`);
+          }
+          
+          eventData = data;
+          console.log('✅ Evento atualizado com sucesso:', eventData);
+        } else {
+          // ✅ MODO CRIAÇÃO: Inserir novo evento
+          console.log('➕ Criando novo evento');
         }
         
-        console.log('✅ Evento criado com sucesso:', event);
+        // 9b. INSERIR NO SUPABASE (apenas se não for edição)
+        if (!event?.id) {
+          const { data, error: insertError } = await supabase
+            .from('events')
+            .insert([payload])
+            .select()
+            .single();
+          
+          if (insertError) {
+            console.error('❌ Erro ao inserir evento:', insertError);
+            throw new Error(`Erro ao criar evento: ${insertError.message}`);
+          }
+          
+          eventData = data;
+          console.log('✅ Evento criado com sucesso:', eventData);
+        }
         
         // 10. CRIAR TIPOS DE INGRESSO SEPARADAMENTE
         if (formData.tickets && formData.tickets.length > 0) {
           console.log('🎫 Criando tipos de ingresso...');
           
           const ticketsData = formData.tickets.map(ticket => ({
-            event_id: event.id,
+            event_id: eventData.id,
             title: ticket.title,
             name: ticket.title,
             description: ticket.description || '',
-            price: ticket.price,
-            price_feminine: ticket.price_feminine,
+            price: ticket.price ?? (ticket.batches?.[0]?.price) ?? 0, // ✅ Fallback: lote ou 0
+            price_feminine: ticket.price_feminine ?? (ticket.batches?.[0]?.price_feminine) ?? null,
             price_type: ticket.price_type,
             quantity: ticket.quantity,
             available_quantity: ticket.quantity,
@@ -924,10 +951,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           }
         }
         
-        // 11. SUCESSO
-        alert('Evento criado com sucesso!');
-        onEventCreated?.();
-        onClose();
+        // 11. ✅ SUCESSO (mensagem diferenciada)
+        const successMessage = event?.id 
+          ? '✅ Evento atualizado com sucesso!' 
+          : '✅ Evento criado com sucesso!';
+        
+        setToast({ message: successMessage, type: 'success' });
+        
+        // Fechar modal após 2 segundos
+        setTimeout(() => {
+          onEventCreated?.();
+          onClose();
+        }, 2000);
         
       } catch (validationError) {
         if (validationError instanceof Error) {
@@ -2517,7 +2552,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         </div>
       </div>
 
-
+      {/* ✨ Toast de Sucesso/Erro */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+          duration={3000}
+        />
+      )}
     </div>
   );
 };

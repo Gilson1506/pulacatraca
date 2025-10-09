@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useModal } from '../contexts/ModalContext';
 
 interface WhatsAppButtonProps {
   phoneNumber?: string;
@@ -9,13 +10,35 @@ interface WhatsAppButtonProps {
 const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ 
   phoneNumber = '5511968033591', 
   message = 'Olá! Gostaria de mais informações sobre os eventos.',
-  position = 'bottom-right'
+  position = 'bottom-left'
 }) => {
+  const { isModalOpen } = useModal();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Detectar se é mobile por userAgent OU por largura de tela (breakpoint)
+    const checkMobile = () => {
+      const isUaMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isSmallViewport = typeof window !== 'undefined' ? window.innerWidth <= 1024 : false;
+      setIsMobile(isUaMobile || isSmallViewport);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
+
+  // Esconder em mobile quando modal estiver aberto
+  if (isMobile && isModalOpen) {
+    return null;
+  }
+
   const handleWhatsAppClick = () => {
     const encodedMessage = encodeURIComponent(message);
-    
-    // Detectar se é desktop/mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     let whatsappUrl;
     
@@ -58,7 +81,7 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
     <div className={`fixed ${positionClasses[position]} z-50`}>
       <button
         onClick={handleWhatsAppClick}
-        className="group relative bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-500 ease-out transform hover:scale-110 hover:-translate-y-1 active:scale-95 active:translate-y-0 animate-bounce-slow"
+        className="group relative bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-500 ease-out transform hover:scale-110 hover:-translate-y-1 active:scale-95 active:translate-y-0 animate-bounce-slow"
         aria-label="Conversar no WhatsApp"
       >
         {/* Ícone do WhatsApp de alta qualidade */}
@@ -72,14 +95,14 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
         </svg>
 
         {/* Efeito de ondas animadas com movimento */}
-        <div className="absolute inset-0 rounded-full bg-green-500 animate-wave-1"></div>
-        <div className="absolute inset-0 rounded-full bg-green-500 animate-wave-2"></div>
-        <div className="absolute inset-0 rounded-full bg-green-500 animate-wave-3"></div>
+        <div className="absolute inset-0 rounded-full bg-pink-500 animate-wave-1"></div>
+        <div className="absolute inset-0 rounded-full bg-pink-500 animate-wave-2"></div>
+        <div className="absolute inset-0 rounded-full bg-pink-500 animate-wave-3"></div>
 
         {/* Tooltip com animação de slide */}
-        <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 ease-out whitespace-nowrap">
+        <div className="absolute bottom-full left-0 mb-2 px-3 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 ease-out whitespace-nowrap">
           Fale conosco no WhatsApp
-          <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+          <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
         </div>
       </button>
 

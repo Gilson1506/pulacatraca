@@ -1,6 +1,7 @@
 import React from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { SearchProvider } from './contexts/SearchContext';
+import { ModalProvider } from './contexts/ModalContext';
 import AppRoutes from './AppRoutes';
 import CookieConsent from './components/CookieConsent';
 import WhatsAppButton from './components/WhatsAppButton';
@@ -9,7 +10,8 @@ function App() {
   return (
     <AuthProvider>
       <SearchProvider>
-        <AppRoutes />
+        <ModalProvider>
+          <AppRoutes />
         
         {/* Banner de Cookies LGPD/GDPR Compliant */}
         <CookieConsent
@@ -28,12 +30,13 @@ function App() {
           }}
         />
 
-        {/* Botão flutuante do WhatsApp */}
-        <WhatsAppButton 
-          phoneNumber="5511968033591"
-          message="Olá! Gostaria de mais informações sobre os eventos do Pulakatraca."
-          position="bottom-right"
-        />
+          {/* Botão flutuante do WhatsApp */}
+          <WhatsAppButton 
+            phoneNumber="5511968033591"
+            message="Olá! Gostaria de mais informações sobre os eventos do Pulakatraca."
+            position="bottom-left"
+          />
+        </ModalProvider>
       </SearchProvider>
     </AuthProvider>
   );
