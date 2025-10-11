@@ -872,8 +872,54 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           console.log('✅ Evento criado com sucesso:', eventData);
         }
         
-        // 10. CRIAR TIPOS DE INGRESSO SEPARADAMENTE
+        // 10. CRIAR/ATUALIZAR TIPOS DE INGRESSO
         if (formData.tickets && formData.tickets.length > 0) {
+          console.log('🎫 Gerenciando tipos de ingresso...');
+          
+          // 10.1. Se for edição, deletar ingressos e lotes existentes primeiro
+          if (event?.id) {
+            console.log('🗑️ Deletando ingressos existentes do evento:', event.id);
+            
+            // Buscar IDs dos ingressos existentes
+            const { data: existingTickets, error: fetchError } = await supabase
+              .from('event_ticket_types')
+              .select('id')
+              .eq('event_id', event.id);
+            
+            if (fetchError) {
+              console.error('❌ Erro ao buscar ingressos existentes:', fetchError);
+            } else if (existingTickets && existingTickets.length > 0) {
+              const ticketIds = existingTickets.map(t => t.id);
+              
+              // Deletar lotes primeiro (foreign key)
+              console.log('🗑️ Deletando lotes existentes...');
+              const { error: batchDeleteError } = await supabase
+                .from('event_ticket_batches')
+                .delete()
+                .in('ticket_type_id', ticketIds);
+              
+              if (batchDeleteError) {
+                console.error('❌ Erro ao deletar lotes:', batchDeleteError);
+              } else {
+                console.log('✅ Lotes deletados com sucesso');
+              }
+              
+              // Depois deletar os ingressos
+              console.log('🗑️ Deletando ingressos...');
+              const { error: ticketDeleteError } = await supabase
+                .from('event_ticket_types')
+                .delete()
+                .eq('event_id', event.id);
+              
+              if (ticketDeleteError) {
+                console.error('❌ Erro ao deletar ingressos:', ticketDeleteError);
+              } else {
+                console.log('✅ Ingressos deletados com sucesso');
+              }
+            }
+          }
+          
+          // 10.2. Criar os novos ingressos
           console.log('🎫 Criando tipos de ingresso...');
           
           const ticketsData = formData.tickets.map(ticket => ({

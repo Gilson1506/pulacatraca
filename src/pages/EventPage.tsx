@@ -366,7 +366,7 @@ const EventPage = () => {
                 if (batch.sale_end_time) {
                   const [hours, minutes] = batch.sale_end_time.split(':');
                   endDateTime.setHours(parseInt(hours), parseInt(minutes), 59, 999);
-                } else {
+      } else {
                   endDateTime.setHours(23, 59, 59, 999);
                 }
               }
@@ -730,9 +730,9 @@ const EventPage = () => {
                 // Se não há lotes, mostrar apenas o ticket básico
                 if (!ticket.batches || ticket.batches.length === 0) {
                   const priceMasc = ticket.price_masculine || ticket.price || 0;
-                  const priceFem = ticket.price_feminine;
-                  const availableQty = ticket.available_quantity || ticket.quantity || 0;
-                  const totalQty = ticket.quantity || 0;
+                const priceFem = ticket.price_feminine;
+                const availableQty = ticket.available_quantity || ticket.quantity || 0;
+                const totalQty = ticket.quantity || 0;
                   const priceType = ticket.price_type || 'unissex';
                   
                   let priceText = '';
@@ -793,12 +793,12 @@ const EventPage = () => {
                       }
                       break;
                     case 'ended':
-                      statusText = 'Esgotado';
-                      statusIcon = '❌';
+                      statusText = 'PRAZO TERMINADO';
+                      statusIcon = '⏰';
                       if (batch.sale_end_datetime) {
                         const dateStr = batch.sale_end_datetime.toLocaleDateString('pt-BR');
                         const timeStr = batch.sale_end_datetime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                        batchStatusInfo = ` (Terminou ${dateStr} às ${timeStr})`;
+                        batchStatusInfo = ` (Vendas encerraram ${dateStr} às ${timeStr})`;
                       }
                       break;
                     case 'sold_out':
@@ -831,11 +831,11 @@ const EventPage = () => {
             {
               name: 'Ingressos',
               details: [
-                `Ingressos disponíveis: ${eventData.available_tickets || eventData.total_tickets || 0}`,
-                `Total de ingressos: ${eventData.total_tickets || 0}`,
+              `Ingressos disponíveis: ${eventData.available_tickets || eventData.total_tickets || 0}`,
+              `Total de ingressos: ${eventData.total_tickets || 0}`,
                 `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2).replace('.', ',')}`}`
-              ]
-            }
+            ]
+          }
           ])
         ],
         attractions: attractions,
@@ -854,39 +854,39 @@ const EventPage = () => {
         const modalTickets = ticketsData.map((ticket: any) => {
           // Se não há lotes, usar dados básicos do ticket
           if (!ticket.batches || ticket.batches.length === 0) {
-            return {
-              id: ticket.id,
-              event_id: ticket.event_id,
-              name: ticket.title || ticket.name,
-              title: ticket.title,
-              description: ticket.description,
-              price: ticket.price_masculine || ticket.price || 0,
+          return {
+            id: ticket.id,
+            event_id: ticket.event_id,
+            name: ticket.title || ticket.name,
+            title: ticket.title,
+            description: ticket.description,
+            price: ticket.price_masculine || ticket.price || 0,
               price_masculine: ticket.price_masculine || ticket.price || 0,
-              price_feminine: ticket.price_feminine,
-              price_type: ticket.price_type || 'unissex',
-              quantity: ticket.quantity || 0,
-              available_quantity: ticket.available_quantity || 0,
-              min_quantity: ticket.min_quantity,
-              max_quantity: ticket.max_quantity,
-              has_half_price: ticket.has_half_price,
-              half_price_title: ticket.half_price_title,
-              half_price_quantity: ticket.half_price_quantity,
-              half_price_price: ticket.half_price_price,
-              half_price_price_feminine: ticket.half_price_price_feminine,
-              sector: ticket.sector,
+            price_feminine: ticket.price_feminine,
+            price_type: ticket.price_type || 'unissex',
+            quantity: ticket.quantity || 0,
+            available_quantity: ticket.available_quantity || 0,
+            min_quantity: ticket.min_quantity,
+            max_quantity: ticket.max_quantity,
+            has_half_price: ticket.has_half_price,
+            half_price_title: ticket.half_price_title,
+            half_price_quantity: ticket.half_price_quantity,
+            half_price_price: ticket.half_price_price,
+            half_price_price_feminine: ticket.half_price_price_feminine,
+            sector: ticket.sector,
               area: ticket.sector,
-              benefits: ticket.benefits || [],
-              ticket_type: ticket.ticket_type || 'paid',
-              status: ticket.status || 'active',
-              sale_start_date: ticket.sale_start_date,
-              sale_end_date: ticket.sale_end_date,
-              sale_period_type: ticket.sale_period_type || 'date',
-              availability: ticket.availability || 'public',
-              service_fee_type: ticket.service_fee_type || 'buyer',
+            benefits: ticket.benefits || [],
+            ticket_type: ticket.ticket_type || 'paid',
+            status: ticket.status || 'active',
+            sale_start_date: ticket.sale_start_date,
+            sale_end_date: ticket.sale_end_date,
+            sale_period_type: ticket.sale_period_type || 'date',
+            availability: ticket.availability || 'public',
+            service_fee_type: ticket.service_fee_type || 'buyer',
               batches: [],
               is_batch_ticket: false,
-              stripe_price_id: ticket.stripe_price_id
-            };
+            stripe_price_id: ticket.stripe_price_id
+          };
           }
 
           // Se há lotes, criar um ticket para cada lote disponível
@@ -1083,54 +1083,54 @@ const EventPage = () => {
       case 'atracoes':
         return (
           <div className="bg-white p-3 rounded-lg">
-            {event?.attractions && event.attractions.length > 0 ? (
+              {event?.attractions && event.attractions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {event.attractions.map((attraction, idx) => (
+                  {event.attractions.map((attraction, idx) => (
                   <div key={idx} className="bg-gray-50 p-3 rounded-lg font-medium shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2">
                       <span className="text-pink-500 text-base">🎵</span>
                       <span className="text-sm">{attraction}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
+                  ))}
+                </div>
+              ) : (
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-sm text-gray-800 text-center">
-                  <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
-                  <br />
-                  <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
-                </p>
-              </div>
-            )}
+                  <p className="text-sm text-gray-800 text-center">
+                    <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
+                    <br />
+                    <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
+                  </p>
+                </div>
+              )}
           </div>
         );
       case 'importante':
         return (
           <div className="bg-white p-3 rounded-lg">
-            <div className="flex">
+              <div className="flex">
               <AlertCircle className="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                {event?.importantNotes && event.importantNotes.length > 0 ? (
+                <div className="flex-1">
+                  {event?.importantNotes && event.importantNotes.length > 0 ? (
                   <div className="space-y-2">
-                    {event.importantNotes.map((note, idx) => (
+                      {event.importantNotes.map((note, idx) => (
                       <div key={idx} className="bg-gray-50 p-2 rounded-lg shadow-sm">
-                        <div className="flex items-start space-x-2">
+                          <div className="flex items-start space-x-2">
                           <span className="text-gray-500 text-base mt-0.5">⚠️</span>
-                          <span className="text-sm text-gray-800">{note}</span>
+                            <span className="text-sm text-gray-800">{note}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
+                      ))}
+                    </div>
+                  ) : (
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-sm text-gray-800 text-center">
-                      <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
-                      <br />
-                      <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
-                    </p>
-                  </div>
-                )}
+                      <p className="text-sm text-gray-800 text-center">
+                        <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
+                        <br />
+                        <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
+                      </p>
+                    </div>
+                  )}
               </div>
             </div>
           </div>
@@ -1163,29 +1163,29 @@ const EventPage = () => {
           <div className="bg-white p-3 rounded-lg">
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <Phone className="h-5 w-5 text-gray-400" />
+                  <Phone className="h-5 w-5 text-gray-400" />
                 <span className="text-sm">{event?.contactInfo?.phone || '(11) 99999-9999'}</span>
-              </div>
+                </div>
               <div>
                 <div className="flex items-center space-x-2 mb-1">
-                  <Clock className="h-5 w-5 text-gray-400" />
+                    <Clock className="h-5 w-5 text-gray-400" />
                   <span className="font-medium text-sm">Horários de atendimento:</span>
-                </div>
+                  </div>
                 <div className="ml-7">
-                  {(event?.contactInfo?.hours || []).length > 0 ? (
+                    {(event?.contactInfo?.hours || []).length > 0 ? (
                     (event?.contactInfo?.hours || []).map((hour, idx) => (
-                      <p key={idx} className="text-sm text-gray-600">{hour}</p>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-600">Horários não informados</p>
-                  )}
+                        <p key={idx} className="text-sm text-gray-600">{hour}</p>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-600">Horários não informados</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
             <button className="mt-3 bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
-              <Info className="h-4 w-4 inline mr-2" />
-              Clique aqui para ver as perguntas frequentes sobre o evento
-            </button>
+                <Info className="h-4 w-4 inline mr-2" />
+                Clique aqui para ver as perguntas frequentes sobre o evento
+              </button>
           </div>
         );
       default:

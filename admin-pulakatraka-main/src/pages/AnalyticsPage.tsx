@@ -481,17 +481,24 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros Avançados */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Filtros de Análise</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Configure o período e métricas para análise detalhada dos dados da plataforma
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Período
+              Período de Análise
             </label>
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="1month">Último Mês</option>
               <option value="3months">Últimos 3 Meses</option>
@@ -499,7 +506,7 @@ export default function AnalyticsPage() {
               <option value="1year">Último Ano</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Métrica Principal
@@ -507,13 +514,33 @@ export default function AnalyticsPage() {
             <select
               value={selectedMetric}
               onChange={(e) => setSelectedMetric(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="users">Usuários</option>
               <option value="revenue">Receita</option>
               <option value="events">Eventos</option>
               <option value="tickets">Ingressos</option>
+              <option value="organizers">Organizadores</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Status dos Dados
+            </label>
+            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>Dados em tempo real</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Última Atualização
+            </label>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {lastUpdated.toLocaleTimeString('pt-BR')}
+            </div>
           </div>
         </div>
       </div>

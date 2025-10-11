@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -47,10 +47,10 @@ const CheckoutPagePagarme = () => {
       }
     }
     
-    // Validar dados APÓS tentar restaurar do localStorage
-    const finalEvent = event || restoredData?.event;
-    const finalSelectedTickets = selectedTickets || restoredData?.selectedTickets;
-    const finalTicket = ticket || restoredData?.ticket;
+  // Validar dados APÓS tentar restaurar do localStorage
+  const finalEvent = event || (restoredData as any)?.event;
+  const finalSelectedTickets = selectedTickets || (restoredData as any)?.selectedTickets;
+  const finalTicket = ticket || (restoredData as any)?.ticket;
     
     if (!finalEvent || (!finalSelectedTickets && !finalTicket)) {
       console.warn('❌ Dados do evento ou dos ingressos não encontrados. Redirecionando...');
@@ -100,7 +100,7 @@ const CheckoutPagePagarme = () => {
 
       const { data: eventDetails, error } = await supabase
         .from('events')
-        .select('*')
+        .select('*, service_fee_payer, service_fee_type')
         .eq('id', event.id)
         .eq('status', 'approved')
         .single();
@@ -111,6 +111,13 @@ const CheckoutPagePagarme = () => {
         navigate('/');
         return;
       }
+
+      console.log('🔍 Evento carregado para checkout:', {
+        id: eventDetails.id,
+        title: eventDetails.title,
+        service_fee_payer: eventDetails.service_fee_payer,
+        service_fee_type: eventDetails.service_fee_type
+      });
 
       setEventData(eventDetails);
     } catch (error) {
@@ -148,14 +155,40 @@ const CheckoutPagePagarme = () => {
         }))
       : [{ price: parseFloat(ticket?.price) || 0, quantity: 1, total: parseFloat(ticket?.price) || 0 }]
   });
-    
-  // Taxa de conveniência (em centavos)
-  const taxaConveniencia = subtotal < 3000 ? 300 : Math.round(subtotal * 0.10);
+
+  // Determinar quem paga as taxas baseado no evento
+  const serviceFeePayer = eventData?.service_fee_payer || 'buyer'; // Default para buyer se não definido
+  const isBuyerPayingConvenienceFee = serviceFeePayer === 'buyer';
   
-  // Taxa da processadora (em centavos)
+  console.log('💰 Configuração de taxas:', {
+    serviceFeePayer,
+    isBuyerPayingConvenienceFee,
+    eventTitle: eventData?.title
+  });
+    
+  // SEMPRE calcular as taxas
+  const taxaConveniencia = subtotal < 3000 ? 300 : Math.round(subtotal * 0.10);
   const taxaProcessadora = selectedPaymentMethod === 'card' ? Math.round(subtotal * 0.06) : Math.round(subtotal * 0.025);
   
-  const totalPrice = subtotal + taxaConveniencia + taxaProcessadora;
+  // LÓGICA CORRETA:
+  // - Taxa da Processadora: SEMPRE paga pelo cliente
+  // - Taxa de Conveniência: paga pelo cliente OU pelo organizador (conforme configuração)
+  const totalPrice = subtotal + taxaProcessadora + (isBuyerPayingConvenienceFee ? taxaConveniencia : 0);
+
+  console.log('💰 Cálculo final de taxas:', {
+    subtotal,
+    taxaConveniencia,
+    taxaProcessadora,
+    totalPrice,
+    serviceFeePayer,
+    isBuyerPayingConvenienceFee,
+    selectedPaymentMethod,
+    clientePagaConveniencia: isBuyerPayingConvenienceFee,
+    clientePagaProcessadora: true, // Sempre
+    organizadorPagaConveniencia: !isBuyerPayingConvenienceFee,
+    totalCliente: totalPrice,
+    totalOrganizadorPaga: !isBuyerPayingConvenienceFee ? taxaConveniencia : 0
+  });
 
   const handleStartPayment = () => {
     if (!user) {
@@ -308,7 +341,14 @@ const CheckoutPagePagarme = () => {
               convenience_fee_cents: taxaConveniencia,
               processor_fee_cents: taxaProcessadora,
               subtotal_cents: subtotal,
-              total_cents: totalPrice
+              total_cents: totalPrice,
+              service_fee_payer: serviceFeePayer,
+              is_buyer_paying_convenience_fee: isBuyerPayingConvenienceFee,
+              buyer_pays_convenience: isBuyerPayingConvenienceFee,
+              buyer_pays_processor: true, // Sempre
+              organizer_pays_convenience: !isBuyerPayingConvenienceFee,
+              buyer_total_fees: taxaProcessadora + (isBuyerPayingConvenienceFee ? taxaConveniencia : 0),
+              organizer_total_fees: !isBuyerPayingConvenienceFee ? taxaConveniencia : 0
             },
             event_id: event.id
           }
@@ -523,6 +563,22 @@ Seus ingressos foram ${ticketsVerb}`,
               {/* Event Details */}
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Evento</h2>
+                
+                {eventData && (
+                  <div className={`mb-4 p-3 rounded-lg ${isBuyerPayingConvenienceFee ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'}`}>
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${isBuyerPayingConvenienceFee ? 'bg-yellow-400' : 'bg-blue-400'}`}></div>
+                      <span className={`text-sm font-medium ${isBuyerPayingConvenienceFee ? 'text-yellow-800' : 'text-blue-800'}`}>
+                        {isBuyerPayingConvenienceFee ? '💰 Taxa de conveniência incluída no valor' : '🎯 Taxa de conveniência paga pelo organizador'}
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-1 ${isBuyerPayingConvenienceFee ? 'text-yellow-700' : 'text-blue-700'}`}>
+                      {isBuyerPayingConvenienceFee 
+                        ? 'Você paga: ingresso + taxa processadora + taxa conveniência' 
+                        : 'Você paga: ingresso + taxa processadora | Organizador paga: taxa conveniência'}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-start space-x-4">
                   <img src={event.image} alt={event.title} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg" />
                   <div className="flex-1">
@@ -557,14 +613,6 @@ Seus ingressos foram ${ticketsVerb}`,
                             {selectedTicket.gender === 'feminine' && ' (Feminino)'}
                             {selectedTicket.gender === 'masculine' && ' (Masculino)'}
                           </p>
-                          {console.log('🎫 Exibindo preço no checkout Pagarme:', {
-                            ticketId: selectedTicket.ticketId,
-                            ticketName: selectedTicket.ticketName,
-                            price: selectedTicket.price,
-                            gender: selectedTicket.gender,
-                            quantity: selectedTicket.quantity,
-                            parsedPrice: parseFloat(selectedTicket.price) || 0
-                          })}
                         </div>
                         <div className="text-right">
                           <span className="text-sm text-gray-600">Quantidade:</span>
@@ -572,15 +620,6 @@ Seus ingressos foram ${ticketsVerb}`,
                           <div className="text-sm text-gray-600">
                             Subtotal: R$ {((parseFloat(selectedTicket.price) || 0) * (parseInt(selectedTicket.quantity) || 0)).toFixed(2)}
                           </div>
-                          {console.log('🎫 Calculando subtotal no checkout Pagarme:', {
-                            ticketId: selectedTicket.ticketId,
-                            ticketName: selectedTicket.ticketName,
-                            price: selectedTicket.price,
-                            quantity: selectedTicket.quantity,
-                            parsedPrice: parseFloat(selectedTicket.price) || 0,
-                            parsedQuantity: parseInt(selectedTicket.quantity) || 0,
-                            subtotal: (parseFloat(selectedTicket.price) || 0) * (parseInt(selectedTicket.quantity) || 0)
-                          })}
                         </div>
                       </div>
                     ))}
@@ -695,18 +734,39 @@ Seus ingressos foram ${ticketsVerb}`,
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">
-                      Subtotal ({selectedTickets ? selectedTickets.reduce((sum, t) => sum + t.quantity, 0) : 1} {(selectedTickets ? selectedTickets.reduce((sum, t) => sum + t.quantity, 0) : 1) > 1 ? 'ingressos' : 'ingresso'})
+                      Subtotal ({selectedTickets ? selectedTickets.reduce((sum: number, t: any) => sum + t.quantity, 0) : 1} {(selectedTickets ? selectedTickets.reduce((sum: number, t: any) => sum + t.quantity, 0) : 1) > 1 ? 'ingressos' : 'ingresso'})
                     </span>
                     <span className="font-medium text-gray-600 drop-shadow-sm">R$ {((parseFloat(subtotal.toString()) || 0) / 100).toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 drop-shadow-sm">Taxa de Conveniência</span>
-                    <span className="font-medium text-gray-600 drop-shadow-sm">R$ {((parseFloat(taxaConveniencia.toString()) || 0) / 100).toFixed(2)}</span>
-                  </div>
+                  
+                  {/* Taxa da Processadora - SEMPRE paga pelo cliente */}
                   <div className="flex justify-between">
                     <span className="text-gray-600 drop-shadow-sm">Taxa da Processadora ({selectedPaymentMethod === 'card' ? 'Cartão' : 'PIX'})</span>
                     <span className="font-medium text-gray-600 drop-shadow-sm">R$ {((parseFloat(taxaProcessadora.toString()) || 0) / 100).toFixed(2)}</span>
                   </div>
+                  
+                  {/* Taxa de Conveniência - pode ser paga pelo cliente OU organizador */}
+                  {isBuyerPayingConvenienceFee && taxaConveniencia > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 drop-shadow-sm">Taxa de Conveniência</span>
+                      <span className="font-medium text-gray-600 drop-shadow-sm">R$ {((parseFloat(taxaConveniencia.toString()) || 0) / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {!isBuyerPayingConvenienceFee && taxaConveniencia > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-green-600">
+                        <span className="text-sm drop-shadow-sm">💰 Taxa de Conveniência (paga pelo organizador)</span>
+                        <span className="font-medium drop-shadow-sm">R$ 0,00</span>
+                      </div>
+                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                        <div className="flex justify-between">
+                          <span>Taxa conveniência (organizador):</span>
+                          <span>R$ {((parseFloat(taxaConveniencia.toString()) || 0) / 100).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="border-t my-4"></div>
                 <div className="flex justify-between font-semibold text-lg drop-shadow">

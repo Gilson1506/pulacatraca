@@ -3,6 +3,7 @@ import {
   Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
+import ShareEventModal from '../components/ShareEventModal';
 // QrScanner removido - conflitava com html5-qrcode
 import { supabase } from '../lib/supabase';
 import LoadingButton from '../components/LoadingButton';
@@ -127,10 +128,22 @@ const DashboardOverview = () => {
     activeEvents: 0,
     pendingSales: 0
   });
+  const [summary, setSummary] = useState({
+    eventsApproved: 0,
+    eventsPending: 0,
+    eventsRejected: 0,
+    salesCompleted: 0,
+    salesPending: 0,
+    salesCancelled: 0,
+    salesTodayAmount: 0,
+    availableBalance: 0
+  });
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [revenueSeries, setRevenueSeries] = useState<number[]>([]);
   const [ticketsSeries, setTicketsSeries] = useState<number[]>([]);
   const [labelsSeries, setLabelsSeries] = useState<string[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [eventToShare, setEventToShare] = useState<Event | undefined>();
 
   useEffect(() => {
     fetchDashboardData();
@@ -169,15 +182,19 @@ const DashboardOverview = () => {
 
         const eventsData = events || [];
         const activeEventsCount = eventsData.filter(event => event.status === 'approved').length;
+        const eventsApproved = eventsData.filter(e => e.status === 'approved').length;
+        const eventsPending = eventsData.filter(e => e.status === 'pending').length;
+        const eventsRejected = eventsData.filter(e => e.status === 'rejected').length;
         
         // Buscar dados reais de transações para calcular vendas e receita
         const eventIds = eventsData.map(event => event.id);
         let totalTicketsSold = 0;
         let totalRevenue = 0;
         
+        let transactionsData: any[] | null = null;
         if (eventIds.length > 0) {
           // Buscar transações dos eventos do organizador
-          const { data: transactionsData, error: transactionsError } = await supabase
+          const { data: txRaw, error: transactionsError } = await supabase
             .from('transactions')
             .select(`
               id, event_id, user_id, amount, status, created_at
@@ -185,9 +202,18 @@ const DashboardOverview = () => {
             .in('event_id', eventIds)
             .eq('status', 'completed');
           
-          if (!transactionsError && transactionsData) {
-            totalTicketsSold = transactionsData.length; // Cada transação representa 1 ingresso vendido
-            totalRevenue = transactionsData.reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+          // Buscar outras transações para status pendente/cancelado
+          const { data: txAll } = await supabase
+            .from('transactions')
+            .select('id, event_id, amount, status, created_at')
+            .in('event_id', eventIds);
+
+          transactionsData = txAll || txRaw || [];
+
+          if (!transactionsError && (txRaw || txAll)) {
+            const completedList = (txAll || txRaw || []).filter((t: any) => t.status === 'completed');
+            totalTicketsSold = completedList.length;
+            totalRevenue = completedList.reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
           }
         }
         
@@ -223,6 +249,32 @@ const DashboardOverview = () => {
           totalTicketsSold: totalTicketsSold, 
           activeEvents: activeEventsCount, 
           pendingSales: eventsData.filter(event => event.status === 'pending').length 
+        });
+
+        // Calcular resumo (vendas e saldos)
+        const today = new Date();
+        const toYMD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+        const todayKey = toYMD(today);
+
+        const salesCompleted = (transactionsData || []).filter((t: any) => t.status === 'completed').length;
+        const salesPending = (transactionsData || []).filter((t: any) => t.status === 'pending').length;
+        const salesCancelled = (transactionsData || []).filter((t: any) => ['failed','refunded','partially_refunded','cancelled'].includes(t.status)).length;
+        const salesTodayAmount = (transactionsData || [])
+          .filter((t: any) => t.status === 'completed' && toYMD(new Date(t.created_at)) === todayKey)
+          .reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
+        const availableBalance = (transactionsData || [])
+          .filter((t: any) => t.status === 'completed')
+          .reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
+
+        setSummary({
+          eventsApproved,
+          eventsPending,
+          eventsRejected,
+          salesCompleted,
+          salesPending,
+          salesCancelled,
+          salesTodayAmount,
+          availableBalance
         });
         setRecentEvents(eventsData.slice(0, 3).map(event => ({
           ...event,
@@ -307,6 +359,55 @@ const DashboardOverview = () => {
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl md:text-2xl font-bold text-gray-900">Dashboard</h2>
+      </div>
+
+      {/* Resumo Superior */}
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        {/* Cards de contagem */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 flex-1">
+          {/* Eventos */}
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="text-xs text-gray-500">Eventos Aprovados</div>
+            <div className="text-xl font-bold text-gray-900">{summary.eventsApproved}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="text-xs text-gray-500">Eventos Pendentes</div>
+            <div className="text-xl font-bold text-yellow-600">{summary.eventsPending}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="text-xs text-gray-500">Eventos Negados</div>
+            <div className="text-xl font-bold text-red-600">{summary.eventsRejected}</div>
+          </div>
+          {/* Vendas */}
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="text-xs text-gray-500">Ingressos Vendidos</div>
+            <div className="text-xl font-bold text-green-700">{summary.salesCompleted}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="text-xs text-gray-500">Ingressos Pendentes</div>
+            <div className="text-xl font-bold text-yellow-700">{summary.salesPending}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <div className="text-xs text-gray-500">Ingressos Cancelados</div>
+            <div className="text-xl font-bold text-red-700">{summary.salesCancelled}</div>
+          </div>
+        </div>
+
+        {/* Cards Financeiros à direita */}
+        <div className="w-full lg:w-80 grid grid-cols-1 gap-3">
+          <div className="bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg p-4">
+            <div className="text-xs opacity-90">Saldo disponível</div>
+            <div className="text-2xl font-bold">
+              R$ {summary.availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="text-xs text-gray-500">Vendas hoje</div>
+            <div className="text-2xl font-bold text-gray-900">
+              R$ {summary.salesTodayAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts - Responsive Grid */}
@@ -532,7 +633,14 @@ const DashboardOverview = () => {
                          event.status === 'cancelled' ? 'Cancelado' :
                          event.status === 'rejected' ? 'Rejeitado' : 'Rascunho'}
                       </span>
-                      <button className="text-gray-400 hover:text-gray-600 p-1">
+                      <button 
+                        onClick={() => {
+                          setEventToShare(event);
+                          setShowShareModal(true);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                        title="Compartilhar evento"
+                      >
                         <Share2 className="h-3 w-3 md:h-4 md:w-4" />
                       </button>
                     </div>
@@ -543,6 +651,24 @@ const DashboardOverview = () => {
           )}
         </div>
       </div>
+
+      {/* Share Event Modal */}
+      {eventToShare && (
+        <ShareEventModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setEventToShare(undefined);
+          }}
+          event={{
+            id: eventToShare.id,
+            title: eventToShare.title,
+            description: eventToShare.description,
+            start_date: eventToShare.start_date,
+            image: (eventToShare as any).image
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -555,6 +681,8 @@ const OrganizerEvents = () => {
   const [search, setSearch] = useState('');
   const [showEventFormModal, setShowEventFormModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [eventToShare, setEventToShare] = useState<Event | undefined>();
   const { setIsModalOpen } = useModal();
 
   useEffect(() => {
@@ -744,7 +872,29 @@ const OrganizerEvents = () => {
           throw eventError;
         }
 
-        // Remover tipos de ingressos existentes
+        // Remover lotes e tipos de ingressos existentes
+        // Primeiro buscar os IDs dos ingressos
+        const { data: existingTickets } = await supabase
+          .from('event_ticket_types')
+          .select('id')
+          .eq('event_id', eventData.id);
+
+        if (existingTickets && existingTickets.length > 0) {
+          const ticketIds = existingTickets.map(t => t.id);
+          
+          // Deletar lotes primeiro (foreign key constraint)
+          console.log('🗑️ Deletando lotes existentes...');
+          const { error: batchDeleteError } = await supabase
+            .from('event_ticket_batches')
+            .delete()
+            .in('ticket_type_id', ticketIds);
+
+          if (batchDeleteError) {
+            console.warn('⚠️ Erro ao remover lotes existentes:', batchDeleteError);
+          }
+        }
+        
+        // Depois deletar os ingressos
         const { error: deleteError } = await supabase
           .from('event_ticket_types')
           .delete()
@@ -904,29 +1054,31 @@ const OrganizerEvents = () => {
 
             console.log('✅ Tipo de ingresso criado:', ticketType);
 
-            // Se há lotes, criar na tabela ticket_batches (se existir)
+            // Se há lotes, criar na tabela event_ticket_batches
             if (ticket.batches && ticket.batches.length > 0) {
-              for (const batch of ticket.batches) {
-                console.log('📦 Criando lote:', batch);
-                
-                const { error: batchError } = await supabase
-                  .from('ticket_batches')
-                  .insert({
-                    ticket_type_id: ticketType.id,
-                    batch_number: batch.batch_number,
-                    batch_name: batch.batch_name || `Lote ${batch.batch_number}`,
-                    price_masculine: batch.price_masculine,
-                    price_feminine: batch.price_feminine,
-                    quantity: batch.quantity,
-                    available_quantity: batch.quantity,
-                    sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
-                    sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
-                    status: 'active'
-                  });
+              console.log('📦 Criando lotes para ingresso:', ticketType.id);
+              
+              const batchesData = ticket.batches.map((batch: any) => ({
+                ticket_type_id: ticketType.id,
+                batch_number: batch.batch_number,
+                quantity: batch.quantity,
+                price_type: batch.price_type || 'uniform',
+                price: batch.price || batch.price_masculine,
+                price_feminine: batch.price_feminine,
+                sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
+                sale_start_time: batch.sale_start_time || null,
+                sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
+                sale_end_time: batch.sale_end_time || null
+              }));
+              
+              const { error: batchError } = await supabase
+                .from('event_ticket_batches')
+                .insert(batchesData);
 
-                if (batchError) {
-                  console.warn('⚠️ Erro ao criar lote (tabela pode não existir):', batchError);
-                }
+              if (batchError) {
+                console.warn('⚠️ Erro ao criar lotes:', batchError);
+              } else {
+                console.log('✅ Lotes criados com sucesso');
               }
             }
           }
@@ -1009,6 +1161,24 @@ const OrganizerEvents = () => {
         }}
       />
 
+      {/* Share Event Modal */}
+      {eventToShare && (
+        <ShareEventModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setEventToShare(undefined);
+          }}
+          event={{
+            id: eventToShare.id,
+            title: eventToShare.title,
+            description: eventToShare.description,
+            start_date: eventToShare.start_date,
+            image: (eventToShare as any).image
+          }}
+        />
+      )}
+
       {/* Filters and Search */}
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1 relative">
@@ -1066,11 +1236,15 @@ const OrganizerEvents = () => {
               <div className="absolute inset-0 bg-black bg-opacity-20"></div>
               <div className="absolute top-4 left-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(event.status)}`}>
-                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                  {event.status === 'approved' ? 'Aprovado' :
+                   event.status === 'pending' ? 'Pendente' :
+                   event.status === 'rejected' ? 'Rejeitado' :
+                   event.status === 'cancelled' ? 'Cancelado' :
+                   event.status === 'draft' ? 'Rascunho' : event.status}
                 </span>
               </div>
-              <div className="absolute bottom-4 left-4 text-white">
-                <h3 className="font-semibold text-lg line-clamp-1">{event.title}</h3>
+              <div className="absolute bottom-4 left-4 right-4 text-white">
+                <h3 className="font-semibold text-lg line-clamp-2 mb-1">{event.title}</h3>
                 <p className="text-sm opacity-90">
                   {event.start_date ? new Date(event.start_date).toLocaleDateString('pt-BR') : 'Data não informada'} • 
                   {event.start_date ? new Date(event.start_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : 'Horário não informado'}
@@ -1079,31 +1253,9 @@ const OrganizerEvents = () => {
             </div>
             
             <div className="p-4 sm:p-6">
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                 <Calendar className="h-4 w-4 flex-shrink-0" />
                 <span className="line-clamp-1">{event.location_name || event.location || 'Local não informado'}</span>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">
-                    <span className="text-gray-600">Vendidos: </span>
-                    <span className="font-semibold">{event.ticketsSold}/{event.totalTickets}</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-600">Preço: </span>
-                    <span className="font-semibold text-blue-600">
-                      {event.price === 0 ? 'Gratuito' : `R$ ${event.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                <div 
-                  className="bg-pink-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(event.ticketsSold / event.totalTickets) * 100}%` }}
-                ></div>
               </div>
               
               <div className="flex gap-2">
@@ -1118,7 +1270,14 @@ const OrganizerEvents = () => {
                     <Edit3 className="h-4 w-4 inline mr-1" />
                     Editar
                   </button>
-                <button className="px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => {
+                    setEventToShare(event);
+                    setShowShareModal(true);
+                  }}
+                  className="px-3 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Compartilhar evento"
+                >
                   <Share2 className="h-4 w-4" />
                 </button>
               </div>
@@ -1309,30 +1468,111 @@ const OrganizerSales = () => {
 
       console.log('✅ Tickets encontrados para eventos do organizador:', ticketsData?.length || 0);
 
-      // 3. Buscar dados dos usuários separadamente para evitar problemas de FK
+      // 3. Buscar transações relacionadas para obter buyer via transaction quando necessário
+      const transactionIds = [...new Set((ticketsData || [])
+        .map((t: any) => t.transaction_id)
+        .filter(Boolean))];
+
+      let txById: Record<string, any> = {};
+      if (transactionIds.length > 0) {
+        const { data: transactionsList } = await supabase
+          .from('transactions')
+          .select('id, user_id, buyer_id, amount, payment_method, ticket_id')
+          .in('id', transactionIds);
+        txById = (transactionsList || []).reduce((acc: any, tx: any) => {
+          acc[tx.id] = tx; return acc;
+        }, {});
+      }
+
+      // 3.1. Buscar transações também por ticket_id (quando o ticket não tem transaction_id)
+      const ticketIds = [...new Set((ticketsData || []).map((t: any) => t.id))];
+      let txByTicketId: Record<string, any> = {};
+      if (ticketIds.length > 0) {
+        const { data: transactionsByTicket } = await supabase
+          .from('transactions')
+          .select('id, user_id, buyer_id, amount, payment_method, ticket_id')
+          .in('ticket_id', ticketIds);
+        txByTicketId = (transactionsByTicket || []).reduce((acc: any, tx: any) => {
+          if (tx.ticket_id) acc[tx.ticket_id] = tx; return acc;
+        }, {});
+      }
+
+      // 3.2. Fallback: Buscar transações por evento para correlacionar por usuário e data
+      const { data: transactionsByEvent } = await supabase
+        .from('transactions')
+        .select('id, event_id, user_id, buyer_id, amount, payment_method, created_at, status')
+        .in('event_id', eventIds)
+        .in('status', ['completed', 'pending']);
+
+      // Índice por (event_id|user_id) -> lista ordenada por data
+      const txByEventUser: Record<string, any[]> = {};
+      (transactionsByEvent || []).forEach((tx: any) => {
+        const key = `${tx.event_id}|${tx.user_id}`;
+        if (!txByEventUser[key]) txByEventUser[key] = [];
+        txByEventUser[key].push(tx);
+      });
+      Object.keys(txByEventUser).forEach(key => {
+        txByEventUser[key].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      });
+
+      // 4. Buscar dados dos usuários separadamente (compradores)
       const userIds = [...new Set([
-        ...ticketsData?.map(t => t.buyer_id).filter(Boolean) || [],
-        ...ticketsData?.map(t => t.user_id).filter(Boolean) || []
+        ...((ticketsData || []).map((t: any) => t.buyer_id).filter(Boolean)),
+        ...((ticketsData || []).map((t: any) => txById[t.transaction_id]?.buyer_id).filter(Boolean)),
+        ...((ticketsData || []).map((t: any) => txById[t.transaction_id]?.user_id).filter(Boolean)),
+        ...((ticketsData || []).map((t: any) => txByTicketId[t.id]?.buyer_id).filter(Boolean)),
+        ...((ticketsData || []).map((t: any) => txByTicketId[t.id]?.user_id).filter(Boolean)),
+        ...((ticketsData || []).map((t: any) => t.user_id).filter(Boolean)),
+        // incluir buyer_id de fallback por correlação
+        ...(((ticketsData || []).map((t: any) => {
+          const key = `${t.event_id}|${t.user_id}`;
+          const list = txByEventUser[key] || [];
+          if (list.length === 0) return undefined;
+          // pegar a transação mais próxima por created_at
+          const tTime = new Date(t.created_at).getTime();
+          let best = list[0]; let bestDiff = Math.abs(new Date(best.created_at).getTime() - tTime);
+          for (let i = 1; i < list.length; i++) {
+            const diff = Math.abs(new Date(list[i].created_at).getTime() - tTime);
+            if (diff < bestDiff) { best = list[i]; bestDiff = diff; }
+          }
+          return best.buyer_id || best.user_id;
+        })).filter(Boolean))
       ])];
 
       let usersData: any = {};
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, name, email')
+          .select('id, name, email, phone')
           .in('id', userIds);
-        
-        usersData = profiles?.reduce((acc: any, profile) => {
-          acc[profile.id] = profile;
-          return acc;
-        }, {}) || {};
+        usersData = (profiles || []).reduce((acc: any, profile: any) => {
+          acc[profile.id] = profile; return acc;
+        }, {});
       }
 
-      // 4. Formatar dados das vendas (mesmo que dashboard)
-      const formattedSales: Sale[] = ticketsData?.map(ticket => {
-        const buyer = usersData[ticket.buyer_id] || {};
-        const ticketUser = usersData[ticket.user_id] || buyer;
-        const event = eventsData.find(e => e.id === ticket.event_id) || {};
+      // 5. Formatar dados das vendas com buyer e valores reais
+      const formattedSales: Sale[] = (ticketsData || []).map((ticket: any) => {
+        let tx = ticket.transaction_id ? txById[ticket.transaction_id] : (txByTicketId[ticket.id] || undefined);
+        if (!tx) {
+          // fallback por correlação (mesmo event_id e user_id, transação mais próxima)
+          const key = `${ticket.event_id}|${ticket.user_id}`;
+          const list = txByEventUser[key] || [];
+          if (list.length > 0) {
+            const tTime = new Date(ticket.created_at).getTime();
+            let best = list[0]; let bestDiff = Math.abs(new Date(best.created_at).getTime() - tTime);
+            for (let i = 1; i < list.length; i++) {
+              const diff = Math.abs(new Date(list[i].created_at).getTime() - tTime);
+              if (diff < bestDiff) { best = list[i]; bestDiff = diff; }
+            }
+            tx = best;
+          }
+        }
+        const buyerId = ticket.buyer_id || tx?.buyer_id || tx?.user_id || ticket.user_id;
+        const buyer = buyerId ? usersData[buyerId] || {} : {};
+        const event = (eventsData as any[]).find(e => e.id === ticket.event_id) || {};
+        const pricePaidRaw = ticket.price_paid ?? ticket.amount ?? tx?.amount ?? ticket.price ?? event.price ?? 0;
+        const pricePaid = typeof pricePaidRaw === 'string' ? parseFloat(pricePaidRaw) : (pricePaidRaw as number);
+        const paymentMethod = (tx?.payment_method || 'Não informado') as string;
         
         return {
           id: ticket.id,
@@ -1341,15 +1581,15 @@ const OrganizerSales = () => {
           eventImage: event.image || event.banner_url || null,
           buyerName: buyer.name || 'Nome não informado',
           buyerEmail: buyer.email || 'Email não informado',
-          userName: ticketUser.name || 'Usuário não informado',
-          userEmail: ticketUser.email || 'Email não informado',
+          userName: '',
+          userEmail: '',
           ticketType: ticket.ticket_type || 'Padrão',
           ticketCode: ticket.code || 'N/A',
           quantity: 1,
-          amount: event.price || 0,
+          amount: pricePaid,
           date: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
           status: ticket.status === 'active' ? 'confirmado' : ticket.status === 'used' ? 'usado' : ticket.status === 'cancelled' ? 'cancelado' : 'pendente',
-          paymentMethod: 'Não informado',
+          paymentMethod,
           isUsed: ticket.status === 'used',
           usedAt: ticket.used_at ? new Date(ticket.used_at).toLocaleString('pt-BR') : null
         };
@@ -1743,7 +1983,6 @@ const OrganizerSales = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprador</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
@@ -1835,13 +2074,6 @@ const OrganizerSales = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="text-sm font-medium text-gray-900">{sale.buyerName}</div>
                     <div className="text-sm text-gray-500">{sale.buyerEmail}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="text-sm font-medium text-gray-900">{sale.userName}</div>
-                    <div className="text-sm text-gray-500">{sale.userEmail}</div>
-                    {sale.isUsed && sale.usedAt && (
-                      <div className="text-xs text-green-600">Usado em: {sale.usedAt}</div>
-                    )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">

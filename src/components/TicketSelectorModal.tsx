@@ -118,7 +118,7 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
       const processed = Object.entries(ticketsByTitle)
         .flatMap(([title, ticketGroup]) => {
           // Ordenar por batch_info.batch_number se existir, senão por ID
-          return ticketGroup
+          const sortedTickets = ticketGroup
             .sort((a, b) => {
               const aBatchNum = (a as any).batch_info?.batch_number || 0;
               const bBatchNum = (b as any).batch_info?.batch_number || 0;
@@ -146,9 +146,38 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                 is_available: ticket.status === 'active' && ticket.available_quantity > 0
               };
             });
+          
+          // Adicionar opção de meia entrada para cada ticket que tiver has_half_price
+          const ticketsWithHalfPrice: any[] = [];
+          sortedTickets.forEach(ticket => {
+            ticketsWithHalfPrice.push(ticket);
+            
+            // Se tem meia entrada disponível, adicionar como um ticket separado
+            if (ticket.has_half_price && ticket.half_price_quantity && ticket.half_price_quantity > 0) {
+              const halfPriceTicket = {
+                ...ticket,
+                id: `${ticket.id}_half`,
+                name: ticket.name + ' (Meia Entrada)',
+                title: (ticket.title || ticket.name) + ' (Meia Entrada)',
+                price: ticket.half_price_price || ticket.price / 2,
+                price_feminine: ticket.half_price_price_feminine || (ticket.price_feminine ? ticket.price_feminine / 2 : undefined),
+                available_quantity: ticket.half_price_quantity,
+                quantity: ticket.half_price_quantity,
+                is_half_price: true,
+                original_ticket_id: ticket.id
+              };
+              ticketsWithHalfPrice.push(halfPriceTicket);
+            }
+          });
+          
+          return ticketsWithHalfPrice;
         })
         .filter(ticket => {
-          // Mostrar apenas tickets que estão disponíveis OU que são lotes (para mostrar status)
+          // Ocultar lotes que já expiraram (status 'ended')
+          if ((ticket as any).is_batch_ticket && (ticket as any).batch_status === 'ended') {
+            return false;
+          }
+          // Mostrar apenas tickets que estão disponíveis OU que são lotes com outros status
           return (ticket as any).is_available || (ticket as any).is_batch_ticket;
         });
       
@@ -389,6 +418,10 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                       statusClass = 'bg-yellow-100 text-yellow-700';
                       break;
                     case 'ended':
+                      statusText = 'PRAZO TERMINADO';
+                      statusIcon = '⏰';
+                      statusClass = 'bg-orange-100 text-orange-700';
+                      break;
                     case 'sold_out':
                       statusText = 'Esgotado';
                       statusIcon = '❌';
@@ -422,14 +455,21 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                   >
                     <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                       <div className="flex-1 pr-4">
-                        <h4 className="text-gray-900 font-bold text-sm">{displayName}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-gray-900 font-bold text-sm">{displayName}</h4>
+                          {(ticket as any).is_half_price && (
+                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                              🎓 Meia
+                            </span>
+                          )}
+                        </div>
                         {ticket.description && (
                           <p className="text-gray-600 text-xs mt-1">{ticket.description}</p>
                         )}
                         {showLimited && isAvailable && (
                           <div className="flex items-center gap-1 mt-1">
                             <Clock className="w-3 h-3 text-yellow-500" />
-                            <span className="text-yellow-600 text-xs font-medium">LIMITADO ⏳</span>
+                            <span className="text-yellow-600 text-xs font-medium">POUCOS RESTANTES ⚠️</span>
                           </div>
                         )}
                       </div>
@@ -461,12 +501,18 @@ const TicketSelectorModal: React.FC<TicketSelectorModalProps> = ({
                             <span className={`px-2 py-1 text-xs rounded-full ${statusClass}`}>
                               {statusIcon} {statusText}
                             </span>
-                            {isBatchTicket && batchStatus === 'upcoming' && (
-                              <span className="text-xs text-gray-500">
-                                {(ticket as any).batch_info?.sale_start_date && 
-                                  `Inicia ${new Date((ticket as any).batch_info.sale_start_date).toLocaleDateString('pt-BR')}`}
-                              </span>
-                            )}
+                 {isBatchTicket && batchStatus === 'upcoming' && (
+                   <span className="text-xs text-gray-500">
+                     {(ticket as any).batch_info?.sale_start_date && 
+                       `Inicia ${new Date((ticket as any).batch_info.sale_start_date).toLocaleDateString('pt-BR')}`}
+                   </span>
+                 )}
+                 {isBatchTicket && batchStatus === 'ended' && (
+                   <span className="text-xs text-orange-600">
+                     {(ticket as any).batch_info?.sale_end_date && 
+                       `Vendas encerraram ${new Date((ticket as any).batch_info.sale_end_date).toLocaleDateString('pt-BR')}`}
+                   </span>
+                 )}
                           </div>
                         )}
                       </div>

@@ -110,3 +110,185 @@ create trigger trigger_update_available_quantity BEFORE INSERT
 or
 update on event_ticket_types for EACH row
 execute FUNCTION update_available_quantity ();
+
+
+
+
+🎟️ Finalidade geral
+
+A tabela event_ticket_types define os tipos de ingressos disponíveis para um determinado evento (event_id).
+Ou seja: cada linha representa um tipo de ingresso com suas regras de venda, preço, quantidade e restrições.
+
+Exemplo de tipos:
+
+Ingresso VIP Masculino
+
+Ingresso VIP Feminino
+
+Ingresso Meia-entrada
+
+Ingresso Gratuito
+
+Ingresso por lote (batch) ou por período de data
+
+📋 Estrutura explicada por grupos
+🔗 Relacionamento principal
+event_id uuid not null
+
+
+Cada tipo de ingresso pertence a um evento da tabela events.
+
+🏷️ Identificação e descrição
+name text not null
+description text null
+title varchar(45)
+
+
+name: nome do tipo de ingresso (ex: “VIP”, “Pista”, “Camarote”).
+
+description: descrição detalhada.
+
+title: título curto para exibição (até 45 caracteres).
+
+💰 Preço e modalidades
+price numeric(10,2)
+price_masculine numeric(10,2)
+price_feminine numeric(10,2)
+price_type varchar(20) default 'unissex'
+
+
+price: preço padrão.
+
+price_masculine e price_feminine: preços separados por gênero (usado quando price_type = 'gender_separate').
+
+price_type: define se o preço é único (unissex) ou diferente por gênero.
+
+🎫 Quantidades
+quantity integer
+available_quantity integer
+min_quantity integer
+max_quantity integer
+
+
+quantity: total inicial.
+
+available_quantity: quanto ainda resta (atualizado por trigger).
+
+min_quantity e max_quantity: limites por compra.
+
+A trigger update_available_quantity() garante que o campo available_quantity se mantenha coerente com as vendas.
+
+🧾 Meia-entrada (half-price)
+has_half_price boolean default false
+half_price_title varchar(45)
+half_price_quantity integer
+half_price_price numeric(10,2)
+half_price_price_feminine numeric(10,2)
+
+
+Permite definir ingressos meia-entrada:
+
+has_half_price: ativa/desativa essa opção.
+
+half_price_*: preço e quantidade reservada.
+
+🪑 Setor e benefícios
+sector text
+benefits text[]
+
+
+sector: nome do setor (ex: “Pista”, “Camarote A”, etc.).
+
+benefits: lista de vantagens (ex: { "Bebida grátis", "Acesso ao camarote" }).
+
+⏰ Período de venda
+sale_period_type varchar(10) default 'date'
+sale_start_date timestamptz
+sale_end_date timestamptz
+
+
+Pode ser controlado por data (date) ou lote (batch).
+
+sale_start_date / sale_end_date: delimitam quando está à venda.
+
+👥 Disponibilidade e acesso
+availability varchar(20) default 'public'
+
+
+public: qualquer pessoa pode comprar.
+
+restricted: somente convidados/autorizados.
+
+manual: venda controlada manualmente (ex: balcão).
+
+⚙️ Taxas e comissões
+service_fee_type varchar(20) default 'buyer'
+
+
+Define quem paga a taxa do serviço:
+
+buyer: comprador paga.
+
+seller: organizador paga.
+
+🏷️ Tipo e status do ingresso
+ticket_type text default 'paid'
+status text default 'active'
+
+
+ticket_type: tipo de ingresso:
+
+paid = pago.
+
+free = gratuito.
+
+status:
+
+active = à venda.
+
+inactive = desativado.
+
+sold_out = esgotado.
+
+🔁 Transferência
+transferable boolean default true
+max_transfers integer default 1
+
+
+Define se o ingresso pode ser transferido e quantas vezes.
+
+🧠 Limites de texto (UI)
+character_limit integer default 45
+description_limit integer default 100
+
+
+Provavelmente usados para limitar o tamanho dos textos exibidos em interfaces.
+
+🕒 Auditoria
+created_at timestamptz default timezone('utc', now())
+updated_at timestamptz default timezone('utc', now())
+
+
+Mantém registro de criação e atualização.
+
+🔐 Restrições e validações (CHECK)
+
+Garante que certos campos só aceitam valores válidos:
+
+sale_period_type → 'date' ou 'batch'
+
+service_fee_type → 'buyer' ou 'seller'
+
+status → 'active', 'inactive', 'sold_out'
+
+availability → 'public', 'restricted', 'manual'
+
+ticket_type → 'paid', 'free'
+
+price_type → 'unissex', 'gender_separate'
+
+⚡ Índices
+
+idx_event_ticket_types_event_id: acelera buscas por evento.
+
+idx_event_ticket_types_status: acelera filtros por status.

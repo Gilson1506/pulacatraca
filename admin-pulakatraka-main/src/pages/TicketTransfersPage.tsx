@@ -17,7 +17,8 @@ import {
   Loader2,
   ArrowUpDown,
   Users,
-  FileText
+  FileText,
+  BarChart3
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -103,32 +104,34 @@ export default function TicketTransfersPage() {
       setIsLoading(true);
       console.log('🔄 Buscando transferências de ingressos...');
 
-      // Buscar transferências com dados relacionados
+      // Buscar transferências sem foreign keys (buscar dados separadamente)
       const { data: transfersData, error: transfersError } = await supabase
         .from('ticket_transfers')
-        .select(`
-          *,
-          ticket:tickets(
-            id,
-            price,
-            event_id
-          ),
-          from_user:profiles!ticket_transfers_from_user_id_fkey(
-            id,
-            name,
-            email
-          ),
-          to_user:profiles!ticket_transfers_to_user_id_fkey(
-            id,
-            name,
-            email
-          )
-        `)
+        .select('*')
         .order('transferred_at', { ascending: false });
 
-      // Buscar eventos relacionados aos tickets
       if (transfersData && transfersData.length > 0) {
-        const eventIds = [...new Set(transfersData.map(t => t.ticket?.event_id).filter(Boolean))];
+        // Buscar tickets relacionados
+        const ticketIds = [...new Set(transfersData.map(t => t.ticket_id).filter(Boolean))];
+        let ticketsMap: Record<string, any> = {};
+        
+        if (ticketIds.length > 0) {
+          const { data: ticketsData, error: ticketsError } = await supabase
+            .from('tickets')
+            .select('id, price, event_id')
+            .in('id', ticketIds);
+
+          if (!ticketsError && ticketsData) {
+            ticketsMap = ticketsData.reduce((acc, ticket) => {
+              acc[ticket.id] = ticket;
+              return acc;
+            }, {} as Record<string, any>);
+          }
+        }
+
+        // Buscar eventos relacionados aos tickets
+        const eventIds = [...new Set(Object.values(ticketsMap).map((t: any) => t.event_id).filter(Boolean))];
+        let eventsMap: Record<string, any> = {};
         
         if (eventIds.length > 0) {
           const { data: eventsData, error: eventsError } = await supabase
@@ -137,29 +140,59 @@ export default function TicketTransfersPage() {
             .in('id', eventIds);
 
           if (!eventsError && eventsData) {
-            const eventsMap = eventsData.reduce((acc, event) => {
+            eventsMap = eventsData.reduce((acc, event) => {
               acc[event.id] = event;
               return acc;
             }, {} as Record<string, any>);
-
-            // Enriquecer os dados das transferências com informações dos eventos
-            const enrichedTransfers = transfersData.map(transfer => ({
-              ...transfer,
-              ticket: transfer.ticket ? {
-                ...transfer.ticket,
-                title: eventsMap[transfer.ticket.event_id]?.title || 'Evento não encontrado',
-                event_date: eventsMap[transfer.ticket.event_id]?.start_date || 'Data não disponível',
-                location: eventsMap[transfer.ticket.event_id]?.location || 'Local não disponível'
-              } : null
-            }));
-
-            console.log('📊 Transferências enriquecidas com dados dos eventos:', enrichedTransfers?.length || 0);
-            setTransfers(enrichedTransfers || []);
-            setLastUpdated(new Date());
-            calculateStats(enrichedTransfers || []);
-            return;
           }
         }
+
+        // Buscar usuários (from_user e to_user)
+        const userIds = [...new Set([
+          ...transfersData.map(t => t.from_user_id).filter(Boolean),
+          ...transfersData.map(t => t.to_user_id).filter(Boolean)
+        ])];
+        let usersMap: Record<string, any> = {};
+        
+        if (userIds.length > 0) {
+          const { data: usersData, error: usersError } = await supabase
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', userIds);
+
+          if (!usersError && usersData) {
+            usersMap = usersData.reduce((acc, user) => {
+              acc[user.id] = user;
+              return acc;
+            }, {} as Record<string, any>);
+          }
+        }
+
+        // Enriquecer os dados das transferências
+        const enrichedTransfers = transfersData.map(transfer => {
+          const ticket = ticketsMap[transfer.ticket_id];
+          const event = ticket ? eventsMap[ticket.event_id] : null;
+          const fromUser = usersMap[transfer.from_user_id];
+          const toUser = usersMap[transfer.to_user_id];
+
+          return {
+            ...transfer,
+            ticket: ticket ? {
+              ...ticket,
+              title: event?.title || 'Evento não encontrado',
+              event_date: event?.start_date || 'Data não disponível',
+              location: event?.location || 'Local não disponível'
+            } : null,
+            from_user: fromUser || null,
+            to_user: toUser || null
+          };
+        });
+
+        console.log('📊 Transferências enriquecidas:', enrichedTransfers?.length || 0);
+        setTransfers(enrichedTransfers || []);
+        setLastUpdated(new Date());
+        calculateStats(enrichedTransfers || []);
+        return;
       }
 
       if (transfersError) {
@@ -483,7 +516,7 @@ export default function TicketTransfersPage() {
         </div>
       </div>
 
-      {/* Estatísticas */}
+      {/* Estatísticas Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
@@ -492,6 +525,11 @@ export default function TicketTransfersPage() {
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatNumber(stats.totalTransfers)}
               </p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div>{stats.completedTransfers} concluídas</div>
+                <div>{stats.failedTransfers} falharam</div>
+                <div>{stats.cancelledTransfers} canceladas</div>
+              </div>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl">
               <Ticket className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -502,13 +540,14 @@ export default function TicketTransfersPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Transferências Concluídas</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Taxa de Sucesso</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatNumber(stats.completedTransfers)}
+                {stats.totalTransfers > 0 ? ((stats.completedTransfers / stats.totalTransfers) * 100).toFixed(1) : 0}%
               </p>
-              <p className="text-sm text-green-600 font-medium">
-                {stats.totalTransfers > 0 ? ((stats.completedTransfers / stats.totalTransfers) * 100).toFixed(1) : 0}% do total
-              </p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div>{stats.completedTransfers} de {stats.totalTransfers}</div>
+                <div>transferências bem-sucedidas</div>
+              </div>
             </div>
             <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl">
               <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -519,13 +558,14 @@ export default function TicketTransfersPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Valor Total</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Valor Total Transferido</p>
               <p className="text-2xl font-bold text-purple-600">
                 {formatCurrency(stats.totalValue)}
               </p>
-              <p className="text-sm text-purple-600 font-medium">
-                Média: {formatCurrency(stats.averageTransferValue)}
-              </p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div>Média: {formatCurrency(stats.averageTransferValue)}</div>
+                <div>por transferência</div>
+              </div>
             </div>
             <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl">
               <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -536,16 +576,86 @@ export default function TicketTransfersPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Transferências Mensais</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Crescimento Mensal</p>
               <p className="text-2xl font-bold text-emerald-600">
                 {formatNumber(stats.monthlyTransfers)}
               </p>
-              <p className={`text-sm font-medium ${stats.monthlyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatPercentage(stats.monthlyGrowth)}
-              </p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className={`font-medium ${stats.monthlyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatPercentage(stats.monthlyGrowth)}
+                </div>
+                <div>vs mês anterior</div>
+              </div>
             </div>
             <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl">
               <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Estatísticas Detalhadas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Transferências por Status</p>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-green-600">Concluídas</span>
+                  <span className="text-sm font-semibold text-green-600">{stats.completedTransfers}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-red-600">Falharam</span>
+                  <span className="text-sm font-semibold text-red-600">{stats.failedTransfers}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-orange-600">Canceladas</span>
+                  <span className="text-sm font-semibold text-orange-600">{stats.cancelledTransfers}</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-xl">
+              <BarChart3 className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Usuários Únicos</p>
+              <p className="text-2xl font-bold text-indigo-600">
+                {Array.from(new Set([
+                  ...transfers.map(t => t.from_user_id),
+                  ...transfers.map(t => t.to_user_id)
+                ])).length}
+              </p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div>Envolvidos em transferências</div>
+                <div>Última atualização: {lastUpdated.toLocaleTimeString('pt-BR')}</div>
+              </div>
+            </div>
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl">
+              <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Eventos com Transferências</p>
+              <p className="text-2xl font-bold text-teal-600">
+                {Array.from(new Set(transfers.map(t => t.ticket?.event_id).filter(Boolean))).length}
+              </p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div>Eventos únicos</div>
+                <div>com ingressos transferidos</div>
+              </div>
+            </div>
+            <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-xl">
+              <Calendar className="w-6 h-6 text-teal-600 dark:text-teal-400" />
             </div>
           </div>
         </div>
