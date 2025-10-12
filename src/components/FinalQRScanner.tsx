@@ -99,7 +99,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             area,
             event_id,
             ticket_type_id,
-            events(
+            events!fk_tickets_primary_event_id(
               id,
               title,
               start_date,
@@ -107,7 +107,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               location_name,
               location_city,
               location_state,
-              user_id,
+              organizer_id,
               ticket_type
             )
           ),
@@ -355,33 +355,54 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
 
       console.log(`✅ [FALLBACK] Encontrado ticket_user:`, tu);
 
-      // Buscar dados do evento para completar as informações
-      let eventTitle = 'Evento';
+      // Buscar dados do ticket e evento através do ticket_id
+      let eventTitle = 'Evento não informado';
       let eventDate = new Date().toISOString();
-      let eventLocation = 'Local';
+      let eventLocation = 'Local não informado';
       let organizerId = '';
+      let ticketPrice = 0;
+      let eventId = '';
 
-      if (tu.event_id) {
-        console.log(`🔍 [FALLBACK] Buscando evento com ID: ${tu.event_id}`);
-        const { data: ev, error: evError } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', tu.event_id)
+      if (tu.ticket_id) {
+        console.log(`🔍 [FALLBACK] Buscando ticket com ID: ${tu.ticket_id}`);
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select(`
+            id,
+            price,
+            event_id,
+            events!fk_tickets_primary_event_id(
+              id,
+              title,
+              start_date,
+              location,
+              location_name,
+              organizer_id
+            )
+          `)
+          .eq('id', tu.ticket_id)
           .maybeSingle();
 
-        if (evError) {
-          console.error(`❌ [FALLBACK] Erro ao buscar evento:`, evError);
-        } else if (ev) {
-          eventTitle = ev.title || eventTitle;
-          eventDate = ev.start_date || eventDate;
-          eventLocation = ev.location || eventLocation;
-          organizerId = ev.user_id || organizerId;
-          console.log(`✅ [FALLBACK] Evento encontrado:`, ev.title);
+        if (ticketError) {
+          console.error(`❌ [FALLBACK] Erro ao buscar ticket:`, ticketError);
+        } else if (ticketData) {
+          console.log(`✅ [FALLBACK] Ticket encontrado:`, ticketData);
+          ticketPrice = ticketData.price || 0;
+          eventId = ticketData.event_id || '';
+          
+          if (ticketData.events) {
+            const ev = ticketData.events;
+            eventTitle = ev.title || eventTitle;
+            eventDate = ev.start_date || eventDate;
+            eventLocation = ev.location || ev.location_name || eventLocation;
+            organizerId = ev.organizer_id || organizerId;
+            console.log(`✅ [FALLBACK] Evento encontrado via ticket:`, ev.title);
+          }
         } else {
-          console.log(`⚠️ [FALLBACK] Evento não encontrado para ID: ${tu.event_id}`);
+          console.log(`⚠️ [FALLBACK] Ticket não encontrado para ID: ${tu.ticket_id}`);
         }
       } else {
-        console.log(`⚠️ [FALLBACK] ticket_user não tem event_id`);
+        console.log(`⚠️ [FALLBACK] ticket_user não tem ticket_id`);
       }
 
       const ticketData: TicketData = {
@@ -392,11 +413,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         event_date: eventDate,
         event_location: eventLocation,
         ticket_type: 'Ingresso',
-        ticket_price: 0,
+        ticket_price: ticketPrice,
         qr_code: tu.qr_code,
         purchased_at: tu.created_at,
-        ticket_id: tu.id, // usa id do ticket_user como referência de fallback
-        event_id: tu.event_id || 'event-' + qrCode,
+        ticket_id: tu.ticket_id || tu.id,
+        event_id: eventId,
         organizer_id: organizerId,
         ticket_user_id: tu.id,
         is_checked_in: false,
