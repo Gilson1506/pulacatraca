@@ -420,52 +420,79 @@ export const createTicketUser = async (ticketId: string, userData: { name: strin
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    // Verificar se o ingresso existe e pertence ao usuário
     const { data: existingTicket, error: checkError } = await supabase
       .from('tickets')
       .select('*')
       .eq('id', ticketId)
-      .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+    if (checkError) throw checkError;
+    if (!existingTicket) throw new Error('Ingresso não encontrado');
 
-    if (checkError) throw new Error('Ingresso não encontrado ou você não tem permissão');
+    const normalizedEmail = (userData.email || '').trim().toLowerCase();
 
-    // Verificar se já existe um usuário definido para este ingresso
-    if (existingTicket.ticket_user_id) {
-      console.log('⚠️ Ingresso já tem ticket_user_id:', existingTicket.ticket_user_id);
-      // Temporariamente permitir redefinição para corrigir dados inválidos
-      // throw new Error('Este ingresso já tem um usuário definido. Não é possível alterar.');
-    }
+    // Buscar se já existe ticket_user para este ticket + email
+    const { data: existing, error: fErr } = await supabase
+      .from('ticket_users')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+    if (fErr) throw fErr;
 
-    // Tentar criar o usuário do ingresso
     let ticketUser;
-    try {
-      const insertData = {
-        name: userData.name?.trim() || '',
-        email: userData.email?.trim().toLowerCase() || '',
-        document: userData.document?.trim() || null,
-        qr_code: existingTicket.qr_code // ✅ COPIAR QR CODE DO TICKET
-      };
-      
-      console.log('🔍 createTicketUser - Dados a inserir:', insertData);
-      
-      const { data: newTicketUser, error: userError } = await supabase
+    if (!existing) {
+      const { data: inserted, error: iErr } = await supabase
         .from('ticket_users')
-        .insert([insertData])
-        .select()
+        .insert({
+          ticket_id: ticketId,
+          name: (userData.name || '').trim(),
+          email: normalizedEmail,
+          document: (userData.document || null) as string | null,
+          qr_code: existingTicket.qr_code
+        })
+        .select('*')
         .single();
-
-      console.log('🔍 createTicketUser - Resposta insert:', { newTicketUser, userError });
-
-      if (userError) throw userError;
-      ticketUser = newTicketUser;
       
-      console.log('✅ createTicketUser - ticket_user criado:', ticketUser);
-    } catch (error: any) {
-      if (error.message?.includes('relation "ticket_users" does not exist')) {
-        throw new Error('Sistema de usuários de ingressos não está configurado. Execute o script SQL primeiro.');
+      if (iErr) {
+        // Se for duplicação (23505), buscar o existente e atualizar
+        if (iErr.code === '23505') {
+          const { data: foundNow, error: f2 } = await supabase
+            .from('ticket_users')
+            .select('*')
+            .eq('ticket_id', ticketId)
+            .eq('email', normalizedEmail)
+            .maybeSingle();
+          if (f2) throw f2;
+          if (!foundNow) throw iErr; // improvável: não achou mesmo com constraint
+          const { data: updated, error: uErr } = await supabase
+            .from('ticket_users')
+            .update({
+              name: (userData.name || '').trim(),
+              document: (userData.document || null) as string | null
+            })
+            .eq('id', foundNow.id)
+            .select('*')
+            .single();
+          if (uErr) throw uErr;
+          ticketUser = updated;
+        } else {
+          throw iErr;
+        }
+      } else {
+        ticketUser = inserted;
       }
-      throw error;
+    } else {
+      const { data: updated, error: uErr } = await supabase
+        .from('ticket_users')
+        .update({
+          name: (userData.name || '').trim(),
+          document: (userData.document || null) as string | null
+        })
+        .eq('id', existing.id)
+        .select('*')
+        .single();
+      if (uErr) throw uErr;
+      ticketUser = updated;
     }
 
     // Atualizar o ingresso com o ticket_user_id (sem QR code manual)

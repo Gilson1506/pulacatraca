@@ -776,23 +776,68 @@ export default function Ticket() {
     try {
       console.log('👤 Definindo usuário do ingresso com dados:', userData);
       
-      // Salvar usuário no banco de dados
-      const { data: savedUser, error: userError } = await supabase
+      const normalizedEmail = (userData.email || '').trim().toLowerCase();
+
+      // Buscar se já existe
+      const { data: existing, error: fErr } = await supabase
         .from('ticket_users')
-        .insert([
-          {
-            name: userData.name,
-            email: userData.email,
-            document: userData.document,
-            ticket_id: ticketId
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+      if (fErr) throw fErr;
+
+      let savedUser;
+      if (!existing) {
+        const { data: inserted, error: iErr } = await supabase
+          .from('ticket_users')
+          .insert({
+            name: (userData.name || '').trim(),
+            email: normalizedEmail,
+            document: (userData.document || null),
+            ticket_id: ticketId,
+            qr_code: ticket?.qr_code || null
+          })
+          .select('*')
+          .single();
+        
+        if (iErr) {
+          if (iErr.code === '23505') {
+            const { data: found2 } = await supabase
+              .from('ticket_users')
+              .select('*')
+              .eq('ticket_id', ticketId)
+              .eq('email', normalizedEmail)
+              .maybeSingle();
+            if (!found2) throw iErr;
+            const { data: updated } = await supabase
+              .from('ticket_users')
+              .update({
+                name: (userData.name || '').trim(),
+                document: (userData.document || null)
+              })
+              .eq('id', found2.id)
+              .select('*')
+              .single();
+            savedUser = updated;
+          } else {
+            throw iErr;
           }
-        ])
-        .select()
-        .single();
-      
-      if (userError) {
-        console.error('❌ Erro ao salvar usuário:', userError);
-        throw userError;
+        } else {
+          savedUser = inserted;
+        }
+      } else {
+        const { data: updated, error: uErr } = await supabase
+          .from('ticket_users')
+          .update({
+            name: (userData.name || '').trim(),
+            document: (userData.document || null)
+          })
+          .eq('id', existing.id)
+          .select('*')
+          .single();
+        if (uErr) throw uErr;
+        savedUser = updated;
       }
       
       console.log('✅ Usuário salvo no banco:', savedUser);
@@ -802,7 +847,7 @@ export default function Ticket() {
         .from('tickets')
         .update({ 
           ticket_user_id: savedUser.id,
-          status: 'active' // Ativar o ingresso
+          status: 'active'
         })
         .eq('id', ticketId);
       

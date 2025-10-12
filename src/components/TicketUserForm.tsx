@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createTicketUser } from '../lib/supabase';
+import { createOrUpdateTicketUser } from '../utils/ticketUsers';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingButton from './LoadingButton';
 
@@ -70,7 +70,7 @@ const TicketUserForm: React.FC<TicketUserFormProps> = ({ ticketId, onSuccess, on
         throw new Error('Dados inválidos: nome ou email vazios');
       }
       
-      const ticket = await createTicketUser(ticketId, userData);
+      const ticket = await createOrUpdateTicketUser(ticketId, userData);
 
       // Passar os dados do usuário para o callback, não o ticket
       onSuccess(userData);
