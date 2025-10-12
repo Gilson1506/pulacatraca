@@ -90,7 +90,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           email,
           qr_code,
           created_at,
-          event_id,
+          ticket_id,
           tickets(
             id,
             price,
@@ -98,18 +98,18 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             ticket_type,
             area,
             event_id,
-            ticket_type_id
-          ),
-          events!inner(
-            id,
-            title,
-            start_date,
-            location,
-            location_name,
-            location_city,
-            location_state,
-            user_id,
-            ticket_type
+            ticket_type_id,
+            events(
+              id,
+              title,
+              start_date,
+              location,
+              location_name,
+              location_city,
+              location_state,
+              user_id,
+              ticket_type
+            )
           ),
           checkin(
             id,
@@ -129,16 +129,16 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         return null;
       }
 
-      if (!ticketUserData.tickets?.events) {
+      // Verificar se temos os dados necessários
+      const ticket = ticketUserData.tickets || null;
+      const event = ticket?.events || null;
+      
+      if (!ticket || !event) {
         console.log(`❌ [JOIN] Dados incompletos - faltam tickets ou events para QR: ${qrCode}`);
         return null;
       }
 
       const isAlreadyCheckedIn = ticketUserData.checkin && ticketUserData.checkin.length > 0;
-      
-      // Buscar dados do ticket se disponível
-      const ticket = ticketUserData.tickets && ticketUserData.tickets.length > 0 ? ticketUserData.tickets[0] : null;
-      const event = ticketUserData.events;
       
       // Buscar informações detalhadas do ticket type se disponível
       let ticketTypeDetails = null;
