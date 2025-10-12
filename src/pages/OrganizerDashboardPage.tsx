@@ -410,6 +410,7 @@ const DashboardOverview = () => {
         </div>
       </div>
 
+
       {/* Charts - Responsive Grid */}
       {labelsSeries.length === 0 ? (
         <div className="col-span-full bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
@@ -669,6 +670,108 @@ const DashboardOverview = () => {
           }}
         />
       )}
+    </div>
+  );
+};
+
+// Organizer Support (Atendimento) page
+const OrganizerSupport = () => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState<{type:'success'|'error', text:string}|null>(null);
+  const [myTickets, setMyTickets] = useState<any[]>([]);
+
+  useEffect(() => { fetchMyTickets(); }, []);
+
+  const fetchMyTickets = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('support_tickets')
+      .select('id, title, description, status, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    setMyTickets(data || []);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim()) {
+      setToast({ type: 'error', text: 'Preencha título e descrição.' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    try {
+      setSending(true);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) { setToast({type:'error', text:'Usuário não autenticado'}); setTimeout(()=>setToast(null),3000); return; }
+      const { error } = await supabase
+        .from('support_tickets')
+        .insert({
+          user_id: user.id,
+          title: title.trim(),
+          description: description.trim(),
+          status: 'aberto'
+        });
+      if (error) { setToast({type:'error', text:'Erro ao enviar suporte.'}); setTimeout(()=>setToast(null),3000); return; }
+      setTitle('');
+      setDescription('');
+      setToast({ type: 'success', text: 'Chamado enviado com sucesso!' });
+      await fetchMyTickets();
+    } finally {
+      setSending(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl">
+      {toast && (
+        <div className={`mb-3 px-3 py-2 rounded ${toast.type==='success'?'bg-green-600 text-white':'bg-red-600 text-white'}`}>{toast.text}</div>
+      )}
+      <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Atendimento</h2>
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+        <div>
+          <label className="block text-sm text-gray-700 mb-1">Título</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            placeholder="Assunto do chamado"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-700 mb-1">Descrição</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={6}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            placeholder="Detalhe o problema ou solicitação"
+          />
+        </div>
+        <div className="flex justify-end">
+          <button type="submit" disabled={sending} className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50">
+            {sending ? 'Enviando...' : 'Enviar'}
+          </button>
+        </div>
+      </form>
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-2">Meus tickets</h3>
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          {myTickets.length === 0 ? (
+            <div className="text-sm text-gray-500">Nenhum ticket enviado.</div>
+          ) : myTickets.map((t)=> (
+            <div key={t.id} className="text-sm">
+              <div className="font-semibold text-gray-800">{t.title}</div>
+              <div className="text-gray-600">{t.description}</div>
+              <div className="text-xs text-gray-500">{new Date(t.created_at).toLocaleString('pt-BR')} • {t.status}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -1057,17 +1160,17 @@ const OrganizerEvents = () => {
             // Se há lotes, criar na tabela event_ticket_batches
             if (ticket.batches && ticket.batches.length > 0) {
               console.log('📦 Criando lotes para ingresso:', ticketType.id);
-              
+                
               const batchesData = ticket.batches.map((batch: any) => ({
-                ticket_type_id: ticketType.id,
-                batch_number: batch.batch_number,
-                quantity: batch.quantity,
+                    ticket_type_id: ticketType.id,
+                    batch_number: batch.batch_number,
+                    quantity: batch.quantity,
                 price_type: batch.price_type || 'uniform',
                 price: batch.price || batch.price_masculine,
                 price_feminine: batch.price_feminine,
-                sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
+                    sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
                 sale_start_time: batch.sale_start_time || null,
-                sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
+                    sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
                 sale_end_time: batch.sale_end_time || null
               }));
               
@@ -1075,7 +1178,7 @@ const OrganizerEvents = () => {
                 .from('event_ticket_batches')
                 .insert(batchesData);
 
-              if (batchError) {
+                if (batchError) {
                 console.warn('⚠️ Erro ao criar lotes:', batchError);
               } else {
                 console.log('✅ Lotes criados com sucesso');
@@ -3552,6 +3655,7 @@ const OrganizerDashboardPage = () => {
             <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
             <button onClick={() => navigate('/checkin')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base hover:bg-pink-50 text-gray-700`}>Check-in</button>
             <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Config</button>
+            <button onClick={() => handleSetActive('support')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='support'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Atendimento</button>
           </nav>
         </aside>
       </div>
@@ -3563,6 +3667,7 @@ const OrganizerDashboardPage = () => {
         {active === 'sales' && <OrganizerSales />}
         {active === 'finance' && <OrganizerFinancial />}
         {active === 'settings' && <OrganizerSettings />}
+        {active === 'support' && <OrganizerSupport />}
       </main>
     </div>
   );

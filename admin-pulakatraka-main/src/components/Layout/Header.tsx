@@ -115,6 +115,7 @@ export default function Header({ user, onMenuToggle, onLogout, onNavigate }: Hea
       <NotificationsModal 
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
+        userId={user.id}
       />
     </header>
   );

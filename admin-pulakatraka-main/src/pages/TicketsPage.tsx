@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Download, Eye, RefreshCw, Calendar, MapPin, User, Ticket, QrCode, Mail, Phone, Loader2, X, CheckCircle, TrendingUp, BarChart3, Activity, Users, Filter, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import jsPDF from 'jspdf';
@@ -51,9 +51,39 @@ export default function TicketsPage() {
   const [filterOrganizer, setFilterOrganizer] = useState('all');
   const [filterDate, setFilterDate] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  const refreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchTickets();
+  }, []);
+
+  // Realtime updates: auto-refresh when core tables change
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      refreshTimerRef.current = window.setTimeout(() => {
+        fetchTickets();
+      }, 500);
+    };
+
+    const channel = supabase
+      .channel('admin-tickets-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
   }, []);
 
   const fetchTickets = async () => {
@@ -145,11 +175,14 @@ export default function TicketsPage() {
         .select(`
           id,
           customer_id,
-          status,
+          status:payment_status,
+          customer_name,
+          customer_email,
           total_amount,
           payment_method,
           created_at,
-          updated_at
+          updated_at,
+          metadata
         `)
         .order('created_at', { ascending: false });
 
@@ -163,15 +196,7 @@ export default function TicketsPage() {
       console.log('🔍 Buscando itens dos pedidos...');
       const { data: orderItems, error: orderItemsError } = await supabase
         .from('order_items')
-        .select(`
-          id,
-          order_id,
-          ticket_type_id,
-          ticket_type,
-          quantity,
-          price,
-          total_price
-        `);
+        .select('*');
 
       if (orderItemsError) {
         console.log('⚠️ Erro ao buscar itens dos pedidos:', orderItemsError);
@@ -231,38 +256,60 @@ export default function TicketsPage() {
           return;
         }
 
-        const orderUser = profiles[order.customer_id] || {};
-        const itemsForOrder = orderItems?.filter(item => item.order_id === order.id) || [];
+        const orderUser = (profiles[order.customer_id] || {
+          name: order.customer_name,
+          email: order.customer_email
+        }) as any;
+        let itemsForOrder: any[] = (orderItems?.filter((item: any) => item.order_id === order.id) || []);
+
+        // Fallback: se não houver registros em order_items, usar orders.metadata.items
+        if ((!itemsForOrder || itemsForOrder.length === 0) && Array.isArray(order.metadata?.items)) {
+          itemsForOrder = (order.metadata.items || []).map((mi: any, idx: number) => ({
+            id: `${order.id}-m${idx}`,
+            order_id: order.id,
+            ticket_type: mi.name || mi.description || mi.ticket_type || 'Ingresso',
+            quantity: Number(mi.quantity || 1),
+            price: Number((mi.amount || 0) / 100),
+            total_price: Number((mi.amount || 0) / 100) * Number(mi.quantity || 1),
+            event_id: order.metadata?.event_id || null
+          }));
+        }
         
-        itemsForOrder.forEach(item => {
-          const ticketType = ticketTypes?.find(tt => tt.id === item.ticket_type_id);
-          const event = ticketType ? events?.find(e => e.id === ticketType.event_id) : null;
+        itemsForOrder.forEach((item: any) => {
+          // Encontrar ticketType por id (se existir) ou por nome + event_id
+          let ticketType = ticketTypes?.find(tt => tt.id === item.ticket_type_id);
+          if (!ticketType) {
+            const candidateEventId = item.event_id || order.metadata?.event_id || null;
+            if (candidateEventId && item.ticket_type) {
+              ticketType = ticketTypes?.find(tt => tt.event_id === candidateEventId && (tt.name || '').toLowerCase() === (item.ticket_type || '').toLowerCase());
+            }
+          }
+          const event = ticketType ? (events?.find(e => e.id === ticketType.event_id)) : (item.event_id ? (events?.find(e => e.id === item.event_id)) : null);
           const organizerProfile = event ? organizerProfiles[event.organizer_id] : null;
           
           // Apenas incluir se tiver evento aprovado, dados do comprador e organizador
-          if (event && ticketType && orderUser.name && organizerProfile?.name) {
+          if (event && orderUser?.name && organizerProfile?.name) {
             orderTickets.push({
               id: `${order.id}-${item.id}`,
-              event_id: ticketType.event_id,
+              event_id: event.id,
               event_title: event.title,
               event_date: event.start_date,
               event_location: event.location || 'Local a definir',
-              event_price: item.price || ticketType.price || event.price || 0,
+              event_price: item.price || ticketType?.price || event.price || 0,
               event_status: event.status,
               organizer_name: organizerProfile.name,
               organizer_email: organizerProfile.email,
               customer_name: orderUser.name,
               customer_email: orderUser.email || 'Email não informado',
               customer_phone: orderUser.phone || 'Telefone não informado',
-              ticket_type: item.ticket_type || ticketType.name || 'Ingresso Padrão',
-              price: item.price || ticketType.price || 0,
+              ticket_type: item.ticket_type || ticketType?.name || 'Ingresso Padrão',
+              price: item.price || ticketType?.price || 0,
               quantity: item.quantity || 1,
-              total_amount: item.total_price || (item.price * item.quantity) || 0,
-              status: order.status === 'completed' ? 'active' : 
-                     order.status === 'pending' ? 'pending' : 'cancelled',
+              total_amount: item.total_price || ((item.price || 0) * (item.quantity || 1)) || 0,
+              status: (['paid','completed','captured','capturado'].includes(String(order.status))) ? 'active' : (String(order.status) === 'pending' ? 'pending' : 'cancelled'),
               purchase_date: order.created_at || new Date().toISOString(),
               payment_method: order.payment_method || 'PIX/Cartão',
-              qr_code: `ORDER-${order.id.slice(0, 8)}-${item.id.slice(0, 8)}`,
+              qr_code: `ORDER-${order.id.slice(0, 8)}-${String(item.id).slice(0, 8)}`,
               is_used: false,
               used_at: undefined,
               assigned_user_name: orderUser.name,
@@ -536,38 +583,78 @@ export default function TicketsPage() {
       // Pequeno delay para garantir que a UI atualize para o estado de loading
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      const doc = new jsPDF();
-      
-      doc.setFontSize(18);
-      doc.text('Relatório de Venda de Ingressos - PULACATRACA', 14, 22);
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text(`Relatório gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-      autoTable(doc, {
-        head: [["Cliente", "Evento", "Organizador", "Tipo Ingresso", "Valor", "Status"]],
-        body: filteredTickets.map(ticket => [
-          `${ticket.customer_name}\n${ticket.customer_email}`,
-          `${ticket.event_title}\n${ticket.event_date}`,
-          `${ticket.organizer_name}\n${ticket.organizer_email}`,
-          ticket.ticket_type,
-          formatCurrency(ticket.total_amount),
-          getStatusText(ticket.status),
-        ]),
-        startY: 40,
-        theme: 'grid',
-        headStyles: { fillColor: [22, 160, 133] },
-        styles: { cellPadding: 3, fontSize: 9, valign: 'middle' },
-      });
-      
-      const finalY = doc.lastAutoTable.finalY;
-      doc.setFontSize(12);
+      const margin = 14;
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Cabeçalho
+      doc.setFillColor(59, 130, 246); // azul
+      doc.rect(0, 0, pageWidth, 26, 'F');
+      doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.text(
-          `Receita Total (Filtro Atual): ${formatCurrency(totalRevenue)}`,
-          14,
-          finalY + 15
-      );
+      doc.setFontSize(16);
+      doc.text('Relatório de Venda de Ingressos - Admin', margin, 17);
+      doc.setFontSize(10);
+      doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin - 60, 17);
+
+      // Resumo
+      let currentY = 34;
+      doc.setTextColor(33, 33, 33);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      const totalRegistros = filteredTickets.length;
+      const pendentes = filteredTickets.filter(t => t.status === 'pending').length;
+      const usados = filteredTickets.filter(t => t.status === 'used').length;
+      const confirmados = filteredTickets.filter(t => t.status === 'active').length;
+      doc.text(`Total registros: ${totalRegistros}`, margin, currentY);
+      doc.text(`Receita: ${formatCurrency(totalRevenue)}`, margin + 80, currentY);
+      currentY += 6;
+      doc.text(`Confirmados: ${confirmados}`, margin, currentY);
+      doc.text(`Pendentes: ${pendentes}`, margin + 80, currentY);
+      doc.text(`Usados: ${usados}`, margin + 160, currentY);
+
+      // Tabela
+      currentY += 8;
+      autoTable(doc, {
+        startY: currentY,
+        head: [[
+          'Cliente', 'Evento', 'Organizador', 'Tipo', 'Valor', 'Status'
+        ]],
+        body: filteredTickets.map(ticket => [
+          `${ticket.customer_name || ''}\n${ticket.customer_email || ''}`,
+          `${ticket.event_title || ''}\n${ticket.event_date || ''}`,
+          `${ticket.organizer_name || ''}\n${ticket.organizer_email || ''}`,
+          ticket.ticket_type || '-',
+          formatCurrency(ticket.total_amount || 0),
+          getStatusText(ticket.status)
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+        styles: { cellPadding: 3, fontSize: 9, valign: 'middle' },
+        alternateRowStyles: { fillColor: [232, 240, 254] },
+        columnStyles: {
+          0: { cellWidth: 48 },
+          1: { cellWidth: 52 },
+          2: { cellWidth: 52 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 20, halign: 'right' },
+          5: { cellWidth: 20 }
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: () => {
+          const str = `Página ${doc.getNumberOfPages()}`;
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(str, pageWidth - margin, doc.internal.pageSize.height - 8, { align: 'right' });
+        }
+      });
+
+      const finalY = doc.lastAutoTable?.finalY || (currentY + 10);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(33, 33, 33);
+      doc.text(`Receita Total (Filtro Atual): ${formatCurrency(totalRevenue)}`, margin, finalY + 8);
 
       doc.save(`relatorio_ingressos_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
@@ -619,27 +706,8 @@ export default function TicketsPage() {
         </button>
       </div>
 
-      {/* Banner Informativo */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4">
-        <div className="flex items-start space-x-3">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-              📊 Dados Reais e Validados
-            </h3>
-            <p className="text-xs text-gray-700 dark:text-gray-300">
-              Esta página exibe apenas ingressos vendidos de <strong>eventos aprovados/ativos</strong>, com informações completas dos compradores 
-              (nome, email, telefone) e organizadores. Ingressos cancelados ou sem dados completos não são exibidos para garantir 
-              a qualidade das informações.
-            </p>
-          </div>
-        </div>
-      </div>
-
+      {/* Banner Informativo removido por solicitação */}
+ 
       {/* Estatísticas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
@@ -936,7 +1004,7 @@ export default function TicketsPage() {
         )}
       </div>
       
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">

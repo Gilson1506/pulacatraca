@@ -359,6 +359,91 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
   );
 };
 
+// Suporte do usuário comum - envia para support_tickets e lista enviados
+const SupportSection = () => {
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [toast, setToast] = useState<{type: 'success'|'error', text: string}|null>(null);
+
+  useEffect(() => { fetchMyTickets(); }, []);
+
+  const fetchMyTickets = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('support_tickets')
+      .select('id, title, description, status, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    setTickets(data || []);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) {
+      setToast({ type: 'error', text: 'Digite sua mensagem.' });
+      return;
+    }
+    try {
+      setSending(true);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        setToast({ type: 'error', text: 'Faça login para enviar suporte.' });
+        return;
+      }
+      const { error } = await supabase
+        .from('support_tickets')
+        .insert({
+          user_id: user.id,
+          title: phone?.trim() ? `Suporte via SMS (${phone.trim()})` : 'Suporte',
+          description: message.trim(),
+          status: 'aberto'
+        });
+      if (error) throw error;
+      setMessage('');
+      setToast({ type: 'success', text: 'Mensagem enviada com sucesso!' });
+      await fetchMyTickets();
+    } catch (err) {
+      setToast({ type: 'error', text: 'Falha ao enviar. Tente novamente.' });
+    } finally {
+      setSending(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-start bg-white w-full">
+      {toast && (
+        <div className={`fixed top-4 z-50 px-4 py-2 rounded-md shadow ${toast.type==='success'?'bg-green-600 text-white':'bg-red-600 text-white'}`}>
+          {toast.text}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-4 w-full max-w-md mt-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Suporte por SMS</h2>
+        <input className="w-full border rounded px-3 py-2" type="tel" placeholder="Seu número de telefone (opcional)" value={phone} onChange={(e)=>setPhone(e.target.value)} />
+        <textarea className="w-full border rounded px-3 py-2" rows={4} placeholder="Digite sua mensagem" value={message} onChange={(e)=>setMessage(e.target.value)} />
+        <button type="submit" disabled={sending} className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors mt-4 disabled:opacity-50">{sending?'Enviando...':'Enviar'}</button>
+      </form>
+      <div className="w-full max-w-md mt-6">
+        <h3 className="text-lg font-semibold mb-2">Minhas mensagens</h3>
+        <div className="bg-gray-50 rounded-lg p-4 min-h-[80px] flex flex-col gap-3">
+          {tickets.length === 0 ? (
+            <div className="text-sm text-gray-500">Nenhum ticket enviado.</div>
+          ) : tickets.map((t) => (
+            <div key={t.id} className="text-sm">
+              <div className="font-semibold text-gray-800">{t.title}</div>
+              <div className="text-gray-600">{t.description}</div>
+              <div className="text-xs text-gray-500">{new Date(t.created_at).toLocaleString('pt-BR')} • {t.status}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // 🎫 Componente para exibir Ingressos
 const TicketsSection = ({ userEmail }: { userEmail: string }) => {
   const [userTickets, setUserTickets] = useState<UserTicket[]>([]);
@@ -771,29 +856,7 @@ const dummyContent = (
     </div>
   ),
   support: (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <button
-        onClick={() => setActiveMenu('info')}
-        className="flex items-center gap-2 mb-6 text-gray-800 font-medium focus:outline-none bg-transparent border-none px-0 py-0 shadow-none hover:underline"
-        style={{ boxShadow: 'none', border: 'none', background: 'none' }}
-      >
-        <ChevronRight className="h-5 w-5 rotate-180 text-gray-400" /> Voltar
-      </button>
-      <form className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 flex flex-col gap-4 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Suporte por SMS</h2>
-        <input className="w-full border rounded px-3 py-2" type="tel" placeholder="Seu número de telefone" />
-        <textarea className="w-full border rounded px-3 py-2" rows={4} placeholder="Digite sua mensagem"></textarea>
-        <button type="submit" className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700 transition-colors mt-4">Enviar SMS</button>
-      </form>
-      <div className="w-full max-w-md mt-6">
-        <h3 className="text-lg font-semibold mb-2">Mensagens</h3>
-        <div className="bg-gray-50 rounded-lg p-4 min-h-[80px] flex flex-col gap-2">
-          {(Array.isArray(window.__supportMessages) ? window.__supportMessages : []).map((msg: {id: number, text: string, from: string}) => (
-            <div key={msg.id} className={`text-sm ${msg.from === 'system' ? 'text-gray-700' : 'text-pink-600'}`}>{msg.text}</div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <SupportSection />
   ),
 });
 

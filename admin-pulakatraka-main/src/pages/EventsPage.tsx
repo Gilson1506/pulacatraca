@@ -45,6 +45,7 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [carouselFieldsAvailable, setCarouselFieldsAvailable] = useState(true);
+  const [ticketTypesByEvent, setTicketTypesByEvent] = useState<Record<string, { name: string; price?: number; available?: number }[]>>({});
   
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -100,6 +101,28 @@ export default function EventsPage() {
         reviewed_by: event.reviewed_by,
         rejection_reason: event.rejection_reason
       }));
+
+      // Buscar tipos de ingressos para os eventos
+      const eventIds = formattedEvents.map(e => e.id);
+      if (eventIds.length > 0) {
+        const { data: types, error: typesError } = await supabase
+          .from('ticket_types_with_batches')
+          .select('event_id, name, price, available_quantity')
+          .in('event_id', eventIds);
+        if (typesError) {
+          console.warn('⚠️ Erro ao buscar event_ticket_types:', typesError.message);
+          setTicketTypesByEvent({});
+        } else {
+          const grouped: Record<string, { name: string; price?: number; available?: number }[]> = {};
+          (types || []).forEach((t: any) => {
+            if (!grouped[t.event_id]) grouped[t.event_id] = [];
+            grouped[t.event_id].push({ name: t.name, price: t.price, available: t.available_quantity });
+          });
+          setTicketTypesByEvent(grouped);
+        }
+      } else {
+        setTicketTypesByEvent({});
+      }
 
       setEvents(formattedEvents);
     } catch (error) {
@@ -396,6 +419,22 @@ export default function EventsPage() {
                      <div className="flex items-center text-xs"><Calendar className="w-4 h-4 mr-2" />{new Date(event.start_date).toLocaleDateString('pt-BR')}</div>
                      <div className="flex items-center text-xs mt-1"><MapPin className="w-4 h-4 mr-2" />{event.location}</div>
                      <div className="flex items-center text-xs mt-1"><Users className="w-4 h-4 mr-2" />{event.total_tickets.toLocaleString()} ingressos</div>
+                     {/* Tipos de Ingressos */}
+                     {ticketTypesByEvent[event.id] && ticketTypesByEvent[event.id].length > 0 && (
+                       <div className="mt-2 p-2 rounded bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+                         <div className="text-xs font-semibold mb-1 text-gray-700 dark:text-gray-200">Tipos de Ingressos</div>
+                         <div className="flex flex-wrap gap-2">
+                           {ticketTypesByEvent[event.id].map((tt, idx) => (
+                             <span key={idx} className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600">
+                               <span className="font-medium text-gray-800 dark:text-gray-100">{tt.name}</span>
+                               {typeof tt.available !== 'undefined' && (
+                                 <span className="text-gray-500 dark:text-gray-400">({tt.available})</span>
+                               )}
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     )}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(event.status)}`}>

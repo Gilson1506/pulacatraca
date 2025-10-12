@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, Download, RefreshCw, Calendar, Loader2, TrendingUp, Eye, BarChart3, Shield, CreditCard, Wallet, Ticket, FileText, PieChart, Activity } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Users, DollarSign, Download, RefreshCw, Calendar, Loader2, TrendingUp, BarChart3, CreditCard, Ticket, FileText, PieChart, Activity } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
@@ -18,17 +18,9 @@ interface AnalyticsSummary {
   pendingWithdrawals: { value: number; change: number };
 }
 
-interface UserGrowth {
-  month: string;
-  users: number;
-  growth: number;
-}
+// Removed unused UserGrowth
 
-interface EventCategory {
-  category: string;
-  events: number;
-  percentage: number;
-}
+// Removed unused EventCategory
 
 interface TopEvent {
   name: string;
@@ -37,11 +29,7 @@ interface TopEvent {
   conversion: number;
 }
 
-interface MonthData {
-  month: string;
-  users: number;
-  growth: number;
-}
+// Removed unused MonthData
 
 interface FinancialData {
   month: string;
@@ -56,6 +44,7 @@ export default function AnalyticsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const refreshTimerRef = useRef<number | null>(null);
   const [summary, setSummary] = useState<AnalyticsSummary>({
     totalUsers: { value: 0, change: 0 },
     totalRevenue: { value: 0, change: 0 },
@@ -69,14 +58,43 @@ export default function AnalyticsPage() {
     totalWithdrawals: { value: 0, change: 0 },
     pendingWithdrawals: { value: 0, change: 0 }
   });
-  const [userGrowth, setUserGrowth] = useState<UserGrowth[]>([]);
-  const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
-  const [topEvents, setTopEvents] = useState<TopEvent[]>([]);
+  // Removed unused states userGrowth and eventCategories
+  const [topEvents] = useState<TopEvent[]>([]);
   const [financialData, setFinancialData] = useState<FinancialData[]>([]);
 
   useEffect(() => {
     fetchAnalyticsData();
   }, [selectedPeriod]);
+
+  // Realtime: atualizar quando dados mudarem (orders, transactions, tickets, events, withdrawals, bank_accounts)
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      refreshTimerRef.current = window.setTimeout(() => {
+        fetchAnalyticsData();
+      }, 600);
+    };
+
+    const channel = supabase
+      .channel('admin-analytics-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const fetchAnalyticsData = async () => {
     try {
@@ -116,21 +134,21 @@ export default function AnalyticsPage() {
 
       if (prevUsersError) console.log('⚠️ Erro ao buscar usuários anteriores:', prevUsersError);
 
-      // 3. Buscar transações para calcular receita
-      const { data: transactions, error: txError } = await supabase
-        .from('transactions')
-        .select('*')
+      // 3. Buscar ORDERS para calcular receita
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, total_amount, payment_status, created_at')
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
 
-      if (txError) console.log('⚠️ Erro ao buscar transações:', txError);
+      if (ordersError) console.log('⚠️ Erro ao buscar orders:', ordersError);
 
-      const { data: previousTransactions, error: prevTxError } = await supabase
-        .from('transactions')
-        .select('*')
+      const { data: previousOrders, error: prevOrdersError } = await supabase
+        .from('orders')
+        .select('id, total_amount, payment_status, created_at')
         .lt('created_at', startDate.toISOString());
 
-      if (prevTxError) console.log('⚠️ Erro ao buscar transações anteriores:', prevTxError);
+      if (prevOrdersError) console.log('⚠️ Erro ao buscar orders anteriores:', prevOrdersError);
 
       // 4. Buscar eventos
       const { data: events, error: eventsError } = await supabase
@@ -178,16 +196,18 @@ export default function AnalyticsPage() {
 
       if (wError) console.log('⚠️ Erro ao buscar saques:', wError);
 
-      // 8. Calcular métricas
-      const totalRevenue = transactions ? 
-        transactions
-          .filter(tx => tx.status === 'completed' || tx.status === 'concluido')
-          .reduce((acc, tx) => acc + (tx.amount || 0), 0) : 0;
+      // 8. Calcular métricas com ORDERS
+      const paidStatuses = ['paid', 'completed'];
+      const toNumber = (v: any) => typeof v === 'number' ? v : parseFloat(v || 0);
+      const totalRevenue = orders ? 
+        orders
+          .filter(o => paidStatuses.includes(String(o.payment_status)))
+          .reduce((acc, o) => acc + toNumber(o.total_amount), 0) : 0;
 
-      const previousRevenue = previousTransactions ? 
-        previousTransactions
-          .filter(tx => tx.status === 'completed' || tx.status === 'concluido')
-          .reduce((acc, tx) => acc + (tx.amount || 0), 0) : 0;
+      const previousRevenue = previousOrders ? 
+        previousOrders
+          .filter(o => paidStatuses.includes(String(o.payment_status)))
+          .reduce((acc, o) => acc + toNumber(o.total_amount), 0) : 0;
 
       const revenueChange = previousRevenue > 0 ? 
         ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
@@ -233,7 +253,7 @@ export default function AnalyticsPage() {
       const pendingWithdrawals = withdrawals?.filter(w => w.status === 'pendente').length || 0;
 
       // 11. Gerar dados mensais para gráficos
-      const monthlyData = generateMonthlyData(startDate, endDate, transactions, tickets, events);
+      const monthlyData = generateMonthlyData(startDate, endDate, orders, tickets, events);
 
       console.log('📊 Dados de analytics calculados:', {
         totalUsers,
@@ -274,16 +294,16 @@ export default function AnalyticsPage() {
     }
   };
 
-  const generateMonthlyData = (startDate: Date, endDate: Date, transactions: any[] | null, tickets: any[] | null, events: any[] | null) => {
+  const generateMonthlyData = (startDate: Date, endDate: Date, orders: any[] | null, tickets: any[] | null, _events: any[] | null) => {
     const months = [];
     const current = new Date(startDate);
     
     while (current <= endDate) {
       const monthKey = current.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
       
-      const monthTransactions = transactions?.filter(tx => {
-        const txDate = new Date(tx.created_at);
-        return txDate.getMonth() === current.getMonth() && txDate.getFullYear() === current.getFullYear();
+      const monthOrders = orders?.filter(o => {
+        const oDate = new Date(o.created_at);
+        return oDate.getMonth() === current.getMonth() && oDate.getFullYear() === current.getFullYear();
       }) || [];
 
       const monthTickets = tickets?.filter(ticket => {
@@ -291,14 +311,11 @@ export default function AnalyticsPage() {
         return ticketDate.getMonth() === current.getMonth() && ticketDate.getFullYear() === current.getFullYear();
       }) || [];
 
-      const monthEvents = events?.filter(event => {
-        const eventDate = new Date(event.created_at);
-        return eventDate.getMonth() === current.getMonth() && eventDate.getFullYear() === current.getFullYear();
-      }) || [];
+      // monthEvents not needed in export calculations
 
-      const monthRevenue = monthTransactions
-        .filter(tx => tx.status === 'completed' || tx.status === 'concluido')
-        .reduce((acc, tx) => acc + (tx.amount || 0), 0);
+      const monthRevenue = monthOrders
+        .filter(o => ['paid','completed'].includes(String(o.payment_status)))
+        .reduce((acc, o) => acc + (typeof o.total_amount === 'number' ? o.total_amount : parseFloat(o.total_amount || 0)), 0);
 
       months.push({
         month: monthKey,
@@ -316,60 +333,59 @@ export default function AnalyticsPage() {
   const exportToPDF = async () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF();
-      
-      // Cabeçalho
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const margin = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Cabeçalho padronizado
       doc.setFillColor(59, 130, 246);
-      doc.rect(0, 0, 220, 30, 'F');
-      
+      doc.rect(0, 0, pageWidth, 26, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.text('RELATÓRIO COMPLETO', 20, 20);
-      
-      doc.setFontSize(12);
-      doc.text(`Período: ${selectedPeriod} • Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 28);
-      
-      // Resetar cor do texto
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Relatório Completo - Analytics', margin, 17);
+      doc.setFontSize(10);
+      doc.text(`Período: ${selectedPeriod} • ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin - 80, 17);
       doc.setTextColor(0, 0, 0);
       
       // Resumo Executivo
-      doc.setFontSize(18);
-      doc.text('Resumo Executivo', 20, 45);
+      doc.setFontSize(16);
+      doc.text('Resumo Executivo', margin, 45);
       
       doc.setFontSize(12);
       let yPosition = 55;
       
-      doc.text(`• Total de Usuários: ${summary.totalUsers.value.toLocaleString('pt-BR')}`, 20, yPosition);
+      doc.text(`• Total de Usuários: ${summary.totalUsers.value.toLocaleString('pt-BR')}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Receita Total: R$ ${summary.totalRevenue.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, yPosition);
+      doc.text(`• Receita Total: R$ ${summary.totalRevenue.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Total de Eventos: ${summary.totalEvents.value}`, 20, yPosition);
+      doc.text(`• Total de Eventos: ${summary.totalEvents.value}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Ingressos Vendidos: ${summary.ticketsSold.value}`, 20, yPosition);
+      doc.text(`• Ingressos Vendidos: ${summary.ticketsSold.value}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Taxa de Conversão: ${summary.conversionRate.value.toFixed(1)}%`, 20, yPosition);
+      doc.text(`• Taxa de Conversão: ${summary.conversionRate.value.toFixed(1)}%`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Total de Organizadores: ${summary.totalOrganizers.value}`, 20, yPosition);
+      doc.text(`• Total de Organizadores: ${summary.totalOrganizers.value}`, margin, yPosition);
       
       // Métricas Financeiras
       yPosition += 15;
       doc.setFontSize(16);
-      doc.text('Métricas Financeiras', 20, yPosition);
+      doc.text('Métricas Financeiras', margin, yPosition);
       
       yPosition += 10;
       doc.setFontSize(12);
-      doc.text(`• Receita Total: R$ ${summary.totalRevenue.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, yPosition);
+      doc.text(`• Receita Total: R$ ${summary.totalRevenue.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Total de Comissões: R$ ${summary.totalCommission.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, yPosition);
+      doc.text(`• Total de Comissões: R$ ${summary.totalCommission.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Total de Saques: ${summary.totalWithdrawals.value}`, 20, yPosition);
+      doc.text(`• Total de Saques: ${summary.totalWithdrawals.value}`, margin, yPosition);
       yPosition += 8;
-      doc.text(`• Saques Pendentes: ${summary.pendingWithdrawals.value}`, 20, yPosition);
+      doc.text(`• Saques Pendentes: ${summary.pendingWithdrawals.value}`, margin, yPosition);
       
       // Dados Mensais
       yPosition += 15;
       doc.setFontSize(16);
-      doc.text('Dados Mensais', 20, yPosition);
+      doc.text('Dados Mensais', margin, yPosition);
       
       if (financialData.length > 0) {
         yPosition += 10;
@@ -385,17 +401,25 @@ export default function AnalyticsPage() {
           head: [['Mês', 'Receita', 'Tickets', 'Comissões']],
           body: tableData,
           startY: yPosition,
+          theme: 'grid',
           styles: { fontSize: 10 },
-          headStyles: { fillColor: [59, 130, 246] },
-          margin: { left: 20 }
+          headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [232, 240, 254] },
+          margin: { left: margin, right: margin },
+          didDrawPage: () => {
+            const str = `Página ${doc.getNumberOfPages()}`;
+            doc.setFontSize(9);
+            doc.setTextColor(120);
+            doc.text(str, pageWidth - margin, doc.internal.pageSize.height - 8, { align: 'right' });
+          }
         });
       }
       
       // Eventos Principais
       if (topEvents.length > 0) {
         doc.addPage();
-        doc.setFontSize(18);
-        doc.text('Eventos Principais', 20, 20);
+        doc.setFontSize(16);
+        doc.text('Eventos Principais', margin, 20);
         
         const eventTableData = topEvents.map(event => [
           event.name,
@@ -408,9 +432,17 @@ export default function AnalyticsPage() {
           head: [['Evento', 'Tickets', 'Receita', 'Conversão']],
           body: eventTableData,
           startY: 30,
+          theme: 'grid',
           styles: { fontSize: 10 },
-          headStyles: { fillColor: [59, 130, 246] },
-          margin: { left: 20 }
+          headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [232, 240, 254] },
+          margin: { left: margin, right: margin },
+          didDrawPage: () => {
+            const str = `Página ${doc.getNumberOfPages()}`;
+            doc.setFontSize(9);
+            doc.setTextColor(120);
+            doc.text(str, pageWidth - margin, doc.internal.pageSize.height - 8, { align: 'right' });
+          }
         });
       }
       

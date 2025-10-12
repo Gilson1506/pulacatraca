@@ -97,8 +97,8 @@ export default function DashboardPageImproved() {
 
       if (eventsError) console.log('⚠️ Erro ao buscar eventos:', eventsError);
 
-      const activeEvents = events?.filter(e => e.status === 'active').length || 0;
-      const pendingEvents = events?.filter(e => e.status === 'pending').length || 0;
+      const activeEvents = (events || []).filter(e => ['active','approved','published'].includes(String(e.status))).length || 0;
+      const pendingEvents = (events || []).filter(e => ['pending','awaiting_approval','draft'].includes(String(e.status))).length || 0;
 
       // 3. ✅ BUSCAR ORDERS (fonte principal de receita)
       const { data: orders, error: ordersError } = await supabase

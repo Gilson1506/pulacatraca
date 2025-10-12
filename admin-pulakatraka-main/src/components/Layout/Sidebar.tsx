@@ -186,13 +186,7 @@ export default function Sidebar({ isOpen, currentPage, onNavigate }: SidebarProp
       badge: badgeCounts.support || null,
       description: 'Central de atendimento'
     },
-    { 
-      id: '/chat',
-      label: 'Chat',
-      icon: MessageCircle,
-      badge: badgeCounts.chat || null,
-      description: 'Chat em tempo real'
-    },
+    
     { 
       id: '/analytics',
       label: 'Relatórios',

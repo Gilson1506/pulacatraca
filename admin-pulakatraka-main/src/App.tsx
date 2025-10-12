@@ -10,7 +10,6 @@ import TicketsPage from './pages/TicketsPage';
 import TicketTransfersPage from './pages/TicketTransfersPage';
 import FinancialPage from './pages/FinancialPage';
 import SupportPage from './pages/SupportPage';
-import ChatPage from './pages/ChatPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import TrendsPage from './pages/TrendsPage';
 import SecurityPage from './pages/SecurityPage';
@@ -41,7 +40,7 @@ const AppRoutes = () => {
     { path: "/transferencias", Component: TicketTransfersPage },
     { path: "/financeiro", Component: FinancialPage },
     { path: "/suporte", Component: SupportPage },
-    { path: "/chat", Component: ChatPage },
+    
     { path: "/analytics", Component: AnalyticsPage },
     { path: "/tendencias", Component: TrendsPage },
     { path: "/seguranca", Component: SecurityPage },

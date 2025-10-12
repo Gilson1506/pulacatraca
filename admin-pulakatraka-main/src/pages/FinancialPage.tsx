@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Download, Calendar, DollarSign, TrendingUp, Loader2, CreditCard, Wallet, Users, Eye, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Download, Calendar, DollarSign, TrendingUp, Loader2, CreditCard, Wallet, Users, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 
 
@@ -80,9 +81,40 @@ export default function FinancialPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isExporting, setIsExporting] = useState(false);
+  const refreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchFinancialData();
+  }, []);
+
+  // Realtime: atualizar quando mudanças ocorrerem nas tabelas financeiras
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      refreshTimerRef.current = window.setTimeout(() => {
+        fetchFinancialData();
+      }, 700);
+    };
+
+    const channel = supabase
+      .channel('admin-financial-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
   }, []);
 
   const fetchFinancialData = async () => {
@@ -108,8 +140,7 @@ export default function FinancialPage() {
 
       if (eventsError) throw eventsError;
 
-      // 2. Buscar perfis dos usuários (se necessário para outras funcionalidades)
-      let profiles: Record<string, any> = {};
+      // 2. (reservado) perfis de usuários
 
       // 4. Buscar contas bancárias com dados do organizador
       const { data: bankAccounts, error: baError } = await supabase
@@ -198,23 +229,25 @@ export default function FinancialPage() {
         };
       });
 
-      // 10. Buscar transações reais para calcular receita
-      const { data: transactions, error: txError } = await supabase
-        .from('transactions')
-        .select('*')
+      // 10. Buscar ORDERS para calcular receita
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, total_amount, payment_status, created_at')
         .order('created_at', { ascending: false });
 
-      if (txError) {
-        console.log('⚠️ Tabela transactions não encontrada, usando valores baseados em eventos');
+      if (ordersError) {
+        console.log('⚠️ Tabela orders não encontrada:', ordersError);
       }
 
-      // Calcular receita total baseada em transações reais
-      const totalRevenue = transactions ? 
-        transactions
-          .filter(tx => tx.status === 'completed' || tx.status === 'concluido')
-          .reduce((acc, tx) => acc + (tx.amount || 0), 0) : 0;
+      // Calcular receita total baseada em ORDERS pagas
+      const paidStatuses = ['paid','completed'];
+      const toNumber = (v: any) => typeof v === 'number' ? v : parseFloat(v || 0);
+      const totalRevenue = orders ? 
+        orders
+          .filter(o => paidStatuses.includes(String(o.payment_status)))
+          .reduce((acc, o) => acc + toNumber(o.total_amount), 0) : 0;
 
-      // Calcular comissões (assumindo 10% de comissão sobre vendas)
+      // Calcular comissões (assumindo 10%)
       const totalCommissions = totalRevenue * 0.1;
 
       const activeEvents = events?.filter(e => e.status === 'active').length || 0;
@@ -232,7 +265,7 @@ export default function FinancialPage() {
 
       // Logs para debug
       console.log('📊 Dados carregados:');
-      console.log('  - Transações:', transactions?.length || 0);
+      console.log('  - Orders:', orders?.length || 0);
       console.log('  - Receita total:', totalRevenue);
       console.log('  - Comissões:', totalCommissions);
       console.log('  - Contas bancárias:', formattedBankAccounts.length);
@@ -341,41 +374,110 @@ export default function FinancialPage() {
   const exportToPDF = async () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF();
-      
-      // Título
-      doc.setFontSize(20);
-      doc.text('Relatório Financeiro', 20, 20);
-      
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const margin = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Cabeçalho padronizado
+      doc.setFillColor(59, 130, 246); // azul
+      doc.rect(0, 0, pageWidth, 26, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Relatório Financeiro - Admin', margin, 17);
+      doc.setFontSize(10);
+      doc.text(`${new Date().toLocaleString('pt-BR')}`, pageWidth - margin - 40, 17);
+      doc.setTextColor(0, 0, 0);
+
       // Resumo
-      doc.setFontSize(14);
-      doc.text('Resumo Financeiro', 20, 40);
-      doc.setFontSize(12);
-      doc.text(`Receita Total: ${formatCurrency(summary.total_revenue)}`, 20, 55);
-      doc.text(`Total de Comissões: ${formatCurrency(summary.total_commissions)}`, 20, 65);
-      doc.text(`Receita Líquida: ${formatCurrency(summary.net_revenue)}`, 20, 75);
-      doc.text(`Total de Saques: ${formatCurrency(summary.total_withdrawals)}`, 20, 85);
-      
-      // Contas Bancárias
-      doc.setFontSize(14);
-      doc.text('Contas Bancárias', 20, 105);
-      
-      let yPosition = 115;
-      (bankAccounts || []).forEach((ba, index) => {
-        if (yPosition > 280) {
-          doc.addPage();
-          yPosition = 20;
+      let currentY = 34;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text(`Receita Total: ${formatCurrency(summary.total_revenue)}`, margin, currentY);
+      doc.text(`Comissões: ${formatCurrency(summary.total_commissions)}`, margin + 90, currentY);
+      currentY += 6;
+      doc.text(`Receita Líquida: ${formatCurrency(summary.net_revenue)}`, margin, currentY);
+      doc.text(`Saques Concluídos: ${formatCurrency(summary.total_withdrawals)}`, margin + 90, currentY);
+      currentY += 6;
+      doc.text(`Saques Pendentes: ${(withdrawals || []).filter(w => w.status === 'pendente').length}`, margin, currentY);
+      doc.text(`Contas Bancárias: ${(bankAccounts || []).length}`, margin + 90, currentY);
+
+      // Tabela: Contas Bancárias
+      currentY += 10;
+      autoTable(doc, {
+        startY: currentY,
+        head: [[
+          'Organizador', 'Email', 'Banco', 'Agência/Conta', 'Tipo', 'Padrão'
+        ]],
+        body: (bankAccounts || []).map(ba => [
+          ba.organizer_name,
+          ba.organizer_email,
+          ba.bank_name,
+          `Ag: ${ba.agency} • ${ba.account_number}`,
+          ba.account_type,
+          ba.is_default ? 'Sim' : 'Não'
+        ]),
+        theme: 'grid',
+        styles: { cellPadding: 3, fontSize: 9, valign: 'middle' },
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [232, 240, 254] },
+        columnStyles: {
+          0: { cellWidth: 40 },
+          1: { cellWidth: 45 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 45 },
+          4: { cellWidth: 18 },
+          5: { cellWidth: 15 }
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: () => {
+          const str = `Página ${doc.getNumberOfPages()}`;
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(str, pageWidth - margin, doc.internal.pageSize.height - 8, { align: 'right' });
         }
-        
-        doc.setFontSize(10);
-        doc.text(`Organizador: ${ba.organizer_name}`, 20, yPosition);
-        doc.text(`Banco: ${ba.bank_name} - Agência: ${ba.agency}`, 20, yPosition + 7);
-        doc.text(`Conta: ${ba.account_number} (${ba.account_type})`, 20, yPosition + 14);
-        
-        yPosition += 25;
       });
-      
-      doc.save('relatorio-financeiro.pdf');
+
+      // Tabela: Saques
+      const afterAccountsY = (doc as any).lastAutoTable?.finalY || (currentY + 10);
+      const withdrawalsStartY = Math.min(afterAccountsY + 8, doc.internal.pageSize.getHeight() - 60);
+      if (withdrawalsStartY < afterAccountsY + 8) doc.addPage();
+      autoTable(doc, {
+        startY: afterAccountsY + 8,
+        head: [[
+          'Data', 'Organizador', 'Banco', 'Valor', 'Status', 'Processado em'
+        ]],
+        body: (withdrawals || []).map(w => [
+          new Date(w.created_at).toLocaleDateString('pt-BR'),
+          `${w.organizer_name}\n${w.organizer_email}`,
+          `${w.bank_name} (Ag ${w.agency})\n${w.account_number}`,
+          formatCurrency(w.amount),
+          w.status,
+          w.processed_at ? new Date(w.processed_at).toLocaleDateString('pt-BR') : '-'
+        ]),
+        theme: 'grid',
+        styles: { cellPadding: 3, fontSize: 9, valign: 'middle' },
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [232, 240, 254] },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 48 },
+          2: { cellWidth: 46 },
+          3: { cellWidth: 22, halign: 'right' },
+          4: { cellWidth: 22 },
+          5: { cellWidth: 22 }
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: () => {
+          const str = `Página ${doc.getNumberOfPages()}`;
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(str, pageWidth - margin, doc.internal.pageSize.height - 8, { align: 'right' });
+        }
+      });
+
+      // Salvar
+      doc.save(`relatorio_financeiro_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
     } finally {

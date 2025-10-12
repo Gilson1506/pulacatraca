@@ -439,7 +439,13 @@ const CheckoutPagePagarme = () => {
                   price: unitReais,
                   status: 'active',
                   qr_code: qrCode,
-                  ticket_type: it.name || it.description || 'ticket'
+                  ticket_type: it.name || it.description || 'ticket',
+                  metadata: {
+                    order_id: orderId,
+                    pagarme_order_id: pagarmeOrderId,
+                    payment_id: paymentId,
+                    item: { code: it.code, amount_cents: it.amount }
+                  }
                 });
               }
             });
@@ -565,19 +571,7 @@ Seus ingressos foram ${ticketsVerb}`,
                 <h2 className="text-xl font-semibold mb-4 text-gray-700 drop-shadow-sm">Evento</h2>
                 
                 {eventData && (
-                  <div className={`mb-4 p-3 rounded-lg ${isBuyerPayingConvenienceFee ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'}`}>
-                    <div className="flex items-center">
-                      <div className={`w-3 h-3 rounded-full mr-2 ${isBuyerPayingConvenienceFee ? 'bg-yellow-400' : 'bg-blue-400'}`}></div>
-                      <span className={`text-sm font-medium ${isBuyerPayingConvenienceFee ? 'text-yellow-800' : 'text-blue-800'}`}>
-                        {isBuyerPayingConvenienceFee ? '💰 Taxa de conveniência incluída no valor' : '🎯 Taxa de conveniência paga pelo organizador'}
-                      </span>
-                    </div>
-                    <p className={`text-xs mt-1 ${isBuyerPayingConvenienceFee ? 'text-yellow-700' : 'text-blue-700'}`}>
-                      {isBuyerPayingConvenienceFee 
-                        ? 'Você paga: ingresso + taxa processadora + taxa conveniência' 
-                        : 'Você paga: ingresso + taxa processadora | Organizador paga: taxa conveniência'}
-                    </p>
-                  </div>
+                  <></>
                 )}
                 <div className="flex items-start space-x-4">
                   <img src={event.image} alt={event.title} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, CheckCircle, AlertTriangle, Info, MessageSquare, Calendar, Clock, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -7,19 +7,21 @@ interface Notification {
   type: 'success' | 'warning' | 'info' | 'message' | 'event';
   title: string;
   message: string;
-  timestamp: string;
+  created_at: string;
   read: boolean;
 }
 
 interface NotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  userId: string;
 }
 
-export default function NotificationsModal({ isOpen, onClose }: NotificationsModalProps) {
+export default function NotificationsModal({ isOpen, onClose, userId }: NotificationsModalProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -27,13 +29,47 @@ export default function NotificationsModal({ isOpen, onClose }: NotificationsMod
     }
   }, [isOpen]);
 
+  // Preload notification sound
+  useEffect(() => {
+    audioRef.current = new Audio('/sounds/notify.mp3');
+  }, []);
+
+  // Realtime subscription for new notifications for this user
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`notifications:user:${userId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`
+      }, (payload: any) => {
+        const n = payload.new;
+        const newNotification: Notification = {
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          created_at: n.created_at,
+          read: !!n.read
+        };
+        setNotifications(prev => [newNotification, ...prev]);
+        if (!newNotification.read) setUnreadCount(prev => prev + 1);
+        try { audioRef.current?.play().catch(() => {}); } catch {}
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
+
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
       const { data: notificationsData, error } = await supabase
         .from('notifications')
         .select('*')
-        .order('timestamp', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
@@ -43,7 +79,7 @@ export default function NotificationsModal({ isOpen, onClose }: NotificationsMod
         type: notification.type,
         title: notification.title,
         message: notification.message,
-        timestamp: notification.timestamp,
+        created_at: notification.created_at,
         read: notification.read
       }));
 
@@ -206,7 +242,7 @@ export default function NotificationsModal({ isOpen, onClose }: NotificationsMod
                       <div className="flex items-center space-x-2 mt-2">
                         <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatRelativeTime(notification.timestamp)}
+                          {formatRelativeTime(notification.created_at)}
                         </span>
                       </div>
                     </div>
