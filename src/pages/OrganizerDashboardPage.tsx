@@ -3273,6 +3273,7 @@ const OrganizerCheckIns = () => {
   const [manualCode, setManualCode] = useState('');
   const [showParticipantModal, setShowParticipantModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
+  const [isAlreadyUsed, setIsAlreadyUsed] = useState(false);
 
   // ✅ BUSCAR DADOS REAIS DO SUPABASE
   const fetchCheckIns = async () => {
@@ -3378,8 +3379,9 @@ const OrganizerCheckIns = () => {
         console.log('⚠️ Validação falhou:', result.message);
         setQrResult(result.message);
         
-        // Se já foi usado, mostrar modal com dados
+        // Se já foi usado, mostrar modal com dados (tela laranja)
         if (result.ticket_data) {
+          setIsAlreadyUsed(true);
           setShowParticipantModal(true);
           setSelectedParticipant(result.ticket_data);
         } else {
@@ -3388,9 +3390,10 @@ const OrganizerCheckIns = () => {
         return;
       }
 
-      // Sucesso - mostrar modal com dados completos
+      // Sucesso - mostrar modal com dados completos (tela verde)
       console.log('✅ Check-in realizado:', result.ticket_data);
       setQrResult('✅ ACESSO LIBERADO');
+      setIsAlreadyUsed(false);
       setShowParticipantModal(true);
       setSelectedParticipant(result.ticket_data);
       
@@ -3511,77 +3514,139 @@ const OrganizerCheckIns = () => {
       {/* Modal de Dados do Participante */}
       {showParticipantModal && selectedParticipant && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Dados do Participante</h3>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {isAlreadyUsed ? 'Check-in Anterior' : 'Check-in Realizado'}
+                </h3>
                 <button 
                   onClick={() => setShowParticipantModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
               
               <div className="space-y-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <div className="text-4xl mb-2">✅</div>
-                  <div className="text-lg font-bold text-green-700">ACESSO LIBERADO</div>
+                {/* Banner de Status */}
+                <div className={`${
+                  isAlreadyUsed 
+                    ? 'bg-orange-50 border-orange-300' 
+                    : 'bg-green-50 border-green-300'
+                } border-2 rounded-xl p-6 text-center shadow-sm`}>
+                  <div className="text-5xl mb-3">
+                    {isAlreadyUsed ? '⚠️' : '✅'}
+                  </div>
+                  <div className={`text-xl font-bold ${
+                    isAlreadyUsed ? 'text-orange-700' : 'text-green-700'
+                  }`}>
+                    {isAlreadyUsed ? 'CHECK-IN JÁ REALIZADO' : 'ACESSO LIBERADO'}
+                  </div>
+                  {isAlreadyUsed && (
+                    <p className="text-sm text-orange-600 mt-2">
+                      Este ingresso já foi validado anteriormente
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-3 pt-4 border-t">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Nome do Participante</label>
-                    <p className="text-gray-900 font-semibold">{selectedParticipant.participant_name || 'Não informado'}</p>
+                {/* Dados do Participante */}
+                <div className="space-y-3 pt-4 border-t-2 border-gray-100">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Nome do Participante
+                    </label>
+                    <p className="text-gray-900 font-bold text-lg mt-1">
+                      {selectedParticipant.participant_name || 'Não informado'}
+                    </p>
                   </div>
 
                   {selectedParticipant.participant_email && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Email</label>
-                      <p className="text-gray-900">{selectedParticipant.participant_email}</p>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Email
+                      </label>
+                      <p className="text-gray-900 mt-1">{selectedParticipant.participant_email}</p>
                     </div>
                   )}
 
                   {selectedParticipant.participant_document && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Documento</label>
-                      <p className="text-gray-900">{selectedParticipant.participant_document}</p>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Documento
+                      </label>
+                      <p className="text-gray-900 font-mono mt-1">{selectedParticipant.participant_document}</p>
                     </div>
                   )}
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Nome do Evento</label>
-                    <p className="text-gray-900 font-semibold">{selectedParticipant.event_name || 'Não informado'}</p>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Local</label>
-                    <p className="text-gray-900">{selectedParticipant.location || 'Local não informado'}</p>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Tipo de Ingresso</label>
-                    <p className="text-gray-900">{selectedParticipant.ticket_type || 'Não informado'}</p>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Valor do Ingresso</label>
-                    <p className="text-gray-900 font-bold">
-                      {selectedParticipant.ticket_price > 0 
-                        ? `R$ ${Number(selectedParticipant.ticket_price).toFixed(2).replace('.', ',')}` 
-                        : 'Gratuito'}
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <label className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                      Nome do Evento
+                    </label>
+                    <p className="text-gray-900 font-bold mt-1">
+                      {selectedParticipant.event_name || 'Não informado'}
                     </p>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Data/Hora do Check-in</label>
-                    <p className="text-gray-900">{new Date(selectedParticipant.checkin_date).toLocaleString('pt-BR')}</p>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Local do Evento
+                    </label>
+                    <p className="text-gray-900 mt-1">
+                      {selectedParticipant.location || 'Local não informado'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Tipo de Ingresso
+                      </label>
+                      <p className="text-gray-900 font-semibold mt-1">
+                        {selectedParticipant.ticket_type || 'Não informado'}
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Valor
+                      </label>
+                      <p className="text-gray-900 font-bold text-lg mt-1">
+                        {selectedParticipant.ticket_price > 0 
+                          ? `R$ ${Number(selectedParticipant.ticket_price).toFixed(2).replace('.', ',')}` 
+                          : 'Gratuito'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={`${
+                    isAlreadyUsed ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'
+                  } p-3 rounded-lg border`}>
+                    <label className={`text-xs font-semibold uppercase tracking-wide ${
+                      isAlreadyUsed ? 'text-orange-600' : 'text-green-600'
+                    }`}>
+                      {isAlreadyUsed ? 'Check-in Realizado em' : 'Data/Hora do Check-in'}
+                    </label>
+                    <p className="text-gray-900 font-semibold mt-1">
+                      {new Date(selectedParticipant.checkin_date).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => setShowParticipantModal(false)}
-                  className="w-full mt-6 px-4 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-semibold"
+                  className={`w-full mt-6 px-4 py-3 rounded-lg transition-colors font-bold text-white shadow-lg ${
+                    isAlreadyUsed 
+                      ? 'bg-orange-600 hover:bg-orange-700' 
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
                   Fechar
                 </button>
