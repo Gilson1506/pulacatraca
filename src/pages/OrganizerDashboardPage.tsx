@@ -3271,6 +3271,8 @@ const OrganizerCheckIns = () => {
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [qrResult, setQrResult] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
+  const [showParticipantModal, setShowParticipantModal] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
 
   // ✅ BUSCAR DADOS REAIS DO SUPABASE
   const fetchCheckIns = async () => {
@@ -3357,84 +3359,53 @@ const OrganizerCheckIns = () => {
         return;
       }
 
-      // Buscar o ingresso pelo código
-      const { data: ticketData, error: searchError } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          event:events!inner(title, organizer_id)
-        `)
-        .eq('code', ticketCode)
-        .eq('event.organizer_id', user.id) // ✅ APENAS INGRESSOS DOS EVENTOS DO ORGANIZADOR
-        .single();
+      // Chamar a função RPC que faz o check-in completo
+      const { data, error } = await supabase.rpc('perform_checkin', {
+        p_ticket_code: ticketCode,
+        p_organizer_id: user.id
+      });
 
-      if (searchError || !ticketData) {
-        console.error('❌ Ingresso não encontrado:', searchError);
-        alert('❌ Ingresso não encontrado ou não pertence aos seus eventos');
-        setQrResult(`❌ INVÁLIDO: ${ticketCode}`);
-        return;
-      }
-
-      // Verificar se já foi usado
-      if (ticketData.status === 'used') {
-        console.log('⚠️ Ingresso já foi usado');
-        alert('⚠️ Este ingresso já foi usado anteriormente');
-        setQrResult(`⚠️ JÁ USADO: ${ticketCode}`);
-        return;
-      }
-
-      // Verificar se está ativo
-      if (ticketData.status !== 'active') {
-        console.log('❌ Ingresso não está ativo');
-        alert('❌ Este ingresso não está ativo');
-        setQrResult(`❌ INATIVO: ${ticketCode}`);
-        return;
-      }
-
-      // Marcar como usado
-      const { error: updateError } = await supabase
-        .from('tickets')
-        .update({
-          status: 'used',
-          used_at: new Date().toISOString()
-        })
-        .eq('id', ticketData.id);
-
-      if (updateError) {
-        console.error('❌ Erro ao marcar como usado:', updateError);
+      if (error) {
+        console.error('❌ Erro ao validar ingresso:', error);
         alert('❌ Erro ao processar check-in');
+        setQrResult(`❌ ERRO: ${ticketCode}`);
         return;
       }
 
-      console.log('✅ Check-in realizado com sucesso');
-      
-      // Buscar dados do usuário se necessário
-      let userName = 'Nome não informado';
-      if (ticketData.user_id) {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', ticketData.user_id)
-          .single();
-        userName = userProfile?.name || 'Nome não informado';
-      }
-      
-      // Adicionar à lista de check-ins
-      const newCheckIn: CheckIn = {
-        id: ticketData.id,
-        eventId: ticketData.event_id,
-        participantName: userName,
-        ticketType: ticketData.ticket_type || 'Padrão',
-        checkInTime: new Date().toLocaleString('pt-BR'),
-        status: 'ok'
-      };
+      const result = data[0]; // RPC retorna array
 
-      setCheckIns(prev => [newCheckIn, ...prev]);
-      setQrResult(`✅ CHECK-IN OK: ${userName}`);
-      alert(`✅ Check-in realizado com sucesso!\nParticipante: ${userName}\nEvento: ${ticketData.event.title}`);
+      if (!result.success) {
+        console.log('⚠️ Validação falhou:', result.message);
+        setQrResult(result.message);
+        
+        // Se já foi usado, mostrar modal com dados
+        if (result.ticket_data) {
+          setShowParticipantModal(true);
+          setSelectedParticipant(result.ticket_data);
+        } else {
+          alert(result.message);
+        }
+        return;
+      }
+
+      // Sucesso - mostrar modal com dados completos
+      console.log('✅ Check-in realizado:', result.ticket_data);
+      setQrResult('✅ ACESSO LIBERADO');
+      setShowParticipantModal(true);
+      setSelectedParticipant(result.ticket_data);
+      
+      // Recarregar lista de check-ins
+      fetchCheckIns();
+      
+      // Limpar código manual após 3 segundos
+      setTimeout(() => {
+        setManualCode('');
+        setQrResult(null);
+      }, 3000);
+
     } catch (error) {
-      console.error('❌ Erro inesperado ao validar ingresso:', error);
-      alert('Erro ao validar ingresso. Por favor, tente novamente.');
+      console.error('❌ Erro inesperado:', error);
+      alert('❌ Erro inesperado ao processar check-in');
     }
   };
 
@@ -3530,6 +3501,89 @@ const OrganizerCheckIns = () => {
                   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Validate Code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Dados do Participante */}
+      {showParticipantModal && selectedParticipant && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Dados do Participante</h3>
+                <button 
+                  onClick={() => setShowParticipantModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <div className="text-4xl mb-2">✅</div>
+                  <div className="text-lg font-bold text-green-700">ACESSO LIBERADO</div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Nome do Participante</label>
+                    <p className="text-gray-900 font-semibold">{selectedParticipant.participant_name || 'Não informado'}</p>
+                  </div>
+
+                  {selectedParticipant.participant_email && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p className="text-gray-900">{selectedParticipant.participant_email}</p>
+                    </div>
+                  )}
+
+                  {selectedParticipant.participant_document && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Documento</label>
+                      <p className="text-gray-900">{selectedParticipant.participant_document}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Nome do Evento</label>
+                    <p className="text-gray-900 font-semibold">{selectedParticipant.event_name || 'Não informado'}</p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Local</label>
+                    <p className="text-gray-900">{selectedParticipant.location || 'Local não informado'}</p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Tipo de Ingresso</label>
+                    <p className="text-gray-900">{selectedParticipant.ticket_type || 'Não informado'}</p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Valor do Ingresso</label>
+                    <p className="text-gray-900 font-bold">
+                      {selectedParticipant.ticket_price > 0 
+                        ? `R$ ${Number(selectedParticipant.ticket_price).toFixed(2).replace('.', ',')}` 
+                        : 'Gratuito'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Data/Hora do Check-in</label>
+                    <p className="text-gray-900">{new Date(selectedParticipant.checkin_date).toLocaleString('pt-BR')}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowParticipantModal(false)}
+                  className="w-full mt-6 px-4 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-semibold"
+                >
+                  Fechar
                 </button>
               </div>
             </div>
