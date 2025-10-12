@@ -35,24 +35,24 @@ const statusStyles: Record<StatusKind, { pageBg: string; btnBg: string; accent: 
     pageBg: 'bg-gradient-to-br from-green-500 via-green-600 to-green-700',
     btnBg: 'bg-white text-green-700 hover:bg-green-50',
     accent: 'text-green-100',
-    icon: <CheckCircle className="h-7 w-7 text-white" />,
-    title: 'Acesso liberado',
-    subtitle: 'Participante confirmado com sucesso'
+    icon: <CheckCircle className="h-8 w-8 text-white" />,
+    title: '✅ ACESSO LIBERADO',
+    subtitle: 'Check-in realizado com sucesso'
   },
   duplicate: {
-    pageBg: 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800',
-    btnBg: 'bg-white text-amber-800 hover:bg-amber-50',
-    accent: 'text-amber-100',
-    icon: <AlertTriangle className="h-7 w-7 text-white" />,
-    title: 'Check-in realizado',
-    subtitle: 'Este ingresso já havia sido validado anteriormente'
+    pageBg: 'bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700',
+    btnBg: 'bg-white text-orange-800 hover:bg-orange-50',
+    accent: 'text-orange-100',
+    icon: <AlertTriangle className="h-8 w-8 text-white" />,
+    title: '⚠️ CHECK-IN JÁ REALIZADO',
+    subtitle: 'Este ingresso já foi validado anteriormente'
   },
   not_found: {
     pageBg: 'bg-gradient-to-br from-red-500 via-red-600 to-red-700',
     btnBg: 'bg-white text-red-800 hover:bg-red-50',
     accent: 'text-red-100',
-    icon: <XCircle className="h-7 w-7 text-white" />,
-    title: 'Usuário não encontrado',
+    icon: <XCircle className="h-8 w-8 text-white" />,
+    title: '❌ INGRESSO NÃO ENCONTRADO',
     subtitle: 'Não foi possível localizar os dados deste QR Code'
   }
 };
@@ -177,10 +177,7 @@ const CheckInResultPage: React.FC = () => {
                 <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
                   <div className="text-sm text-purple-600 font-medium mb-2">Tipo de Ingresso</div>
                   <div className="text-lg font-bold text-gray-900">
-                    {ticket.ticket_type && ticket.ticket_type !== 'Ingresso' 
-                      ? ticket.ticket_type 
-                      : 'Tipo não informado'
-                    }
+                    {ticket.ticket_type || 'Tipo não informado'}
                   </div>
                   {ticket.ticket_area && ticket.ticket_area !== 'Área não informada' && (
                     <div className="text-sm text-gray-600 mt-2 bg-white/50 px-2 py-1 rounded-lg inline-block">

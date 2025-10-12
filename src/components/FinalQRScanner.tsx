@@ -362,6 +362,9 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
       let organizerId = '';
       let ticketPrice = 0;
       let eventId = '';
+      let ticketTypeName = 'Ingresso';
+      let isUsed = false;
+      let usedAt = null;
 
       if (tu.ticket_id) {
         console.log(`🔍 [FALLBACK] Buscando ticket com ID: ${tu.ticket_id}`);
@@ -371,6 +374,9 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
             id,
             price,
             event_id,
+            ticket_type_id,
+            status,
+            used_at,
             events!fk_tickets_primary_event_id(
               id,
               title,
@@ -378,6 +384,11 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
               location,
               location_name,
               organizer_id
+            ),
+            event_ticket_types(
+              name,
+              title,
+              description
             )
           `)
           .eq('id', tu.ticket_id)
@@ -389,6 +400,15 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
           console.log(`✅ [FALLBACK] Ticket encontrado:`, ticketData);
           ticketPrice = ticketData.price || 0;
           eventId = ticketData.event_id || '';
+          isUsed = ticketData.status === 'used';
+          usedAt = ticketData.used_at;
+          
+          // Pegar nome do tipo de ingresso
+          if (ticketData.event_ticket_types) {
+            const ticketType = ticketData.event_ticket_types;
+            ticketTypeName = ticketType.title || ticketType.name || 'Ingresso';
+            console.log(`✅ [FALLBACK] Tipo de ingresso: ${ticketTypeName}`);
+          }
           
           if (ticketData.events) {
             const ev = ticketData.events;
@@ -412,7 +432,7 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         event_title: eventTitle,
         event_date: eventDate,
         event_location: eventLocation,
-        ticket_type: 'Ingresso',
+        ticket_type: ticketTypeName,
         ticket_price: ticketPrice,
         qr_code: tu.qr_code,
         purchased_at: tu.created_at,
@@ -420,8 +440,8 @@ const FinalQRScanner: React.FC<FinalQRScannerProps> = ({
         event_id: eventId,
         organizer_id: organizerId,
         ticket_user_id: tu.id,
-        is_checked_in: false,
-        checked_in_at: null,
+        is_checked_in: isUsed,
+        checked_in_at: usedAt,
         source: 'ticket_users'
       };
 
