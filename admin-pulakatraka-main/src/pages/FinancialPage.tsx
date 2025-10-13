@@ -15,6 +15,8 @@ interface BankAccount {
   agency: string;
   account_number: string;
   account_type: 'corrente' | 'poupanca';
+  pix_key?: string;
+  pix_key_type?: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -48,6 +50,8 @@ interface FinancialSummary {
   total_revenue: number;
   total_refunds: number;
   total_commissions: number;
+  processing_fees: number;
+  convenience_fees: number;
   total_withdrawals: number;
   net_revenue: number;
   pending_amount: number;
@@ -69,6 +73,8 @@ export default function FinancialPage() {
     total_revenue: 0,
     total_refunds: 0,
     total_commissions: 0,
+    processing_fees: 0,
+    convenience_fees: 0,
     total_withdrawals: 0,
     net_revenue: 0,
     pending_amount: 0,
@@ -196,6 +202,8 @@ export default function FinancialPage() {
           agency: ba.agency,
           account_number: ba.account_number,
           account_type: ba.account_type,
+          pix_key: ba.pix_key,
+          pix_key_type: ba.pix_key_type,
           is_default: ba.is_default,
           created_at: ba.created_at || new Date().toISOString(),
           updated_at: ba.updated_at || new Date().toISOString()
@@ -229,10 +237,10 @@ export default function FinancialPage() {
         };
       });
 
-      // 10. Buscar ORDERS para calcular receita
+      // 10. Buscar ORDERS para calcular receita e taxas
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('id, total_amount, payment_status, created_at')
+        .select('id, total_amount, payment_status, payment_method, created_at, metadata')
         .order('created_at', { ascending: false });
 
       if (ordersError) {
@@ -240,15 +248,45 @@ export default function FinancialPage() {
       }
 
       // Calcular receita total baseada em ORDERS pagas
-      const paidStatuses = ['paid','completed'];
+      const paidStatuses = ['paid','completed','captured'];
       const toNumber = (v: any) => typeof v === 'number' ? v : parseFloat(v || 0);
-      const totalRevenue = orders ? 
-        orders
-          .filter(o => paidStatuses.includes(String(o.payment_status)))
-          .reduce((acc, o) => acc + toNumber(o.total_amount), 0) : 0;
+      
+      const paidOrders = orders?.filter(o => paidStatuses.includes(String(o.payment_status))) || [];
+      
+      const totalRevenue = paidOrders.reduce((acc, o) => acc + toNumber(o.total_amount), 0);
 
-      // Calcular comissões (assumindo 10%)
-      const totalCommissions = totalRevenue * 0.1;
+      // Calcular taxas da processadora e taxa de conveniência
+      let processingFees = 0; // Taxa da processadora (Pagar.me)
+      let convenienceFees = 0; // Taxa de conveniência
+      
+      paidOrders.forEach(order => {
+        const amount = toNumber(order.total_amount);
+        const method = String(order.payment_method || '').toLowerCase();
+        
+        // Taxa da Processadora
+        if (method.includes('credit') || method.includes('cartao') || method.includes('card')) {
+          // Cartão: 6%
+          processingFees += amount * 0.06;
+        } else if (method.includes('pix')) {
+          // PIX: 2.5%
+          processingFees += amount * 0.025;
+        } else {
+          // Default: 2.5%
+          processingFees += amount * 0.025;
+        }
+        
+        // Taxa de Conveniência: 10% do valor
+        // Para ingressos < R$ 30: R$ 3 fixo por ingresso
+        const itemsCount = order.metadata?.items?.length || 1;
+        if (amount < 30 * itemsCount) {
+          convenienceFees += 3 * itemsCount;
+        } else {
+          convenienceFees += amount * 0.10;
+        }
+      });
+
+      // Total de comissões = processadora + conveniência
+      const totalCommissions = processingFees + convenienceFees;
 
       const activeEvents = events?.filter(e => e.status === 'active').length || 0;
       const totalEvents = events?.length || 0;
@@ -266,8 +304,11 @@ export default function FinancialPage() {
       // Logs para debug
       console.log('📊 Dados carregados:');
       console.log('  - Orders:', orders?.length || 0);
-      console.log('  - Receita total:', totalRevenue);
-      console.log('  - Comissões:', totalCommissions);
+      console.log('  - Receita Bruta:', totalRevenue);
+      console.log('  - Taxa Processadora:', processingFees);
+      console.log('  - Taxa Conveniência:', convenienceFees);
+      console.log('  - Total Comissões:', totalCommissions);
+      console.log('  - Receita Líquida Organizadores:', totalRevenue - totalCommissions);
       console.log('  - Contas bancárias:', formattedBankAccounts.length);
       console.log('  - Saques:', formattedWithdrawals.length);
       console.log('  - Organizadores únicos:', uniqueOrganizers);
@@ -276,6 +317,8 @@ export default function FinancialPage() {
         total_revenue: totalRevenue,
         total_refunds: 0, // Sem reembolsos por enquanto
         total_commissions: totalCommissions,
+        processing_fees: processingFees,
+        convenience_fees: convenienceFees,
         total_withdrawals: (formattedWithdrawals || [])
           .filter(w => w.status === 'concluido')
           .reduce((acc, w) => acc + w.amount, 0),
@@ -305,25 +348,37 @@ export default function FinancialPage() {
 
   const handleWithdrawalStatusUpdate = async (withdrawalId: string, newStatus: string) => {
     try {
+      console.log('🔄 Atualizando status do saque:', { withdrawalId, newStatus });
+      
       const { error } = await supabase
         .from('withdrawals')
         .update({ 
           status: newStatus,
-          processed_at: newStatus === 'concluido' ? new Date().toISOString() : null
+          processed_at: newStatus === 'concluido' ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
         })
         .eq('id', withdrawalId);
 
       if (error) {
-        console.error('Erro ao atualizar status do saque:', error);
+        console.error('❌ Erro detalhado ao atualizar status do saque:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          withdrawalId,
+          newStatus
+        });
+        alert(`Erro ao atualizar saque: ${error.message}`);
         return;
       }
 
       console.log('✅ Status do saque atualizado com sucesso:', newStatus);
 
       // Recarregar dados
-      fetchFinancialData();
+      await fetchFinancialData();
     } catch (error) {
-      console.error('Erro ao atualizar status do saque:', error);
+      console.error('❌ Erro inesperado ao atualizar status do saque:', error);
+      alert('Erro inesperado ao atualizar status do saque');
     }
   };
 
@@ -393,10 +448,13 @@ export default function FinancialPage() {
       let currentY = 34;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
-      doc.text(`Receita Total: ${formatCurrency(summary.total_revenue)}`, margin, currentY);
-      doc.text(`Comissões: ${formatCurrency(summary.total_commissions)}`, margin + 90, currentY);
+      doc.text(`Receita Bruta: ${formatCurrency(summary.total_revenue)}`, margin, currentY);
+      doc.text(`Taxa Processadora: ${formatCurrency(summary.processing_fees)}`, margin + 90, currentY);
       currentY += 6;
-      doc.text(`Receita Líquida: ${formatCurrency(summary.net_revenue)}`, margin, currentY);
+      doc.text(`Taxa Conveniência: ${formatCurrency(summary.convenience_fees)}`, margin, currentY);
+      doc.text(`Total Comissões: ${formatCurrency(summary.total_commissions)}`, margin + 90, currentY);
+      currentY += 6;
+      doc.text(`Receita Líquida Org.: ${formatCurrency(summary.net_revenue)}`, margin, currentY);
       doc.text(`Saques Concluídos: ${formatCurrency(summary.total_withdrawals)}`, margin + 90, currentY);
       currentY += 6;
       doc.text(`Saques Pendentes: ${(withdrawals || []).filter(w => w.status === 'pendente').length}`, margin, currentY);
@@ -554,7 +612,7 @@ export default function FinancialPage() {
                   <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-green-100 text-sm font-medium">Receita Total</p>
+                        <p className="text-green-100 text-sm font-medium">Receita Bruta</p>
                         <p className="text-2xl font-bold">{formatCurrency(summary.total_revenue)}</p>
                       </div>
                       <TrendingUp className="w-8 h-8 text-green-200" />
@@ -564,7 +622,7 @@ export default function FinancialPage() {
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-blue-100 text-sm font-medium">Receita Líquida</p>
+                        <p className="text-blue-100 text-sm font-medium">Receita Líquida Organizadores</p>
                         <p className="text-2xl font-bold">{formatCurrency(summary.net_revenue)}</p>
                       </div>
                       <DollarSign className="w-8 h-8 text-blue-200" />
@@ -594,23 +652,25 @@ export default function FinancialPage() {
 
                 {/* Cards adicionais */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl p-6 text-white">
+                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-indigo-100 text-sm font-medium">Total de Comissões</p>
-                        <p className="text-2xl font-bold">{formatCurrency(summary.total_commissions)}</p>
+                        <p className="text-orange-100 text-sm font-medium">Taxa da Processadora</p>
+                        <p className="text-2xl font-bold">{formatCurrency(summary.processing_fees)}</p>
+                        <p className="text-orange-200 text-xs mt-1">Cartão 6% • PIX 2.5%</p>
                       </div>
-                      <DollarSign className="w-8 h-8 text-indigo-200" />
+                      <CreditCard className="w-8 h-8 text-orange-200" />
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-xl p-6 text-white">
+                  <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-xl p-6 text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-teal-100 text-sm font-medium">Eventos Ativos</p>
-                        <p className="text-2xl font-bold">{summary.active_events || 0}</p>
+                        <p className="text-indigo-100 text-sm font-medium">Taxa de Conveniência</p>
+                        <p className="text-2xl font-bold">{formatCurrency(summary.convenience_fees)}</p>
+                        <p className="text-indigo-200 text-xs mt-1">10% ou R$ 3 fixo</p>
                       </div>
-                      <TrendingUp className="w-8 h-8 text-teal-200" />
+                      <Wallet className="w-8 h-8 text-indigo-200" />
                     </div>
                   </div>
 
@@ -673,12 +733,16 @@ export default function FinancialPage() {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resumo Financeiro</h3>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Receita Total</span>
+                        <span className="text-gray-600 dark:text-gray-400">Receita Bruta</span>
                         <span className="font-semibold text-green-600">{formatCurrency(summary.total_revenue)}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Total de Comissões</span>
-                        <span className="font-semibold text-blue-600">{formatCurrency(summary.total_commissions)}</span>
+                        <span className="text-gray-600 dark:text-gray-400">Taxa Processadora</span>
+                        <span className="font-semibold text-orange-600">{formatCurrency(summary.processing_fees)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Taxa Conveniência</span>
+                        <span className="font-semibold text-indigo-600">{formatCurrency(summary.convenience_fees)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-400">Total de Saques</span>
@@ -733,6 +797,30 @@ export default function FinancialPage() {
                           <span className="text-sm text-gray-600 dark:text-gray-400">Tipo:</span>
                           <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">{account.account_type}</span>
                         </div>
+                        
+                        {account.pix_key && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-gray-600">
+                            <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">
+                                  🔑 Chave PIX ({account.pix_key_type || 'Não especificado'})
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(account.pix_key || '');
+                                    alert('Chave PIX copiada!');
+                                  }}
+                                  className="text-xs text-purple-600 hover:text-purple-700 font-medium underline"
+                                >
+                                  Copiar
+                                </button>
+                              </div>
+                              <p className="text-sm font-mono text-gray-900 dark:text-white break-all">
+                                {account.pix_key}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">

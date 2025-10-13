@@ -83,6 +83,8 @@ interface BankAccount {
   agency: string;
   account: string;
   type: 'corrente' | 'poupanca';
+  pix_key?: string;
+  pix_key_type?: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
   isDefault: boolean;
 }
 
@@ -1571,6 +1573,19 @@ const OrganizerSales = () => {
 
       console.log('✅ Tickets encontrados para eventos do organizador:', ticketsData?.length || 0);
 
+      // 2.5 Buscar tipos de ingressos para obter nomes reais
+      const { data: ticketTypesData } = await supabase
+        .from('event_ticket_types')
+        .select('id, event_id, name, title')
+        .in('event_id', eventIds);
+      
+      const ticketTypesMap = (ticketTypesData || []).reduce((acc: any, tt: any) => {
+        acc[tt.id] = tt;
+        return acc;
+      }, {});
+      
+      console.log('✅ Tipos de ingressos encontrados:', ticketTypesData?.length || 0);
+
       // 3. Buscar transações relacionadas para obter buyer via transaction quando necessário
       const transactionIds = [...new Set((ticketsData || [])
         .map((t: any) => t.transaction_id)
@@ -1677,6 +1692,16 @@ const OrganizerSales = () => {
         const pricePaid = typeof pricePaidRaw === 'string' ? parseFloat(pricePaidRaw) : (pricePaidRaw as number);
         const paymentMethod = (tx?.payment_method || 'Não informado') as string;
         
+        // Buscar nome real do tipo de ingresso
+        const ticketTypeData = ticket.ticket_type_id ? ticketTypesMap[ticket.ticket_type_id] : null;
+        let ticketTypeName = ticketTypeData?.title || ticketTypeData?.name || ticket.ticket_type || 'Ingresso Padrão';
+        
+        // Limpar sufixos de gênero (Feminino/Masculino) mas manter o nome do ingresso
+        ticketTypeName = ticketTypeName
+          .replace(/\s*-?\s*(Feminino|Masculino|Unissex)\s*$/i, '')
+          .replace(/\s*\((Feminino|Masculino|Unissex)\)\s*$/i, '')
+          .trim();
+        
         return {
           id: ticket.id,
           eventId: ticket.event_id,
@@ -1686,7 +1711,7 @@ const OrganizerSales = () => {
           buyerEmail: buyer.email || 'Email não informado',
           userName: '',
           userEmail: '',
-          ticketType: ticket.ticket_type || 'Padrão',
+          ticketType: ticketTypeName,
           ticketCode: ticket.code || 'N/A',
           quantity: 1,
           amount: pricePaid,
@@ -2286,7 +2311,20 @@ const BankAccountsSection = () => {
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
 
+  // Realtime: atualizar quando houver mudanças
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('organizer-bank-accounts-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => {
+        console.log('🔄 Atualização detectada em bank_accounts');
+        fetchBankAccounts();
+      })
+      .subscribe();
 
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // ✅ BUSCAR DADOS REAIS DO SUPABASE
   const fetchBankAccounts = async () => {
@@ -2328,6 +2366,8 @@ const BankAccountsSection = () => {
         agency: account.agency,
         account: account.account_number,
         type: account.account_type,
+        pix_key: account.pix_key,
+        pix_key_type: account.pix_key_type,
         isDefault: account.is_default || false
       })) || [];
 
@@ -2387,7 +2427,10 @@ const BankAccountsSection = () => {
           agency: selectedAccount.agency,
           account_number: selectedAccount.account,
           account_type: selectedAccount.type,
-          is_default: selectedAccount.isDefault
+          pix_key: selectedAccount.pix_key || null,
+          pix_key_type: selectedAccount.pix_key_type || null,
+          is_default: selectedAccount.isDefault,
+          updated_at: new Date().toISOString()
         };
         
         console.log('📝 Dados para atualização:', updateData);
@@ -2416,7 +2459,11 @@ const BankAccountsSection = () => {
           agency: selectedAccount.agency.trim(),
           account_number: selectedAccount.account.trim(),
           account_type: selectedAccount.type,
-          is_default: selectedAccount.isDefault || false
+          pix_key: selectedAccount.pix_key?.trim() || null,
+          pix_key_type: selectedAccount.pix_key_type || null,
+          is_default: selectedAccount.isDefault || false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
         
         console.log('📝 Dados para inserção:', insertData);
@@ -2552,6 +2599,7 @@ const BankAccountsSection = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agência</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chave PIX</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Padrão</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
@@ -2573,6 +2621,30 @@ const BankAccountsSection = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{account.agency}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{account.account}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{account.type.charAt(0).toUpperCase() + account.type.slice(1)}</td>
+                  <td className="px-6 py-4">
+                    {account.pix_key ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-purple-600 uppercase">{account.pix_key_type || 'PIX'}</p>
+                          <p className="text-sm font-mono text-gray-900 truncate max-w-[150px]" title={account.pix_key}>
+                            {account.pix_key}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(account.pix_key || '');
+                            alert('Chave PIX copiada!');
+                          }}
+                          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                          title="Copiar chave PIX"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">Não cadastrada</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <button 
                       onClick={() => handleSetDefault(account.id)}
@@ -2664,6 +2736,43 @@ const BankAccountsSection = () => {
                     <option value="poupanca">Poupança</option>
                   </select>
                 </div>
+                
+                {/* Campos PIX */}
+                <div className="pt-4 border-t border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">🔑 Chave PIX (Opcional)</h4>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Chave</label>
+                      <select
+                        value={selectedAccount?.pix_key_type || ''}
+                        onChange={(e) => setSelectedAccount(prev => prev ? { ...prev, pix_key_type: e.target.value as any } : prev)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      >
+                        <option value="">Selecione o tipo</option>
+                        <option value="cpf">CPF</option>
+                        <option value="cnpj">CNPJ</option>
+                        <option value="email">E-mail</option>
+                        <option value="telefone">Telefone</option>
+                        <option value="aleatoria">Chave Aleatória</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Chave PIX</label>
+                      <input
+                        type="text"
+                        value={selectedAccount?.pix_key || ''}
+                        onChange={(e) => setSelectedAccount(prev => prev ? { ...prev, pix_key: e.target.value } : prev)}
+                        placeholder="Digite sua chave PIX"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Informe sua chave PIX para facilitar recebimentos
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex justify-end gap-2">
                   <LoadingButton
                     type="submit"
@@ -2705,6 +2814,25 @@ const WithdrawalsSection = () => {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const [withdrawalLimit, setWithdrawalLimit] = useState<number>(0);
 
+  // Realtime: atualizar quando houver mudanças
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('organizer-withdrawals-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => {
+        console.log('🔄 Atualização detectada em withdrawals');
+        fetchWithdrawals();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => {
+        console.log('🔄 Atualização detectada em bank_accounts');
+        fetchWithdrawals();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // ✅ BUSCAR DADOS REAIS DO SUPABASE
   const fetchWithdrawals = async () => {
     try {
@@ -2735,9 +2863,10 @@ const WithdrawalsSection = () => {
         .from('withdrawals')
         .select(`
           *,
-          bank_account:bank_accounts(bank_name, account_number)
+          bank_account:bank_accounts(bank_name, account_number, pix_key, pix_key_type)
         `)
-        .eq('organizer_id', user.id);
+        .eq('organizer_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Erro ao buscar saques:', error);

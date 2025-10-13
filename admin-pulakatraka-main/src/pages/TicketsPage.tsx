@@ -52,6 +52,14 @@ export default function TicketsPage() {
   const [filterDate, setFilterDate] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
+  
+  // Estados para modais
+  const [selectedTicket, setSelectedTicket] = useState<TicketSale | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchTickets();
@@ -75,6 +83,8 @@ export default function TicketsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checkin' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ticket_users' }, scheduleRefresh)
       .subscribe();
 
     return () => {
@@ -158,7 +168,9 @@ export default function TicketsPage() {
           code,
           qr_code,
           transfer_count,
-          max_transfers
+          max_transfers,
+          ticket_user_id,
+          ticket_type_id
         `)
         .order('created_at', { ascending: false });
 
@@ -167,6 +179,59 @@ export default function TicketsPage() {
       } else {
         console.log('✅ Tickets encontrados:', ticketsData?.length || 0);
       }
+
+      // 2.5 Buscar dados de check-in da tabela checkin
+      console.log('🔍 Buscando dados de check-in...');
+      const { data: checkinsData, error: checkinsError } = await supabase
+        .from('checkin')
+        .select(`
+          id,
+          ticket_user_id,
+          event_id,
+          organizer_id,
+          created_at,
+          notes
+        `)
+        .order('created_at', { ascending: false });
+
+      if (checkinsError) {
+        console.log('⚠️ Erro ao buscar check-ins:', checkinsError);
+      } else {
+        console.log('✅ Check-ins encontrados:', checkinsData?.length || 0);
+      }
+
+      // 2.6 Buscar ticket_users para dados completos dos participantes
+      console.log('🔍 Buscando ticket_users...');
+      const { data: ticketUsersData, error: ticketUsersError } = await supabase
+        .from('ticket_users')
+        .select(`
+          id,
+          ticket_id,
+          name,
+          email,
+          document,
+          qr_code,
+          created_at
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ticketUsersError) {
+        console.log('⚠️ Erro ao buscar ticket_users:', ticketUsersError);
+      } else {
+        console.log('✅ Ticket users encontrados:', ticketUsersData?.length || 0);
+      }
+
+      // Criar mapa de check-ins por ticket_user_id
+      const checkinsByTicketUser = checkinsData?.reduce((acc: Record<string, any>, checkin) => {
+        acc[checkin.ticket_user_id] = checkin;
+        return acc;
+      }, {}) || {};
+
+      // Criar mapa de ticket_users por ticket_id
+      const ticketUsersByTicketId = ticketUsersData?.reduce((acc: Record<string, any>, tu) => {
+        acc[tu.ticket_id] = tu;
+        return acc;
+      }, {}) || {};
 
       // 3. Buscar pedidos (orders) para dados reais de vendas
       console.log('🔍 Buscando pedidos...');
@@ -287,6 +352,15 @@ export default function TicketsPage() {
           const event = ticketType ? (events?.find(e => e.id === ticketType.event_id)) : (item.event_id ? (events?.find(e => e.id === item.event_id)) : null);
           const organizerProfile = event ? organizerProfiles[event.organizer_id] : null;
           
+          // Buscar tickets relacionados a este pedido para verificar se foram usados
+          const relatedTickets = ticketsData?.filter(t => 
+            t.event_id === event?.id && 
+            t.user_id === order.customer_id
+          ) || [];
+          
+          const hasUsedTicket = relatedTickets.some(t => t.status === 'used');
+          const usedTicket = relatedTickets.find(t => t.status === 'used');
+          
           // Apenas incluir se tiver evento aprovado, dados do comprador e organizador
           if (event && orderUser?.name && organizerProfile?.name) {
             orderTickets.push({
@@ -302,16 +376,21 @@ export default function TicketsPage() {
               customer_name: orderUser.name,
               customer_email: orderUser.email || 'Email não informado',
               customer_phone: orderUser.phone || 'Telefone não informado',
-              ticket_type: item.ticket_type || ticketType?.name || 'Ingresso Padrão',
+              ticket_type: (item.ticket_type || ticketType?.name || 'Ingresso Padrão')
+                .replace(/\s*-?\s*(Feminino|Masculino|Unissex)\s*$/i, '')
+                .replace(/\s*\((Feminino|Masculino|Unissex)\)\s*$/i, '')
+                .trim(),
               price: item.price || ticketType?.price || 0,
               quantity: item.quantity || 1,
               total_amount: item.total_price || ((item.price || 0) * (item.quantity || 1)) || 0,
-              status: (['paid','completed','captured','capturado'].includes(String(order.status))) ? 'active' : (String(order.status) === 'pending' ? 'pending' : 'cancelled'),
+              status: hasUsedTicket ? 'used' : 
+                     (['paid','completed','captured','capturado'].includes(String(order.status))) ? 'active' : 
+                     (String(order.status) === 'pending' ? 'pending' : 'cancelled'),
               purchase_date: order.created_at || new Date().toISOString(),
               payment_method: order.payment_method || 'PIX/Cartão',
-              qr_code: `ORDER-${order.id.slice(0, 8)}-${String(item.id).slice(0, 8)}`,
-              is_used: false,
-              used_at: undefined,
+              qr_code: usedTicket?.code || usedTicket?.qr_code || `ORDER-${order.id.slice(0, 8)}-${String(item.id).slice(0, 8)}`,
+              is_used: hasUsedTicket,
+              used_at: usedTicket?.used_at,
               assigned_user_name: orderUser.name,
               assigned_user_email: orderUser.email || 'Email não informado',
               assigned_user_phone: orderUser.phone || 'Telefone não informado',
@@ -343,6 +422,28 @@ export default function TicketsPage() {
         const hasCompleteOrganizerData = organizerProfile?.name;
 
         if (event && hasCompleteBuyerData && hasCompleteOrganizerData) {
+          // Buscar dados do ticket_user e check-in
+          const ticketUserData = ticket.ticket_user_id ? ticketUsersByTicketId[ticket.id] : null;
+          const checkinData = ticketUserData ? checkinsByTicketUser[ticketUserData.id] : null;
+          
+          // Buscar nome do tipo de ingresso
+          const ticketTypeData = ticket.ticket_type_id ? ticketTypes?.find(tt => tt.id === ticket.ticket_type_id) : null;
+          let ticketTypeName = ticketTypeData?.name || ticket.ticket_type || 'Ingresso Padrão';
+          
+          // Remover sufixos como "Feminino", "Masculino", etc do nome
+          ticketTypeName = ticketTypeName
+            .replace(/\s*-?\s*(Feminino|Masculino|Unissex)\s*$/i, '')
+            .replace(/\s*\((Feminino|Masculino|Unissex)\)\s*$/i, '')
+            .trim();
+          
+          // Determinar status real baseado em check-in
+          let realStatus = ticket.status;
+          let realUsedAt = ticket.used_at;
+          
+          if (checkinData && ticket.status === 'used') {
+            realUsedAt = checkinData.created_at;
+          }
+          
           individualTickets.push({
             id: ticket.id,
             event_id: ticket.event_id,
@@ -356,20 +457,20 @@ export default function TicketsPage() {
             customer_name: buyer.name || ticket.assigned_user_name || 'Comprador não identificado',
             customer_email: buyer.email || ticket.assigned_user_email || 'Email não informado',
             customer_phone: buyer.phone || ticket.assigned_user_phone || 'Telefone não informado',
-            ticket_type: ticket.ticket_type || 'Ingresso Padrão',
+            ticket_type: ticketTypeName,
             price: ticket.price || event.price || 0,
             quantity: 1,
             total_amount: ticket.price || event.price || 0,
-            status: ticket.status === 'active' ? 'active' : 
-                   ticket.status === 'used' ? 'used' : 
-                   ticket.status === 'cancelled' ? 'cancelled' : 'active',
+            status: realStatus === 'active' ? 'active' : 
+                   realStatus === 'used' ? 'used' : 
+                   realStatus === 'cancelled' ? 'cancelled' : 'active',
             purchase_date: ticket.created_at || new Date().toISOString(),
             payment_method: 'PIX/Cartão',
             qr_code: ticket.code || ticket.qr_code || `TICKET-${ticket.id.slice(0, 8)}`,
-            is_used: ticket.status === 'used',
-            used_at: ticket.used_at,
-            assigned_user_name: ticketUser.name || ticket.assigned_user_name || 'Usuário não identificado',
-            assigned_user_email: ticketUser.email || ticket.assigned_user_email || 'Email não informado',
+            is_used: realStatus === 'used' || !!checkinData,
+            used_at: realUsedAt,
+            assigned_user_name: ticketUserData?.name || ticketUser.name || ticket.assigned_user_name || 'Usuário não identificado',
+            assigned_user_email: ticketUserData?.email || ticketUser.email || ticket.assigned_user_email || 'Email não informado',
             assigned_user_phone: ticketUser.phone || ticket.assigned_user_phone || 'Telefone não informado',
             buyer_id: ticket.buyer_id || '',
             user_id: ticket.user_id || ''
@@ -391,13 +492,27 @@ export default function TicketsPage() {
       
       if (allTickets.length > 0) {
         const totalRevenue = allTickets.reduce((acc, t) => acc + t.total_amount, 0);
+        const ticketsWithCheckin = allTickets.filter(t => t.is_used || t.status === 'used');
+        
         console.log('💰 Receita total:', new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalRevenue));
         console.log('📊 Status dos ingressos:', {
           ativos: allTickets.filter(t => t.status === 'active').length,
           usados: allTickets.filter(t => t.status === 'used').length,
+          comCheckin: ticketsWithCheckin.length,
+          isUsedTrue: allTickets.filter(t => t.is_used === true).length,
           pendentes: allTickets.filter(t => t.status === 'pending').length,
           cancelados: allTickets.filter(t => t.status === 'cancelled').length
         });
+        
+        if (ticketsWithCheckin.length > 0) {
+          console.log('✅ Ingressos com check-in:', ticketsWithCheckin.map(t => ({
+            id: t.id.slice(0, 8),
+            customer: t.customer_name,
+            status: t.status,
+            is_used: t.is_used,
+            used_at: t.used_at
+          })));
+        }
       }
 
       setTickets(allTickets);
@@ -519,59 +634,85 @@ export default function TicketsPage() {
     });
   };
 
-  const handleRefund = async (ticket: TicketSale) => {
-    if (confirm('Tem certeza que deseja processar o reembolso deste ingresso?')) {
-      try {
-        let error;
-        if (ticket.order_id) {
-          ({ error } = await supabase
-            .from('orders')
-            .update({ status: 'cancelled' })
-            .eq('id', ticket.order_id));
-        } else {
-          ({ error } = await supabase
-            .from('tickets')
-            .update({ status: 'cancelled' })
-            .eq('id', ticket.id));
-        }
+  const handleViewDetails = (ticket: TicketSale) => {
+    setSelectedTicket(ticket);
+    setShowDetailsModal(true);
+  };
 
-        if (error) throw error;
+  const handleViewQR = (ticket: TicketSale) => {
+    setSelectedTicket(ticket);
+    setShowQRModal(true);
+  };
 
-        // Recarregar ingressos
-        await fetchTickets();
-        alert('Ingresso reembolsado com sucesso!');
-      } catch (error) {
-        console.error('Erro ao processar reembolso:', error);
-        alert('Erro ao processar reembolso. Por favor, tente novamente.');
+  const handleOpenCancelModal = (ticket: TicketSale) => {
+    setSelectedTicket(ticket);
+    setShowCancelModal(true);
+  };
+
+  const handleOpenRefundModal = (ticket: TicketSale) => {
+    setSelectedTicket(ticket);
+    setShowRefundModal(true);
+  };
+
+  const handleRefund = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      setActionLoading(true);
+      let error;
+      if (selectedTicket.order_id) {
+        ({ error } = await supabase
+          .from('orders')
+          .update({ payment_status: 'refunded' })
+          .eq('id', selectedTicket.order_id));
+      } else {
+        ({ error } = await supabase
+          .from('tickets')
+          .update({ status: 'cancelled' })
+          .eq('id', selectedTicket.id));
       }
+
+      if (error) throw error;
+      
+      setShowRefundModal(false);
+      setSelectedTicket(null);
+      await fetchTickets();
+    } catch (error) {
+      console.error('Erro ao processar reembolso:', error);
+      alert('Erro ao processar reembolso. Por favor, tente novamente.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleCancel = async (ticket: TicketSale) => {
-    if (confirm('Tem certeza que deseja cancelar este ingresso?')) {
-      try {
-        let error;
-        if (ticket.order_id) {
-          ({ error } = await supabase
-            .from('orders')
-            .update({ status: 'cancelled' })
-            .eq('id', ticket.order_id));
-        } else {
-          ({ error } = await supabase
-            .from('tickets')
-            .update({ status: 'cancelled' })
-            .eq('id', ticket.id));
-        }
-
-        if (error) throw error;
-
-        // Recarregar ingressos
-        await fetchTickets();
-        alert('Ingresso cancelado com sucesso!');
-      } catch (error) {
-        console.error('Erro ao cancelar ingresso:', error);
-        alert('Erro ao cancelar ingresso. Por favor, tente novamente.');
+  const handleCancel = async () => {
+    if (!selectedTicket) return;
+    
+    try {
+      setActionLoading(true);
+      let error;
+      if (selectedTicket.order_id) {
+        ({ error } = await supabase
+          .from('orders')
+          .update({ payment_status: 'cancelled' })
+          .eq('id', selectedTicket.order_id));
       }
+      
+      ({ error } = await supabase
+        .from('tickets')
+        .update({ status: 'cancelled' })
+        .eq('id', selectedTicket.id));
+
+      if (error) throw error;
+      
+      setShowCancelModal(false);
+      setSelectedTicket(null);
+      await fetchTickets();
+    } catch (error) {
+      console.error('Erro ao cancelar ingresso:', error);
+      alert('Erro ao cancelar ingresso. Por favor, tente novamente.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -713,11 +854,11 @@ export default function TicketsPage() {
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium">Total de Ingressos Vendidos</p>
-              <p className="text-2xl font-bold">{tickets.length}</p>
+              <p className="text-blue-100 text-sm font-medium">Total de Ingressos</p>
+              <p className="text-2xl font-bold">{tickets.reduce((acc, t) => acc + t.quantity, 0)}</p>
               <div className="text-blue-200 text-xs mt-1">
-                <div>📦 {tickets.filter(t => t.order_id).length} via Pedidos</div>
-                <div>🎟️ {tickets.filter(t => !t.order_id).length} Individuais</div>
+                <div>📦 {tickets.filter(t => t.order_id).reduce((acc, t) => acc + t.quantity, 0)} via Pedidos</div>
+                <div>🎟️ {tickets.filter(t => !t.order_id).reduce((acc, t) => acc + t.quantity, 0)} Individuais</div>
               </div>
             </div>
             <Ticket className="w-8 h-8 text-blue-200" />
@@ -727,11 +868,12 @@ export default function TicketsPage() {
         <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium">Ingressos Válidos</p>
-              <p className="text-2xl font-bold">{tickets.filter(t => t.status === 'active').length}</p>
+              <p className="text-green-100 text-sm font-medium">Status dos Ingressos</p>
+              <p className="text-2xl font-bold">{tickets.filter(t => t.status === 'active').length} Ativos</p>
               <div className="text-green-200 text-xs mt-1">
-                <div>{tickets.filter(t => t.status === 'used').length} Usados</div>
-                <div>{tickets.filter(t => t.status === 'pending').length} Pendentes</div>
+                <div>✅ {tickets.filter(t => t.is_used || t.status === 'used').length} Com Check-in</div>
+                <div>⏳ {tickets.filter(t => t.status === 'pending').length} Pendentes</div>
+                <div>❌ {tickets.filter(t => t.status === 'cancelled').length} Cancelados</div>
               </div>
             </div>
             <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center">
@@ -923,10 +1065,11 @@ export default function TicketsPage() {
                 {Array.from(new Set(tickets.map(t => t.event_id))).map(eventId => {
                   const event = tickets.find(t => t.event_id === eventId);
                   const eventTickets = tickets.filter(t => t.event_id === eventId);
+                  const eventTicketCount = eventTickets.reduce((acc, t) => acc + t.quantity, 0);
                   const eventRevenue = eventTickets.reduce((acc, t) => acc + t.total_amount, 0);
                   return (
                     <option key={eventId} value={eventId}>
-                      {event?.event_title} - {eventTickets.length} ingressos - {formatCurrency(eventRevenue)}
+                      {event?.event_title} - {eventTicketCount} ingressos - {formatCurrency(eventRevenue)}
                     </option>
                   );
                 })}
@@ -946,10 +1089,11 @@ export default function TicketsPage() {
                 {Array.from(new Set(tickets.map(t => t.organizer_email))).filter(Boolean).map(organizerEmail => {
                   const organizer = tickets.find(t => t.organizer_email === organizerEmail);
                   const organizerTickets = tickets.filter(t => t.organizer_email === organizerEmail);
+                  const organizerTicketCount = organizerTickets.reduce((acc, t) => acc + t.quantity, 0);
                   const organizerRevenue = organizerTickets.reduce((acc, t) => acc + t.total_amount, 0);
                   return (
                     <option key={organizerEmail} value={organizerEmail}>
-                      {organizer?.organizer_name} - {organizerTickets.length} ingressos - {formatCurrency(organizerRevenue)}
+                      {organizer?.organizer_name} - {organizerTicketCount} ingressos - {formatCurrency(organizerRevenue)}
                     </option>
                   );
                 })}
@@ -1128,29 +1272,31 @@ export default function TicketsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
                           <button 
-                            onClick={() => alert('QR Code em desenvolvimento')}
+                            onClick={() => handleViewDetails(ticket)}
                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200 hover:scale-110"
                             title="Ver Detalhes"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleRefund(ticket)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-lg transition-all duration-200 hover:scale-110"
+                            onClick={() => handleOpenRefundModal(ticket)}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/50 rounded-lg transition-all duration-200 hover:scale-110"
                             title="Reembolsar"
+                            disabled={ticket.status === 'cancelled' || ticket.status === 'expired'}
                           >
                             <RefreshCw className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleCancel(ticket)}
+                            onClick={() => handleOpenCancelModal(ticket)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-lg transition-all duration-200 hover:scale-110"
                             title="Cancelar"
+                            disabled={ticket.status === 'cancelled' || ticket.status === 'expired'}
                           >
                             <X className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => alert('QR Code em desenvolvimento')}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200 hover:scale-110"
+                            onClick={() => handleViewQR(ticket)}
+                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/50 rounded-lg transition-all duration-200 hover:scale-110"
                             title="Ver QR Code"
                           >
                             <QrCode className="w-4 h-4" />
@@ -1217,6 +1363,375 @@ export default function TicketsPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Detalhes */}
+      {showDetailsModal && selectedTicket && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Detalhes do Ingresso</h3>
+                <button 
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Status Badge */}
+                <div className="flex items-center justify-center">
+                  <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                    selectedTicket.status === 'active' ? 'bg-green-100 text-green-700' :
+                    selectedTicket.status === 'used' ? 'bg-blue-100 text-blue-700' :
+                    selectedTicket.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                    selectedTicket.status === 'expired' ? 'bg-gray-100 text-gray-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {selectedTicket.status === 'active' ? '✅ Ativo' :
+                     selectedTicket.status === 'used' ? '🎫 Usado' :
+                     selectedTicket.status === 'cancelled' ? '❌ Cancelado' :
+                     selectedTicket.status === 'expired' ? '⏰ Expirado' :
+                     '⏳ Pendente'}
+                  </span>
+                </div>
+
+                {/* Informações do Evento */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-3">📅 EVENTO</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-blue-600 dark:text-blue-400 font-medium">Nome</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{selectedTicket.event_title}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-blue-600 dark:text-blue-400 font-medium">Data</label>
+                      <p className="text-gray-900 dark:text-white">{formatDate(selectedTicket.event_date)}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-blue-600 dark:text-blue-400 font-medium">Local</label>
+                      <p className="text-gray-900 dark:text-white">{selectedTicket.event_location}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações do Comprador */}
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
+                  <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3">👤 COMPRADOR</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-purple-600 dark:text-purple-400 font-medium">Nome</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{selectedTicket.customer_name}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-purple-600 dark:text-purple-400 font-medium">Email</label>
+                      <p className="text-gray-900 dark:text-white">{selectedTicket.customer_email}</p>
+                    </div>
+                    {selectedTicket.customer_phone && (
+                      <div>
+                        <label className="text-xs text-purple-600 dark:text-purple-400 font-medium">Telefone</label>
+                        <p className="text-gray-900 dark:text-white">{selectedTicket.customer_phone}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Informações do Ingresso */}
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+                  <h4 className="text-sm font-semibold text-green-700 dark:text-green-300 mb-3">🎫 INGRESSO</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-green-600 dark:text-green-400 font-medium">Tipo</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{selectedTicket.ticket_type}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-green-600 dark:text-green-400 font-medium">Quantidade</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{selectedTicket.quantity}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-green-600 dark:text-green-400 font-medium">Preço Unitário</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{formatCurrency(selectedTicket.price)}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-green-600 dark:text-green-400 font-medium">Total</label>
+                      <p className="text-gray-900 dark:text-white font-bold text-lg">{formatCurrency(selectedTicket.total_amount)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações de Pagamento */}
+                <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-700">
+                  <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-3">💳 PAGAMENTO</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-orange-600 dark:text-orange-400 font-medium">Método</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{selectedTicket.payment_method}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-orange-600 dark:text-orange-400 font-medium">Data da Compra</label>
+                      <p className="text-gray-900 dark:text-white">{formatDate(selectedTicket.purchase_date)}</p>
+                    </div>
+                    {selectedTicket.used_at && (
+                      <div>
+                        <label className="text-xs text-orange-600 dark:text-orange-400 font-medium">Data de Uso</label>
+                        <p className="text-gray-900 dark:text-white">{formatDate(selectedTicket.used_at)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Organizador */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">🏢 ORGANIZADOR</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-600 dark:text-gray-400 font-medium">Nome</label>
+                      <p className="text-gray-900 dark:text-white font-bold">{selectedTicket.organizer_name}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 dark:text-gray-400 font-medium">Email</label>
+                      <p className="text-gray-900 dark:text-white">{selectedTicket.organizer_email}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="w-full mt-6 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de QR Code */}
+      {showQRModal && selectedTicket && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">QR Code do Ingresso</h3>
+                <button 
+                  onClick={() => setShowQRModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* QR Code Display */}
+                <div className="bg-white p-6 rounded-lg border-2 border-gray-200 flex flex-col items-center">
+                  <div className="bg-gray-100 p-4 rounded-lg mb-4">
+                    <QrCode className="w-32 h-32 text-gray-600" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-500 mb-2">Código do Ingresso</p>
+                    <p className="text-2xl font-mono font-bold text-gray-900 bg-gray-100 px-4 py-2 rounded">
+                      {selectedTicket.qr_code || 'Não disponível'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Informações Rápidas */}
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Evento:</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{selectedTicket.event_title}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Comprador:</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{selectedTicket.customer_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Status:</span>
+                      <span className={`font-semibold ${
+                        selectedTicket.status === 'active' ? 'text-green-600' :
+                        selectedTicket.status === 'used' ? 'text-blue-600' :
+                        'text-red-600'
+                      }`}>
+                        {selectedTicket.status === 'active' ? 'Ativo' :
+                         selectedTicket.status === 'used' ? 'Usado' :
+                         selectedTicket.status === 'cancelled' ? 'Cancelado' :
+                         selectedTicket.status === 'expired' ? 'Expirado' :
+                         'Pendente'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="w-full mt-6 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Cancelamento */}
+      {showCancelModal && selectedTicket && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Cancelar Ingresso</h3>
+                <button 
+                  onClick={() => setShowCancelModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  disabled={actionLoading}
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="text-3xl">⚠️</div>
+                    <div>
+                      <p className="text-red-800 dark:text-red-200 font-semibold mb-2">
+                        Atenção! Esta ação não pode ser desfeita.
+                      </p>
+                      <p className="text-red-700 dark:text-red-300 text-sm">
+                        O ingresso será cancelado e não poderá mais ser utilizado.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Evento:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{selectedTicket.event_title}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Comprador:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{selectedTicket.customer_name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Valor:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(selectedTicket.total_amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-semibold"
+                  disabled={actionLoading}
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Cancelando...
+                    </>
+                  ) : (
+                    'Confirmar Cancelamento'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Reembolso */}
+      {showRefundModal && selectedTicket && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Processar Reembolso</h3>
+                <button 
+                  onClick={() => setShowRefundModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  disabled={actionLoading}
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="text-3xl">💰</div>
+                    <div>
+                      <p className="text-green-800 dark:text-green-200 font-semibold mb-2">
+                        Reembolso do Ingresso
+                      </p>
+                      <p className="text-green-700 dark:text-green-300 text-sm">
+                        O valor será devolvido ao comprador e o ingresso será cancelado.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Evento:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{selectedTicket.event_title}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Comprador:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{selectedTicket.customer_name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Valor a Reembolsar:</span>
+                    <span className="font-bold text-lg text-green-600 dark:text-green-400">{formatCurrency(selectedTicket.total_amount)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+                  <p className="text-yellow-800 dark:text-yellow-200 text-xs">
+                    ⚠️ Esta ação marcará o pedido como reembolsado. O processamento financeiro deve ser feito manualmente através do gateway de pagamento.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowRefundModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-semibold"
+                  disabled={actionLoading}
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={handleRefund}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    'Confirmar Reembolso'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
