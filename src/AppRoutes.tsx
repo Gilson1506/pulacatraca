@@ -6,7 +6,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import EventPage from './pages/EventPage';
-import CheckoutPage from './pages/CheckoutPagePagarme';
+import CheckoutPage from './pages/CheckoutPagePagBank';
 import ProfilePage from './pages/ProfilePage';
 import CheckInPage from './pages/CheckInPage';
 import OrganizerRegisterPage from './pages/OrganizerRegisterPage';

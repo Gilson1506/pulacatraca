@@ -245,7 +245,7 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
                 title: t.events?.title || 'Evento',
                 location: t.events?.location || 'Local',
                 image: t.events?.image || null,
-                price: (t.amount || 0) / 100,
+                price: t.amount || 0,  // ← CORRIGIDO: usa amount da transaction (já em reais)
               }
             }));
             setUserOrders(normalized);

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Variáveis de Ambiente</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .test-result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #ddd;
+        }
+        .success {
+            background: #d1fae5;
+            border-color: #34d399;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+        code {
+            background: #f9fafb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .instructions {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de Variáveis de Ambiente - Vite</h1>
+        
+        <div class="instructions">
+            <h3>📝 Instruções:</h3>
+            <ol>
+                <li>Certifique-se de que o <strong>frontend está rodando</strong> (<code>npm run dev</code>)</li>
+                <li>Acesse: <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+                <li>Abra o <strong>Console do Navegador</strong> (pressione F12)</li>
+                <li>Cole e execute o código abaixo no console</li>
+            </ol>
+        </div>
+
+        <h2>🔍 Código para executar no Console:</h2>
+        
+        <div style="background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 5px; margin: 20px 0; overflow-x: auto;">
+            <pre style="margin: 0; font-family: 'Courier New', monospace; font-size: 14px;">console.clear();
+console.log('%c🔍 TESTE DE VARIÁVEIS DE AMBIENTE', 'font-size: 16px; font-weight: bold; color: #3b82f6');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+// Testar variáveis de ambiente
+const webhookUrl = import.meta.env.VITE_PAGBANK_WEBHOOK_URL;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+console.log('1️⃣  Webhook URL do PagBank:');
+console.log('   Valor:', webhookUrl);
+console.log('   Tipo:', typeof webhookUrl);
+console.log('   Válido:', webhookUrl && webhookUrl.startsWith('https://') ? '✅ SIM' : '❌ NÃO');
+console.log('');
+
+console.log('2️⃣  Supabase URL:');
+console.log('   Valor:', supabaseUrl);
+console.log('   Válido:', supabaseUrl && supabaseUrl.startsWith('https://') ? '✅ SIM' : '❌ NÃO');
+console.log('');
+
+console.log('3️⃣  Supabase Anon Key:');
+console.log('   Valor:', supabaseKey ? supabaseKey.substring(0, 30) + '...' : 'undefined');
+console.log('   Válido:', supabaseKey && supabaseKey.length > 20 ? '✅ SIM' : '❌ NÃO');
+console.log('');
+
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+// Resultado final
+if (webhookUrl && webhookUrl.startsWith('https://') && webhookUrl.includes('ngrok')) {
+    console.log('%c✅ WEBHOOK URL CONFIGURADA CORRETAMENTE!', 'color: #10b981; font-weight: bold; font-size: 14px');
+    console.log('%c   O PagBank vai receber: ' + webhookUrl, 'color: #059669; font-size: 12px');
+} else if (webhookUrl === 'http://localhost:3000/api/payments/webhook') {
+    console.log('%c❌ PROBLEMA: Ainda está usando LOCALHOST!', 'color: #ef4444; font-weight: bold; font-size: 14px');
+    console.log('%c   O frontend NÃO foi reiniciado corretamente.', 'color: #dc2626; font-size: 12px');
+    console.log('%c   SOLUÇÃO: Feche o navegador, limpe o cache, reinicie o frontend.', 'color: #dc2626; font-size: 12px');
+} else {
+    console.log('%c❌ VARIÁVEL NÃO DEFINIDA!', 'color: #ef4444; font-weight: bold; font-size: 14px');
+    console.log('%c   Verifique se o arquivo .env existe na raiz do projeto.', 'color: #dc2626; font-size: 12px');
+    console.log('%c   Verifique se o frontend foi reiniciado após criar o .env.', 'color: #dc2626; font-size: 12px');
+}
+
+console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');</pre>
+        </div>
+
+        <div class="test-result error">
+            <h3>⚠️ SE A VARIÁVEL AINDA ESTIVER COM LOCALHOST:</h3>
+            <ol>
+                <li>Feche <strong>TODOS os navegadores</strong> (Chrome, Edge, etc.)</li>
+                <li>No terminal do frontend, pressione <code>Ctrl+C</code></li>
+                <li>Limpe o cache: <code>Remove-Item -Path "node_modules\.vite" -Recurse -Force</code></li>
+                <li>Inicie novamente: <code>npm run dev</code></li>
+                <li>Abra em <strong>modo anônimo/privado</strong></li>
+                <li>Teste novamente</li>
+            </ol>
+        </div>
+
+        <div class="test-result success">
+            <h3>✅ SE A VARIÁVEL ESTIVER CORRETA (ngrok):</h3>
+            <p>Tente criar um pedido PIX e o erro "invalid notification url" deve desaparecer!</p>
+        </div>
+    </div>
+</body>
+</html>
+

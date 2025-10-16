@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Conexão Supabase</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .result.success {
+            background: #d1fae5;
+            border: 1px solid #34d399;
+            color: #065f46;
+        }
+        .result.error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .result.warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+        }
+        pre {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .status-item {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #ddd;
+        }
+        .status-item.ok {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+        .status-item.fail {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste de Conexão com Supabase</h1>
+        <p>Este teste verificará se suas credenciais do Supabase estão corretas e se o projeto está acessível.</p>
+        
+        <div class="input-group">
+            <label for="supabaseUrl">URL do Supabase:</label>
+            <input type="text" id="supabaseUrl" placeholder="https://seu-projeto.supabase.co" value="https://jasahjktswfmbakjluvy.supabase.co">
+        </div>
+        
+        <div class="input-group">
+            <label for="supabaseKey">Chave Anônima (anon key):</label>
+            <input type="password" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+        
+        <button id="testBtn" onclick="testConnection()">🚀 Testar Conexão</button>
+        
+        <div class="loader" id="loader"></div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function testConnection() {
+            const url = document.getElementById('supabaseUrl').value.trim();
+            const key = document.getElementById('supabaseKey').value.trim();
+            const resultsDiv = document.getElementById('results');
+            const loader = document.getElementById('loader');
+            const testBtn = document.getElementById('testBtn');
+            
+            // Limpar resultados anteriores
+            resultsDiv.innerHTML = '';
+            
+            // Validações básicas
+            if (!url || !key) {
+                resultsDiv.innerHTML = '<div class="result error">❌ Por favor, preencha URL e Chave Anônima.</div>';
+                resultsDiv.querySelector('.result').style.display = 'block';
+                return;
+            }
+            
+            if (!url.startsWith('https://')) {
+                resultsDiv.innerHTML = '<div class="result error">❌ URL inválida: deve começar com https://</div>';
+                resultsDiv.querySelector('.result').style.display = 'block';
+                return;
+            }
+            
+            // Mostrar loader
+            loader.style.display = 'block';
+            testBtn.disabled = true;
+            testBtn.textContent = '🔄 Testando...';
+            
+            let results = '<h3>📊 Resultados dos Testes:</h3>';
+            
+            // Teste 1: Ping básico no domínio
+            results += '<div class="status-item">';
+            results += '<strong>1️⃣ Teste de DNS/Rede:</strong><br>';
+            try {
+                const pingResponse = await fetch(url + '/rest/v1/', {
+                    method: 'HEAD',
+                    headers: {
+                        'apikey': key
+                    }
+                });
+                if (pingResponse.ok || pingResponse.status === 401 || pingResponse.status === 400) {
+                    results += '<span style="color: green;">✅ Servidor Supabase está acessível</span>';
+                    results += '</div>';
+                } else {
+                    results += '<span style="color: red;">❌ Servidor não responde (Status: ' + pingResponse.status + ')</span>';
+                    results += '</div>';
+                }
+            } catch (error) {
+                results += '<span style="color: red;">❌ Não foi possível conectar ao servidor</span><br>';
+                results += '<pre>' + error.message + '</pre>';
+                results += '</div>';
+            }
+            
+            // Teste 2: Verificar autenticação
+            results += '<div class="status-item">';
+            results += '<strong>2️⃣ Teste de Autenticação:</strong><br>';
+            try {
+                const authResponse = await fetch(url + '/rest/v1/', {
+                    method: 'GET',
+                    headers: {
+                        'apikey': key,
+                        'Authorization': 'Bearer ' + key
+                    }
+                });
+                
+                if (authResponse.ok) {
+                    results += '<span style="color: green;">✅ Credenciais válidas</span>';
+                } else if (authResponse.status === 401) {
+                    results += '<span style="color: red;">❌ Credenciais inválidas (chave incorreta)</span>';
+                } else {
+                    results += '<span style="color: orange;">⚠️ Status: ' + authResponse.status + '</span>';
+                }
+                results += '</div>';
+            } catch (error) {
+                results += '<span style="color: red;">❌ Erro ao verificar autenticação</span><br>';
+                results += '<pre>' + error.message + '</pre>';
+                results += '</div>';
+            }
+            
+            // Teste 3: Tentar acessar a tabela orders
+            results += '<div class="status-item">';
+            results += '<strong>3️⃣ Teste de Acesso à Tabela "orders":</strong><br>';
+            try {
+                const tableResponse = await fetch(url + '/rest/v1/orders?select=id&limit=1', {
+                    method: 'GET',
+                    headers: {
+                        'apikey': key,
+                        'Authorization': 'Bearer ' + key,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (tableResponse.ok) {
+                    const data = await tableResponse.json();
+                    results += '<span style="color: green;">✅ Tabela "orders" acessível</span><br>';
+                    results += '<small>Registros encontrados: ' + (data.length > 0 ? 'Sim' : 'Nenhum') + '</small>';
+                } else if (tableResponse.status === 401) {
+                    results += '<span style="color: red;">❌ Sem permissão para acessar tabela "orders"</span>';
+                } else if (tableResponse.status === 404) {
+                    results += '<span style="color: red;">❌ Tabela "orders" não existe</span>';
+                } else {
+                    const errorData = await tableResponse.text();
+                    results += '<span style="color: red;">❌ Erro: Status ' + tableResponse.status + '</span><br>';
+                    results += '<pre>' + errorData.substring(0, 200) + '</pre>';
+                }
+                results += '</div>';
+            } catch (error) {
+                results += '<span style="color: red;">❌ Erro ao acessar tabela</span><br>';
+                results += '<pre>' + error.message + '</pre>';
+                results += '</div>';
+            }
+            
+            // Teste 4: Verificar se pode inserir (teste de permissões)
+            results += '<div class="status-item">';
+            results += '<strong>4️⃣ Teste de Permissões de Escrita:</strong><br>';
+            results += '<small>(Simulação - não insere dados reais)</small><br>';
+            try {
+                const insertResponse = await fetch(url + '/rest/v1/orders', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': key,
+                        'Authorization': 'Bearer ' + key,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        // Dados de teste (vai falhar por falta de campos obrigatórios, mas testa permissão)
+                        test: true
+                    })
+                });
+                
+                if (insertResponse.ok || insertResponse.status === 201) {
+                    results += '<span style="color: green;">✅ Permissão de escrita OK</span>';
+                } else if (insertResponse.status === 401 || insertResponse.status === 403) {
+                    results += '<span style="color: red;">❌ Sem permissão para inserir dados</span>';
+                } else if (insertResponse.status === 400) {
+                    results += '<span style="color: green;">✅ Permissão OK (erro esperado de validação)</span>';
+                } else {
+                    const errorData = await insertResponse.text();
+                    results += '<span style="color: orange;">⚠️ Status: ' + insertResponse.status + '</span><br>';
+                    results += '<pre>' + errorData.substring(0, 300) + '</pre>';
+                }
+                results += '</div>';
+            } catch (error) {
+                results += '<span style="color: red;">❌ Erro ao testar inserção</span><br>';
+                results += '<pre>' + error.message + '</pre>';
+                results += '</div>';
+            }
+            
+            // Recomendações
+            results += '<div style="margin-top: 20px; padding: 15px; background: #eff6ff; border-radius: 5px;">';
+            results += '<h3>💡 Próximos Passos:</h3>';
+            results += '<ul>';
+            results += '<li>Se todos os testes passaram ✅, o problema pode estar nas <strong>políticas de segurança (RLS)</strong> do Supabase</li>';
+            results += '<li>Se o teste de DNS falhou ❌, verifique se o projeto existe e está ativo no <a href="https://app.supabase.com" target="_blank">painel do Supabase</a></li>';
+            results += '<li>Se a autenticação falhou ❌, verifique se copiou a chave correta do painel</li>';
+            results += '<li>Se a tabela não existe ❌, execute as migrations no Supabase</li>';
+            results += '</ul>';
+            results += '</div>';
+            
+            resultsDiv.innerHTML = results;
+            
+            // Esconder loader
+            loader.style.display = 'none';
+            testBtn.disabled = false;
+            testBtn.textContent = '🚀 Testar Conexão';
+        }
+    </script>
+</body>
+</html>
+

@@ -1641,6 +1641,9 @@ const OrganizerSales = () => {
         ...((ticketsData || []).map((t: any) => txByTicketId[t.id]?.buyer_id).filter(Boolean)),
         ...((ticketsData || []).map((t: any) => txByTicketId[t.id]?.user_id).filter(Boolean)),
         ...((ticketsData || []).map((t: any) => t.user_id).filter(Boolean)),
+        // ✅ INCLUIR user_ids e buyer_ids de TODAS as transactions (incluindo pendentes)
+        ...((transactionsByEvent || []).map((tx: any) => tx.buyer_id).filter(Boolean)),
+        ...((transactionsByEvent || []).map((tx: any) => tx.user_id).filter(Boolean)),
         // incluir buyer_id de fallback por correlação
         ...(((ticketsData || []).map((t: any) => {
           const key = `${t.event_id}|${t.user_id}`;
@@ -1659,6 +1662,7 @@ const OrganizerSales = () => {
 
       let usersData: any = {};
       if (userIds.length > 0) {
+        console.log(`🔍 Buscando perfis de ${userIds.length} usuários únicos...`);
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, name, email, phone')
@@ -1666,6 +1670,7 @@ const OrganizerSales = () => {
         usersData = (profiles || []).reduce((acc: any, profile: any) => {
           acc[profile.id] = profile; return acc;
         }, {});
+        console.log(`✅ Perfis encontrados: ${profiles?.length || 0}`);
       }
 
       // 5. Formatar dados das vendas com buyer e valores reais
@@ -1723,7 +1728,56 @@ const OrganizerSales = () => {
         };
       }) || [];
 
-      setSales(formattedSales);
+      // 6. ADICIONAR TRANSACTIONS PENDENTES QUE NÃO TÊM TICKETS
+      // (Vendas PIX não pagas ainda não geraram tickets)
+      console.log('🔍 Buscando transactions pendentes sem tickets...');
+      
+      // IDs de tickets já mapeados
+      const mappedTicketIds = new Set((ticketsData || []).map((t: any) => t.id));
+      
+      // Transactions pendentes que não têm ticket correspondente
+      const pendingTransactions = (transactionsByEvent || []).filter((tx: any) => {
+        // Só incluir se:
+        // 1. Status é pending
+        // 2. Não tem ticket_id OU o ticket não existe na lista de tickets
+        return tx.status === 'pending' && (!tx.ticket_id || !mappedTicketIds.has(tx.ticket_id));
+      });
+      
+      console.log(`✅ Transactions pendentes encontradas: ${pendingTransactions.length}`);
+      
+      // Formatar transactions pendentes como vendas
+      const pendingSales: Sale[] = pendingTransactions.map((tx: any) => {
+        const buyerId = tx.buyer_id || tx.user_id;
+        const buyer = buyerId ? usersData[buyerId] || {} : {};
+        const event = (eventsData as any[]).find(e => e.id === tx.event_id) || {};
+        const pricePaid = typeof tx.amount === 'string' ? parseFloat(tx.amount) : (tx.amount || 0);
+        
+        return {
+          id: tx.id, // Usar ID da transaction
+          eventId: tx.event_id,
+          eventName: event.title || 'Evento não encontrado',
+          eventImage: event.image || event.banner_url || null,
+          buyerName: buyer.name || 'Nome não informado',
+          buyerEmail: buyer.email || 'Email não informado',
+          userName: '',
+          userEmail: '',
+          ticketType: 'Ingresso Padrão',
+          ticketCode: 'Aguardando pagamento',
+          quantity: 1,
+          amount: pricePaid,
+          date: new Date(tx.created_at).toLocaleDateString('pt-BR'),
+          status: 'pendente', // ← SEMPRE PENDENTE
+          paymentMethod: tx.payment_method || 'Não informado',
+          isUsed: false,
+          usedAt: null
+        };
+      });
+      
+      // COMBINAR tickets confirmados + transactions pendentes
+      const allSales = [...formattedSales, ...pendingSales];
+      console.log(`✅ Total de vendas (confirmadas + pendentes): ${allSales.length}`);
+      
+      setSales(allSales);
     } catch (error: any) {
       console.error('❌ Erro inesperado ao buscar vendas:', error);
     } finally {
