@@ -20,6 +20,7 @@ import TermsOfUsePage from './pages/TermsOfUsePage';
 import CheckInResultPage from './pages/CheckInResultPage';
 import SearchPage from './pages/SearchPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -43,7 +44,11 @@ const AppRoutes = () => {
           <Route path="/profile/*" element={<ProfilePage />} />
           <Route path="/checkin" element={<CheckInPage />} />
           <Route path="/organizer-register" element={<OrganizerRegisterPage />} />
-          <Route path="/organizer-dashboard/*" element={<OrganizerDashboardPage />} />
+          <Route path="/organizer-dashboard/*" element={
+            <ProtectedRoute requiredRole="organizer">
+              <OrganizerDashboardPage />
+            </ProtectedRoute>
+          } />
           <Route path="/duvidas" element={<FAQPage />} />
           <Route path="/politica" element={<PolicyPage />} />
           <Route path="/termos" element={<TermsOfUsePage />} />

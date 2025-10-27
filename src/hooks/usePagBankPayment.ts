@@ -20,7 +20,10 @@ export const usePagBankPayment = (): UsePagBankPaymentReturn => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PagBankResponse | null>(null);
 
-  const pagBankService = new PagBankService();
+  // Garantir que use a URL correta do backend
+  const pagBankService = new PagBankService(
+    import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000/api/payments'
+  );
 
   const handleError = (err: any) => {
     console.error('Erro no PagBank:', err);

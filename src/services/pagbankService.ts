@@ -18,11 +18,14 @@ export interface PagBankItem {
 }
 
 export interface PagBankCard {
-  number: string;
-  exp_month: string;
-  exp_year: string;
-  security_code: string;
-  holder: {
+  // Cartão criptografado usando o SDK do PagBank
+  encrypted?: string;
+  // OU dados do cartão em aberto (apenas para ambientes certificados PCI-DSS)
+  number?: string;
+  exp_month?: string;
+  exp_year?: string;
+  security_code?: string;
+  holder?: {
     name: string;
     tax_id: string;
   };
@@ -92,8 +95,10 @@ export interface PagBankResponse {
 class PagBankService {
   private baseUrl: string;
 
-  constructor(baseUrl: string = import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000') {
+  constructor(baseUrl: string = import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000/api/payments') {
     this.baseUrl = baseUrl;
+    console.log('🔧 PagBankService criado com URL:', this.baseUrl);
+    console.log('📌 import.meta.env.VITE_PAGBANK_API_URL:', import.meta.env.VITE_PAGBANK_API_URL);
   }
 
   async createPixOrder(orderData: PagBankPixOrder): Promise<PagBankResponse> {
@@ -121,6 +126,9 @@ class PagBankService {
 
   async createCardOrder(orderData: PagBankCardOrder): Promise<PagBankResponse> {
     try {
+      console.log('💳 Enviando pedido de cartão para:', this.baseUrl);
+      console.log('📦 Dados do pedido:', JSON.stringify(orderData, null, 2));
+      
       const response = await fetch(`${this.baseUrl}`, {
         method: 'POST',
         headers: {

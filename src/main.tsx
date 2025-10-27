@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
 import { cleanupOldCartData } from './utils/cartStorage';
+import './utils/testEnvVars';
 
 // Limpar dados antigos do carrinho na inicialização
 cleanupOldCartData();

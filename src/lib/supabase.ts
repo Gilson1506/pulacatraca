@@ -13,35 +13,49 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 export const getUser = async () => {
   try {
     console.log('1. Iniciando busca de usuário...'); // DEBUG
+    
+    // Primeiro verificar se há uma sessão ativa
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('2. Erro de sessão:', sessionError); // DEBUG
+      return null;
+    }
+    
+    if (!session?.user) {
+      console.log('3. Nenhuma sessão ativa encontrada'); // DEBUG
+      return null;
+    }
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError) {
-      console.error('2. Erro ao buscar usuário:', authError); // DEBUG
+      console.error('4. Erro ao buscar usuário:', authError); // DEBUG
       return null;
     }
 
-    console.log('3. Dados do usuário autenticado:', { id: user?.id, email: user?.email }); // DEBUG
+    console.log('5. Dados do usuário autenticado:', { id: user?.id, email: user?.email }); // DEBUG
 
     if (!user) {
-      console.log('4. Nenhum usuário autenticado'); // DEBUG
+      console.log('6. Nenhum usuário autenticado'); // DEBUG
       return null;
     }
 
-    console.log('5. Buscando perfil na tabela profiles...'); // DEBUG
+    console.log('7. Buscando perfil na tabela profiles...'); // DEBUG
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, name, role, is_verified, is_active, created_at')
       .eq('id', user.id)
       .single();
 
-    console.log('6. Resposta da busca do perfil:', { data: profileData, error: profileError }); // DEBUG
+    console.log('8. Resposta da busca do perfil:', { data: profileData, error: profileError }); // DEBUG
 
     if (profileError) {
-      console.error('7. Erro ao buscar perfil:', profileError); // DEBUG
+      console.error('9. Erro ao buscar perfil:', profileError); // DEBUG
       
       // Se o erro for "not found", tentar criar o perfil
       if (profileError.code === 'PGRST116') {
-        console.log('8. Perfil não encontrado, criando automaticamente...'); // DEBUG
+        console.log('10. Perfil não encontrado, criando automaticamente...'); // DEBUG
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
           .insert([
@@ -59,11 +73,11 @@ export const getUser = async () => {
           .single();
 
         if (insertError) {
-          console.error('9. Erro ao criar perfil:', insertError); // DEBUG
+          console.error('11. Erro ao criar perfil:', insertError); // DEBUG
           return null;
         }
 
-        console.log('10. Perfil criado com sucesso:', newProfile); // DEBUG
+        console.log('12. Perfil criado com sucesso:', newProfile); // DEBUG
         return newProfile;
       }
 
@@ -71,14 +85,14 @@ export const getUser = async () => {
     }
 
     if (!profileData) {
-      console.error('11. Perfil não encontrado para o usuário:', user.id); // DEBUG
+      console.error('13. Perfil não encontrado para o usuário:', user.id); // DEBUG
       return null;
     }
 
-    console.log('12. Perfil encontrado com sucesso:', profileData); // DEBUG
+    console.log('14. Perfil encontrado com sucesso:', profileData); // DEBUG
     return profileData;
   } catch (error) {
-    console.error('13. Erro inesperado ao buscar usuário:', error); // DEBUG
+    console.error('15. Erro inesperado ao buscar usuário:', error); // DEBUG
     return null;
   }
 };

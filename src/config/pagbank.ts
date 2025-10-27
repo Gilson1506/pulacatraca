@@ -6,7 +6,7 @@ export const PAGBANK_CONFIG = {
   PRODUCTION_URL: 'https://api.pagseguro.com',
   
   // URLs do backend
-  BACKEND_DEV: import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000',
+  BACKEND_DEV: import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000/api/payments',
   BACKEND_PROD: import.meta.env.VITE_PAGBANK_API_URL || 'https://backend-pagbank.onrender.com/api/payments'
   
   // Configurações de teste
@@ -58,7 +58,7 @@ export const PAGBANK_CONFIG = {
 // Função para obter a URL do backend baseada no ambiente
 export const getBackendUrl = (): string => {
   // Sempre usar a variável de ambiente se disponível
-  return import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000';
+  return import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000/api/payments';
 };
 
 // Função para obter a URL da API do PagBank baseada no ambiente

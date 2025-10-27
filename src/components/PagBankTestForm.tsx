@@ -86,6 +86,42 @@ const PagBankTestForm: React.FC<PagBankTestFormProps> = ({
 
         await createPixPayment(pixOrder);
       } else {
+        // **IMPORTANTE: Criptografar o cartão usando o SDK do PagBank**
+        const publicKey = import.meta.env.VITE_PAGBANK_PUBLIC_KEY;
+        
+        if (!publicKey) {
+          throw new Error('Chave pública do PagBank não configurada. Configure VITE_PAGBANK_PUBLIC_KEY no arquivo .env');
+        }
+
+        // Verificar se o SDK do PagBank está disponível
+        if (typeof window.PagSeguro === 'undefined') {
+          throw new Error('SDK do PagBank não carregado. Recarregue a página e tente novamente.');
+        }
+
+        console.log('🔐 Criptografando dados do cartão...');
+        
+        const cardEncryption = window.PagSeguro.encryptCard({
+          publicKey: publicKey,
+          holder: cardData.holder_name,
+          number: cardData.number.replace(/\s/g, ''),
+          expMonth: cardData.exp_month.padStart(2, '0'),
+          expYear: cardData.exp_year,
+          securityCode: cardData.security_code
+        });
+
+        // Verificar se houve erros na criptografia
+        if (cardEncryption.hasErrors) {
+          const errorMessages = cardEncryption.errors.map(err => `${err.code}: ${err.message}`).join('\n');
+          console.error('❌ Erros na criptografia do cartão:', cardEncryption.errors);
+          throw new Error(`Erro ao validar dados do cartão:\n${errorMessages}`);
+        }
+
+        if (!cardEncryption.encryptedCard) {
+          throw new Error('Falha ao criptografar o cartão. Tente novamente.');
+        }
+
+        console.log('✅ Cartão criptografado com sucesso');
+
         const cardOrder = {
           reference_id: `teste-cartao-${Date.now()}`,
           customer: {
@@ -122,14 +158,8 @@ const PagBankTestForm: React.FC<PagBankTestFormProps> = ({
                 capture: true,
                 soft_descriptor: 'PulaKatraca',
                 card: {
-                  number: cardData.number,
-                  exp_month: cardData.exp_month,
-                  exp_year: cardData.exp_year,
-                  security_code: cardData.security_code,
-                  holder: {
-                    name: cardData.holder_name,
-                    tax_id: cardData.holder_tax_id
-                  }
+                  // Enviar cartão CRIPTOGRAFADO
+                  encrypted: cardEncryption.encryptedCard
                 }
               }
             }
