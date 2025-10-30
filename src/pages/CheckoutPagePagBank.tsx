@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, CreditCard, Loader2, Check } from 'lucide-react';
+import { AlertTriangle, CreditCard, Loader2, Check, XCircle } from 'lucide-react';
 import PagBankService from '../services/pagbankService';
 
 const CheckoutPagePagBank = () => {
@@ -16,9 +16,11 @@ const CheckoutPagePagBank = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'pix' | 'credit_card' | null>(null);
-  const [paymentStep, setPaymentStep] = useState<'select' | 'form' | 'processing' | 'success'>('select');
+  const [paymentStep, setPaymentStep] = useState<'select' | 'form' | 'processing' | 'success' | 'pending' | 'failed'>('select');
   const [pixData, setPixData] = useState<any>(null);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const [declineError, setDeclineError] = useState<string | null>(null);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
   
   // Estado local para dados restaurados do localStorage
   const [restoredData, setRestoredData] = useState(null);
@@ -452,12 +454,15 @@ const CheckoutPagePagBank = () => {
 
       console.log('🔐 Criptografando dados do cartão...');
       
+      // Converter ano de 2 para 4 dígitos
+      const fullYear = cardData.exp_year.length === 2 ? `20${cardData.exp_year}` : cardData.exp_year;
+      
       const cardEncryption = window.PagSeguro.encryptCard({
         publicKey: publicKey,
         holder: cardData.holder_name,
         number: cardData.number.replace(/\s/g, ''),
         expMonth: cardData.exp_month.padStart(2, '0'),
-        expYear: cardData.exp_year,
+        expYear: fullYear,
         securityCode: cardData.security_code
       });
 
@@ -521,9 +526,38 @@ const CheckoutPagePagBank = () => {
       const response = await pagBankService.createCardOrder(cardOrder);
       
       console.log('✅ Cartão processado:', response);
+      console.log('🔍 Status do PagBank:', response.charges?.[0]?.status);
 
-      // 4. Atualizar order com ID do PagBank e status
-      const orderStatus = response.charges?.[0]?.status === 'PAID' ? 'paid' : 'pending';
+      // Detectar status do pagamento
+      const chargeStatus = response.charges?.[0]?.status;
+      const paymentId = response.charges?.[0]?.id;
+      const paymentResponse = response.charges?.[0]?.payment_response;
+      
+      // Mapear status do PagBank para nosso sistema
+      const getPaymentStatus = (status: string) => {
+        switch(status) {
+          case 'PAID': return 'paid';
+          case 'DECLINED': 
+          case 'CANCELED': return 'failed';
+          case 'IN_ANALYSIS': 
+          case 'WAITING': return 'pending';
+          default: return 'pending';
+        }
+      };
+      
+      const orderStatus = getPaymentStatus(chargeStatus);
+      const isPaid = chargeStatus === 'PAID';
+      const isDeclined = chargeStatus === 'DECLINED' || chargeStatus === 'CANCELED';
+      
+      console.log('📊 Status mapeado:', { 
+        chargeStatus, 
+        orderStatus, 
+        isPaid, 
+        isDeclined,
+        paymentResponse: paymentResponse?.message || paymentResponse?.code
+      });
+
+      // 4. Atualizar order com ID do PagBank e status CORRETO
       const { error: updateError } = await supabase
         .from('orders')
         .update({ 
@@ -536,19 +570,15 @@ const CheckoutPagePagBank = () => {
       if (updateError) {
         console.error('❌ Erro ao atualizar pagbank_order_id:', updateError);
       } else {
-        console.log('✅ pagbank_order_id salvo:', response.id);
+        console.log('✅ pagbank_order_id e status salvos:', { id: response.id, status: orderStatus });
       }
 
-      // 5. Criar transaction
+      // 5. Criar transaction com status CORRETO
       const transactionRows: any[] = [];
       if (response.charges && response.charges[0]) {
-        const isPaid = response.charges[0].status === 'PAID';
-        const paymentId = response.charges[0].id;
-        
-        // Expandir items por quantidade
         const orderItems = order.metadata?.items || [];
         
-        let globalIndex = 0; // Contador global para garantir que apenas a primeira transaction tenha pagbank_transaction_id
+        let globalIndex = 0;
         
         orderItems.forEach((it: any) => {
           const qty = Number(it.quantity || 1);
@@ -561,14 +591,14 @@ const CheckoutPagePagBank = () => {
               event_id: event.id,
               ticket_id: null,
               amount: unitReais,
-              status: isPaid ? 'completed' : 'pending',
+              status: isPaid ? 'completed' : (isDeclined ? 'failed' : 'pending'),
               payment_method: 'credit_card',
               payment_id: paymentId,
-              // Só a primeira transaction tem pagbank_transaction_id (evita duplicação)
               pagbank_transaction_id: globalIndex === 0 ? paymentId : null,
               metadata: {
                 order_id: order.id,
                 pagbank_order_id: response.id,
+                charge_status: chargeStatus,
                 item: {
                   code: it.code,
                   name: it.name || it.description,
@@ -576,7 +606,7 @@ const CheckoutPagePagBank = () => {
                 }
               }
             });
-            globalIndex++; // Incrementar contador global
+            globalIndex++;
           }
         });
 
@@ -594,7 +624,7 @@ const CheckoutPagePagBank = () => {
           }
         }
 
-        // 6. Criar tickets se pagamento aprovado
+        // 6. Criar tickets SOMENTE se pagamento aprovado
         if (isPaid) {
           const ticketsRows: any[] = [];
           orderItems.forEach((it: any) => {
@@ -635,17 +665,37 @@ const CheckoutPagePagBank = () => {
         }
       }
 
-      setPaymentStep('success');
-
-      // Redirecionar após 3 segundos
-      setTimeout(() => {
-        navigate('/profile', {
-          state: {
-            message: '🎉 Pagamento aprovado! Seus ingressos estão disponíveis.',
-            showSuccess: true
-          }
-        });
-      }, 3000);
+      // 7. Determinar próximo passo baseado no status REAL
+      if (isPaid) {
+        // Pagamento aprovado - mostrar sucesso
+        console.log('✅ Pagamento aprovado!');
+        setPaymentStep('success');
+        setTimeout(() => {
+          navigate('/profile', {
+            state: {
+              message: '🎉 Pagamento aprovado! Seus ingressos estão disponíveis.',
+              showSuccess: true
+            }
+          });
+        }, 3000);
+      } else if (isDeclined) {
+        // Pagamento recusado - mostrar erro
+        const errorMessage = paymentResponse?.message 
+          || paymentResponse?.code
+          || 'Pagamento recusado pelo banco. Tente outro cartão.';
+        
+        console.error('❌ Pagamento recusado:', errorMessage);
+        setDeclineError(errorMessage);
+        setShowDeclineModal(true);
+      } else {
+        // Em análise ou pendente - mostrar warning
+        console.log('⏳ Pagamento em análise');
+        alert('⏳ Seu pagamento está sendo analisado. Aguarde a confirmação.\n\nVocê será redirecionado para ver o status.');
+        setPaymentStep('pending');
+        setTimeout(() => {
+          navigate('/profile');
+        }, 3000);
+      }
     } catch (error: any) {
       console.error('❌ Erro ao processar cartão:', error);
       alert(`Erro ao processar pagamento: ${error.message}`);
@@ -952,14 +1002,20 @@ const CheckoutPagePagBank = () => {
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold mb-2 text-gray-700">Ano</label>
-                        <input
-                          type="text"
-                          value={cardData.exp_year}
-                          onChange={(e) => setCardData({...cardData, exp_year: e.target.value})}
-                          placeholder="AAAA"
-                          maxLength={4}
-                          className="w-full p-2 sm:p-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all text-center"
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm font-semibold">20</span>
+                          <input
+                            type="text"
+                            value={cardData.exp_year}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 2);
+                              setCardData({...cardData, exp_year: value});
+                            }}
+                            placeholder="00"
+                            maxLength={2}
+                            className="w-full p-2 sm:p-3 pl-8 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all text-center"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm font-semibold mb-2 text-gray-700">CVV</label>
@@ -1115,6 +1171,30 @@ const CheckoutPagePagBank = () => {
                   <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-pink-600 mx-auto" />
                 </div>
               )}
+
+              {/* Pending State - Em Análise */}
+              {paymentStep === 'pending' && selectedPaymentMethod === 'credit_card' && (
+                <div className="bg-white rounded-xl shadow-md p-6 sm:p-12 border-2 border-yellow-500 text-center">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                    <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-600 animate-spin" />
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-yellow-800 mb-3 sm:mb-4">
+                    Pagamento em Análise
+                  </h2>
+                  <p className="text-base sm:text-lg text-gray-700 mb-4 sm:mb-6">
+                    Seu pagamento está sendo analisado pela operadora.
+                  </p>
+                  <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
+                    Você será notificado quando o pagamento for confirmado.
+                  </p>
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="inline-block px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 font-semibold transition-all"
+                  >
+                    Ver Meus Pedidos →
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right Side: Summary */}
@@ -1200,6 +1280,64 @@ const CheckoutPagePagBank = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Pagamento Recusado */}
+      {showDeclineModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center">
+                <XCircle className="w-10 h-10 sm:w-12 sm:h-12 text-red-600" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl sm:text-3xl font-bold text-center text-red-800 mb-3">
+              Pagamento Recusado
+            </h2>
+            
+            <p className="text-base sm:text-lg text-gray-700 text-center mb-4">
+              {declineError || 'Não foi possível processar seu pagamento.'}
+            </p>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800 text-center">
+                <strong>O que fazer:</strong>
+              </p>
+              <ul className="text-sm text-red-700 mt-2 space-y-1 list-disc list-inside">
+                <li>Verifique os dados do cartão</li>
+                <li>Confirme se há limite disponível</li>
+                <li>Tente com outro cartão</li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setShowDeclineModal(false);
+                  setDeclineError(null);
+                  setPaymentStep('form');
+                  setIsProcessing(false);
+                }}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition-all"
+              >
+                Tentar Novamente
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeclineModal(false);
+                  setDeclineError(null);
+                  setPaymentStep('select');
+                  setSelectedPaymentMethod(null);
+                  setIsProcessing(false);
+                }}
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-all"
+              >
+                Mudar Método
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

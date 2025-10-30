@@ -45,6 +45,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkUser();
+
+    // Listener para mudanças de autenticação (OAuth, etc)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔐 Auth state changed:', event, session?.user?.email);
+
+        if (event === 'SIGNED_IN' && session) {
+          try {
+            // Pequeno delay para garantir que o perfil foi criado no callback
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Buscar perfil do usuário
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (error) {
+              console.error('❌ Erro ao carregar perfil:', error);
+              // Tentar buscar o usuário novamente com getUser
+              try {
+                const userProfile = await getUser();
+                if (userProfile) {
+                  console.log('✅ Perfil carregado via getUser:', userProfile.email);
+                  setUser(userProfile);
+                }
+              } catch (getUserError) {
+                console.error('❌ Erro ao buscar usuário:', getUserError);
+              }
+              return;
+            }
+
+            if (profile) {
+              console.log('✅ Perfil carregado após login:', profile.email);
+              setUser(profile);
+            } else {
+              console.warn('⚠️ Perfil não encontrado na tabela profiles');
+            }
+          } catch (error) {
+            console.error('❌ Erro ao carregar perfil após login:', error);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('👋 Usuário saiu');
+          setUser(null);
+        }
+      }
+    );
+
+    // Cleanup
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const tryRestoreCheckout = (): string => {

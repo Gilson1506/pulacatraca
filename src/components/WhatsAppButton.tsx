@@ -106,7 +106,7 @@ const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
         </div>
       </button>
 
-      <style jsx>{`
+      <style>{`
         @keyframes bounce-slow {
           0%, 100% {
             transform: translateY(0);

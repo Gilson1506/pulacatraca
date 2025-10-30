@@ -95,8 +95,10 @@ const EventStatusPage = () => {
       case 'pending': return 'Pendente'; // Transação iniciada mas não paga
       case 'paid': return 'Concluído'; // Pago com sucesso
       case 'completed': return 'Concluído'; // Pago com sucesso
-      case 'failed': return 'Falhou';
+      case 'failed': return 'Recusado';
+      case 'declined': return 'Recusado';
       case 'canceled': return 'Cancelado';
+      case 'cancelled': return 'Cancelado';
       case 'refunded': return 'Reembolsado';
       case 'em_processo': return 'Pendente'; // Transação iniciada mas não paga
       case 'pendente': return 'Pendente'; // Transação iniciada mas não paga
@@ -113,7 +115,9 @@ const EventStatusPage = () => {
       case 'paid': return 'bg-green-100 text-green-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'failed': return 'bg-red-100 text-red-800';
+      case 'declined': return 'bg-red-100 text-red-800';
       case 'canceled': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       case 'refunded': return 'bg-blue-100 text-blue-800';
       case 'em_processo': return 'bg-yellow-100 text-yellow-800';
       case 'pendente': return 'bg-yellow-100 text-yellow-800';

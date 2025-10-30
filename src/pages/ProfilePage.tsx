@@ -279,6 +279,9 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
       case 'used': return 'bg-green-100 text-green-700';
       case 'completed': return 'bg-green-100 text-green-700';
       case 'cancelled': return 'bg-red-100 text-red-700';
+      case 'failed': return 'bg-red-100 text-red-700';
+      case 'declined': return 'bg-red-100 text-red-700';
+      case 'canceled': return 'bg-red-100 text-red-700';
       default: return 'bg-yellow-100 text-yellow-700';
     }
   };
@@ -292,6 +295,9 @@ const OrdersSection = ({ userEmail }: { userEmail: string }) => {
       case 'used': return 'Concluído'; // Pago e utilizado
       case 'completed': return 'Concluído'; // Pago com sucesso
       case 'cancelled': return 'Cancelado';
+      case 'failed': return 'Recusado';
+      case 'declined': return 'Recusado';
+      case 'canceled': return 'Cancelado';
       default: 
         console.log('⚠️ Status não mapeado:', status);
         return 'Pendente';
