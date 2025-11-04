@@ -1,7 +1,7 @@
 import axios from "axios";
 
-async function gerarChavePublicaProducao() {
-  const token = "7ff1f78b-1206-4a46-a365-58468fa5ea65804b812047cdb7909944283b3fe3086ca9fa-6be1-4be5-8651-00ba31ec135e"; // 🔐 Substitua pelo seu token real
+async function consultarPublicKey() {
+  const token = "7ff1f78b-1206-4a46-a365-58468fa5ea65804b812047cdb7909944283b3fe3086ca9fa-6be1-4be5-8651-00ba31ec135e"; // ⚠️ substitua pelo token certo
 
   try {
     const response = await axios.post(
@@ -15,12 +15,12 @@ async function gerarChavePublicaProducao() {
       }
     );
 
-    console.log("✅ CHAVE PÚBLICA GERADA COM SUCESSO!");
-    console.log(response.data);
+    console.log("🔑 Public Key de Produção:");
+    console.log(response.data.public_key);
   } catch (error) {
-    console.error("❌ ERRO AO GERAR CHAVE:");
+    console.error("❌ Erro ao consultar Public Key:");
     console.error(error.response?.data || error.message);
   }
 }
 
-gerarChavePublicaProducao();
+consultarPublicKey();

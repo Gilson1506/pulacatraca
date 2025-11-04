@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,50 +46,8 @@ const CheckoutPagePagBank = () => {
   const backendUrl = import.meta.env.VITE_PAGBANK_API_URL || 'http://localhost:3000/api/payments';
   const pagBankService = new PagBankService(backendUrl);
 
-  useEffect(() => {
-    console.log('🔄 CheckoutPagePagBank - Dados recebidos:', { event, selectedTickets, totalAmount, ticket, state });
-    console.log('🌐 Backend URL configurada:', backendUrl);
-    
-    // Verificar localStorage se useLocation falhar
-    const localStorageData = localStorage.getItem('checkout_restore_data');
-    if (localStorageData && !restoredData) {
-      try {
-        const parsedData = JSON.parse(localStorageData);
-        console.log('💾 Dados encontrados no localStorage:', parsedData);
-        
-        // Se não temos dados via useLocation, usar localStorage
-        if (!event && !selectedTickets && !ticket) {
-          console.log('🔄 Usando dados do localStorage como fallback');
-          localStorage.removeItem('checkout_restore_data');
-          setRestoredData(parsedData);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ Erro ao parsear dados do localStorage:', error);
-        localStorage.removeItem('checkout_restore_data');
-      }
-    }
-    
-    // Validar dados APÓS tentar restaurar do localStorage
-    const finalEvent = event || (restoredData as any)?.event;
-    const finalSelectedTickets = selectedTickets || (restoredData as any)?.selectedTickets;
-    const finalTicket = ticket || (restoredData as any)?.ticket;
-    
-    if (!finalEvent || (!finalSelectedTickets && !finalTicket)) {
-      console.warn('❌ Dados do evento ou dos ingressos não encontrados. Redirecionando...');
-      navigate('/');
-      return;
-    }
-
-    if (user) {
-      loadUserData();
-      loadEventData();
-    } else {
-      setIsLoading(false);
-    }
-  }, [event, selectedTickets, ticket, navigate, user, state, restoredData]);
-
-  const loadUserData = async () => {
+  // Declarar funções ANTES dos useEffect para evitar re-renderizações
+  const loadUserData = useCallback(async () => {
     try {
       if (!user?.id) return;
       
@@ -114,9 +72,9 @@ const CheckoutPagePagBank = () => {
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
     }
-  };
+  }, [user, navigate]);
 
-  const loadEventData = async () => {
+  const loadEventData = useCallback(async () => {
     try {
       const { data: eventDetails, error } = await supabase
         .from('events')
@@ -145,7 +103,52 @@ const CheckoutPagePagBank = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [event, navigate]);
+
+  // useEffect para restaurar dados do localStorage (executa apenas uma vez)
+  useEffect(() => {
+    const localStorageData = localStorage.getItem('checkout_restore_data');
+    if (localStorageData && !restoredData) {
+      try {
+        const parsedData = JSON.parse(localStorageData);
+        console.log('💾 Dados encontrados no localStorage:', parsedData);
+        
+        // Se não temos dados via useLocation, usar localStorage
+        if (!event && !selectedTickets && !ticket) {
+          console.log('🔄 Usando dados do localStorage como fallback');
+          localStorage.removeItem('checkout_restore_data');
+          setRestoredData(parsedData);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao parsear dados do localStorage:', error);
+        localStorage.removeItem('checkout_restore_data');
+      }
+    }
+  }, []); // SEM dependências - executa apenas uma vez
+
+  // useEffect para carregar dados (executa quando dados mudarem)
+  useEffect(() => {
+    console.log('🔄 CheckoutPagePagBank - Dados recebidos:', { event, selectedTickets, totalAmount, ticket, state });
+    console.log('🌐 Backend URL configurada:', backendUrl);
+    
+    // Validar dados
+    const finalEvent = event || (restoredData as any)?.event;
+    const finalSelectedTickets = selectedTickets || (restoredData as any)?.selectedTickets;
+    const finalTicket = ticket || (restoredData as any)?.ticket;
+    
+    if (!finalEvent || (!finalSelectedTickets && !finalTicket)) {
+      console.warn('❌ Dados do evento ou dos ingressos não encontrados. Redirecionando...');
+      navigate('/');
+      return;
+    }
+
+    if (user) {
+      loadUserData();
+      loadEventData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [event, selectedTickets, ticket, navigate, user, state, loadUserData, loadEventData]);
 
   // Calcular valores
   const subtotalReais = selectedTickets?.reduce((sum: number, t: any) => sum + (t.price * t.quantity), 0) || ticket?.price || 0;

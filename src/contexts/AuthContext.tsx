@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, getUser, signInWithEmail, signInWithGoogle, signUp, signOut } from '../lib/supabase';
 import type { UserProfile } from '../types/supabase';
 import { AuthError } from '@supabase/supabase-js';
@@ -29,8 +29,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  
+  // Ref para evitar loops infinitos
+  const isInitialized = useRef(false);
+  const isProcessingAuth = useRef(false);
 
   useEffect(() => {
+    // Evitar execução dupla
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
     const checkUser = async () => {
       try {
         const profile = await getUser();
@@ -49,9 +57,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listener para mudanças de autenticação (OAuth, etc)
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Evitar processamento duplicado
+        if (isProcessingAuth.current) {
+          console.log('⚠️ Processamento de auth já em andamento, ignorando...');
+          return;
+        }
+        
         console.log('🔐 Auth state changed:', event, session?.user?.email);
 
         if (event === 'SIGNED_IN' && session) {
+          isProcessingAuth.current = true;
           try {
             // Pequeno delay para garantir que o perfil foi criado no callback
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -65,16 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (error) {
               console.error('❌ Erro ao carregar perfil:', error);
-              // Tentar buscar o usuário novamente com getUser
-              try {
-                const userProfile = await getUser();
-                if (userProfile) {
-                  console.log('✅ Perfil carregado via getUser:', userProfile.email);
-                  setUser(userProfile);
-                }
-              } catch (getUserError) {
-                console.error('❌ Erro ao buscar usuário:', getUserError);
-              }
+              // NÃO chamar getUser aqui para evitar loop
               return;
             }
 
@@ -86,6 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } catch (error) {
             console.error('❌ Erro ao carregar perfil após login:', error);
+          } finally {
+            isProcessingAuth.current = false;
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 Usuário saiu');
@@ -97,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Cleanup
     return () => {
       authListener?.subscription.unsubscribe();
+      isInitialized.current = false;
     };
   }, []);
 

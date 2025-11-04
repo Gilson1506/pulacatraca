@@ -21,6 +21,7 @@ import TermsOfUsePage from './pages/TermsOfUsePage';
 import CheckInResultPage from './pages/CheckInResultPage';
 import SearchPage from './pages/SearchPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const AppRoutes = () => {
@@ -57,6 +58,7 @@ const AppRoutes = () => {
           <Route path="/checkin/resultado" element={<CheckInResultPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </main>
       {!hideFooter && <Footer />}
