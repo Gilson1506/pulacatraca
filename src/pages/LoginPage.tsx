@@ -48,8 +48,8 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const redirectRoute = await loginWithGoogle();
-      navigate(redirectRoute);
+      await loginWithGoogle();
+      // Não navegar aqui: o fluxo OAuth fará o redirect
     } catch (err: any) {
       console.error(err);
       if (err instanceof Error) {
@@ -57,9 +57,8 @@ const LoginPage = () => {
       } else {
         setError('Erro inesperado. Tente novamente.');
       }
-    } finally {
-      setIsLoading(false);
-    }
+    } 
+    // Não finaliza loading aqui, pois a página será redirecionada pelo OAuth
   };
 
   return (

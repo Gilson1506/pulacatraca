@@ -44,7 +44,11 @@ const AppRoutes = () => {
           <Route path="/event/:eventId" element={<EventPage />} />
           <Route path="/ingresso/:ticketId" element={<TicketPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/profile/*" element={<ProfilePage />} />
+          <Route path="/profile/*" element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          } />
           <Route path="/checkin" element={<CheckInPage />} />
           <Route path="/organizer-register" element={<OrganizerRegisterPage />} />
           <Route path="/organizer-dashboard/*" element={
