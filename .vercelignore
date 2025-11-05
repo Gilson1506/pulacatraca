@@ -1,0 +1,6 @@
+# Ignorar pastas admin e backend no deploy do Vercel
+admin-pulakatraka-main/
+backend pagbank/
+pagarme-nodejs-sdk-main/
+android/
+

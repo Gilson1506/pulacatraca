@@ -2001,8 +2001,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                           </label>
                           <input
                             type="number"
-                            value={ticket.price || ''}
-                            onChange={(e) => updateTicket(ticket.id, { price: parseFloat(e.target.value) || 0 })}
+                            value={ticket.price ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              updateTicket(ticket.id, { 
+                                price: value === '' ? null : (isNaN(parseFloat(value)) ? null : parseFloat(value))
+                              });
+                            }}
                             step="0.01"
                             min="0"
                             placeholder="Digite o preço"
@@ -2017,8 +2022,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                             </label>
                             <input
                               type="number"
-                              value={ticket.price || ''}
-                              onChange={(e) => updateTicket(ticket.id, { price: parseFloat(e.target.value) || 0 })}
+                              value={ticket.price ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                updateTicket(ticket.id, { 
+                                  price: value === '' ? null : (isNaN(parseFloat(value)) ? null : parseFloat(value))
+                                });
+                              }}
                               step="0.01"
                               min="0"
                               placeholder="Digite o preço"
@@ -2031,8 +2041,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                             </label>
                             <input
                               type="number"
-                              value={ticket.price_feminine || ''}
-                              onChange={(e) => updateTicket(ticket.id, { price_feminine: parseFloat(e.target.value) || 0 })}
+                              value={ticket.price_feminine ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                updateTicket(ticket.id, { 
+                                  price_feminine: value === '' ? null : (isNaN(parseFloat(value)) ? null : parseFloat(value))
+                                });
+                              }}
                               step="0.01"
                               min="0"
                               placeholder="Digite o preço"
@@ -2160,7 +2175,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                   <input
                     type="number"
                     value={ticket.quantity || ''}
-                    onChange={(e) => updateTicket(ticket.id, { quantity: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      updateTicket(ticket.id, { 
+                        quantity: value === '' ? 0 : (isNaN(parseInt(value)) ? 0 : parseInt(value))
+                      });
+                    }}
                     min="1"
                     placeholder=""
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -2179,9 +2199,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                         updateTicket(ticket.id, { 
                           has_half_price: isChecked,
                           half_price_title: isChecked ? `${ticket.title} - MEIA` : '',
-                          half_price_quantity: isChecked ? Math.floor(ticket.quantity / 2) : 0,
-                          half_price_price: isChecked && ticket.price ? ticket.price / 2 : null,
-                          half_price_price_feminine: isChecked && ticket.price_feminine ? ticket.price_feminine / 2 : null
+                          // Só calcular valores iniciais quando marca o checkbox pela primeira vez
+                          // Se já tinha valores, manter os existentes para não sobrescrever edições do usuário
+                          half_price_quantity: isChecked && !ticket.half_price_quantity 
+                            ? Math.floor(ticket.quantity / 2) 
+                            : (isChecked ? ticket.half_price_quantity : 0),
+                          half_price_price: isChecked && !ticket.half_price_price && ticket.price
+                            ? ticket.price / 2 
+                            : (isChecked ? ticket.half_price_price : null),
+                          half_price_price_feminine: isChecked && !ticket.half_price_price_feminine && ticket.price_feminine
+                            ? ticket.price_feminine / 2 
+                            : (isChecked ? ticket.half_price_price_feminine : null)
                         });
                       }}
                       className="mr-2"
@@ -2210,8 +2238,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                         </label>
                         <input
                           type="number"
-                          value={ticket.half_price_quantity}
-                          onChange={(e) => updateTicket(ticket.id, { half_price_quantity: parseInt(e.target.value) || 0 })}
+                          value={ticket.half_price_quantity || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            updateTicket(ticket.id, { 
+                              half_price_quantity: value === '' ? 0 : (isNaN(parseInt(value)) ? 0 : parseInt(value))
+                            });
+                          }}
                           min="1"
                           placeholder="Ex: 50"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -2228,8 +2261,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                           </label>
                           <input
                             type="number"
-                            value={ticket.half_price_price || ''}
-                            onChange={(e) => updateTicket(ticket.id, { half_price_price: parseFloat(e.target.value) || 0 })}
+                            value={ticket.half_price_price ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              updateTicket(ticket.id, { 
+                                half_price_price: value === '' ? null : (isNaN(parseFloat(value)) ? null : parseFloat(value))
+                              });
+                            }}
                             step="0.01"
                             min="0"
                             placeholder="R$ 25.00"
@@ -2247,8 +2285,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                             </label>
                             <input
                               type="number"
-                              value={ticket.half_price_price || ''}
-                              onChange={(e) => updateTicket(ticket.id, { half_price_price: parseFloat(e.target.value) || 0 })}
+                              value={ticket.half_price_price ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                updateTicket(ticket.id, { 
+                                  half_price_price: value === '' ? null : (isNaN(parseFloat(value)) ? null : parseFloat(value))
+                                });
+                              }}
                               step="0.01"
                               min="0"
                               placeholder="R$ 25.00"
@@ -2261,8 +2304,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                             </label>
                             <input
                               type="number"
-                              value={ticket.half_price_price_feminine || ''}
-                              onChange={(e) => updateTicket(ticket.id, { half_price_price_feminine: parseFloat(e.target.value) || 0 })}
+                              value={ticket.half_price_price_feminine ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                updateTicket(ticket.id, { 
+                                  half_price_price_feminine: value === '' ? null : (isNaN(parseFloat(value)) ? null : parseFloat(value))
+                                });
+                              }}
                               step="0.01"
                               min="0"
                               placeholder="R$ 22.50"
