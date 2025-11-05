@@ -77,7 +77,10 @@ const EventCarousel: React.FC<CarouselProps> = ({ settings = {}, id = 'event-car
               <img
                 src={event.image || '/placeholder-event.jpg'}
                 alt={event.title}
+                width={1200}
+                height={600}
                 className="w-full h-full object-cover object-center select-none"
+                style={{ aspectRatio: '2/1' }}
                 decoding="async"
                 loading="eager"
                 sizes="(min-width: 1280px) 1200px, (min-width: 1024px) 1000px, (min-width: 768px) 768px, 100vw"

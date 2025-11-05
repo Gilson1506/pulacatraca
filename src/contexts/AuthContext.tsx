@@ -87,6 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (profile) {
               console.log('✅ Perfil carregado após login:', profile.email);
               setUser(profile);
+              
+              // Notificar outras abas sobre mudança de auth
+              try {
+                const channel = new BroadcastChannel('pulacatraca-auth-sync');
+                channel.postMessage({ type: 'AUTH_CHANGE' });
+                channel.close();
+              } catch (e) {
+                // Ignorar se BroadcastChannel não estiver disponível
+              }
             } else {
               console.warn('⚠️ Perfil não encontrado na tabela profiles');
             }
@@ -98,13 +107,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 Usuário saiu');
           setUser(null);
+          
+          // Notificar outras abas
+          try {
+            const channel = new BroadcastChannel('pulacatraca-auth-sync');
+            channel.postMessage({ type: 'AUTH_CHANGE' });
+            channel.close();
+          } catch (e) {
+            // Ignorar se BroadcastChannel não estiver disponível
+          }
         }
       }
     );
 
+    // Sincronizar sessão entre abas do navegador
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'pulacatraca-auth' || e.key?.startsWith('sb-')) {
+        console.log('🔄 Sessão alterada em outra aba, verificando usuário...');
+        checkUser();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // BroadcastChannel para sincronização mais rápida entre abas
+    let authChannel: BroadcastChannel | null = null;
+    try {
+      authChannel = new BroadcastChannel('pulacatraca-auth-sync');
+      authChannel.onmessage = (event) => {
+        if (event.data.type === 'AUTH_CHANGE') {
+          console.log('🔄 Sincronização de auth via BroadcastChannel');
+          checkUser();
+        }
+      };
+    } catch (error) {
+      console.warn('BroadcastChannel não suportado, usando apenas storage events');
+    }
+
     // Cleanup
     return () => {
       authListener?.subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+      if (authChannel) {
+        authChannel.close();
+      }
       isInitialized.current = false;
     };
   }, []);

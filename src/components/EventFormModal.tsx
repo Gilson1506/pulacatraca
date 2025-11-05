@@ -3,6 +3,7 @@ import { X, Upload, Plus, Bold, Italic, Underline, List, AlignLeft, AlignCenter,
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import Toast from './Toast';
+import { withTimeout } from '../utils/api';
 
 interface EventFormData {
   // Seção 1: Informações básicas
@@ -823,25 +824,33 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           end_datetime: endDatetime
         });
         
-        // 8. VERIFICAR AUTENTICAÇÃO
-        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+        // 8. VERIFICAR AUTENTICAÇÃO (com timeout)
+        const { data: { user: currentUser }, error: authError } = await withTimeout(
+          supabase.auth.getUser(),
+          10000,
+          'Verificação de autenticação excedeu o tempo limite'
+        );
         
         if (authError || !currentUser) {
           throw new Error('Usuário não autenticado. Faça login novamente.');
         }
         
-        // 9. ✅ INSERIR OU ATUALIZAR NO SUPABASE
+        // 9. ✅ INSERIR OU ATUALIZAR NO SUPABASE (com timeout)
         let eventData;
         
         if (event?.id) {
           // ✅ MODO EDIÇÃO: Atualizar evento existente
           console.log('📝 Atualizando evento existente:', event.id);
-          const { data, error: updateError } = await supabase
-            .from('events')
-            .update(payload)
-            .eq('id', event.id)
-            .select()
-            .single();
+          const { data, error: updateError } = await withTimeout(
+            supabase
+              .from('events')
+              .update(payload)
+              .eq('id', event.id)
+              .select()
+              .single(),
+            30000,
+            'Falha ao atualizar evento. Tente novamente.'
+          );
           
           if (updateError) {
             console.error('❌ Erro ao atualizar evento:', updateError);
@@ -855,13 +864,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           console.log('➕ Criando novo evento');
         }
         
-        // 9b. INSERIR NO SUPABASE (apenas se não for edição)
+        // 9b. INSERIR NO SUPABASE (apenas se não for edição, com timeout)
         if (!event?.id) {
-          const { data, error: insertError } = await supabase
-            .from('events')
-            .insert([payload])
-            .select()
-            .single();
+          const { data, error: insertError } = await withTimeout(
+            supabase
+              .from('events')
+              .insert([payload])
+              .select()
+              .single(),
+            30000,
+            'Falha ao criar evento. Tente novamente.'
+          );
           
           if (insertError) {
             console.error('❌ Erro ao inserir evento:', insertError);

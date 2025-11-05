@@ -1230,8 +1230,11 @@ const EventPage = () => {
                 <img
                   src={event.image}
                   alt={event.title}
+                  width={800}
+                  height={600}
                   className="w-full h-full object-cover"
                   style={{ 
+                    aspectRatio: '4/3',
                     objectPosition: 'center center',
                     filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
                     WebkitBackfaceVisibility: 'hidden',
@@ -1254,8 +1257,11 @@ const EventPage = () => {
               <img
                 src={event.image}
                 alt={event.title}
+                width={1200}
+                height={900}
                 className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white pointer-events-auto"
                 style={{ 
+                  aspectRatio: '4/3',
                   objectPosition: 'center center',
                   filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
                   WebkitBackfaceVisibility: 'hidden',
@@ -1524,6 +1530,8 @@ const EventPage = () => {
               <img 
                 src={event.image} 
                 alt={event.title}
+                width={48}
+                height={48}
                 className="w-12 h-12 object-cover rounded-lg shadow-sm"
               />
               <div className="flex-1 min-w-0">

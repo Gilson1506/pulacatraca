@@ -96,14 +96,17 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <div className="relative w-40 flex-shrink-0">
         <img 
           src={event.image} 
-          alt={event.title} 
-            className="w-full h-28 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
-            style={{ 
-              objectPosition: 'center center',
-              imageRendering: 'high-quality',
-              filter: 'contrast(1.02) saturate(1.05)'
-            }}
-            loading="lazy"
+          alt={event.title}
+          width={400}
+          height={300}
+          className="w-full h-28 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
+          style={{ 
+            aspectRatio: '4/3',
+            objectPosition: 'center center',
+            imageRendering: 'high-quality',
+            filter: 'contrast(1.02) saturate(1.05)'
+          }}
+          loading="lazy"
         />
         </div>
         {/* Detalhes do Evento à direita (MOBILE) */}
@@ -123,9 +126,12 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <div className="relative w-full">
           <img 
             src={event.image} 
-            alt={event.title} 
+            alt={event.title}
+            width={400}
+            height={300}
             className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
             style={{ 
+              aspectRatio: '4/3',
               objectPosition: 'center center',
               imageRendering: 'high-quality',
               filter: 'contrast(1.02) saturate(1.05)'
