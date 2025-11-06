@@ -14,12 +14,31 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: window.localStorage,
-    storageKey: 'pulacatraca-auth'
+    storageKey: 'pulacatraca-auth',
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'x-client-info': 'pulacatraca-web'
+    }
+  },
+  db: {
+    schema: 'public'
   }
 });
 
-export const getUser = async () => {
+// Cache simples para evitar múltiplas chamadas simultâneas
+let getUserCache: { data: any; timestamp: number } | null = null;
+const GET_USER_CACHE_TTL = 5000; // 5 segundos
+
+export const getUser = async (forceRefresh = false) => {
   try {
+    // Verificar cache se não for refresh forçado
+    if (!forceRefresh && getUserCache && (Date.now() - getUserCache.timestamp) < GET_USER_CACHE_TTL) {
+      console.log('📦 Retornando usuário do cache');
+      return getUserCache.data;
+    }
+
     console.log('1. Iniciando busca de usuário...'); // DEBUG
     
     // Primeiro verificar se há uma sessão ativa
@@ -98,9 +117,18 @@ export const getUser = async () => {
     }
 
     console.log('14. Perfil encontrado com sucesso:', profileData); // DEBUG
+    
+    // Atualizar cache
+    getUserCache = {
+      data: profileData,
+      timestamp: Date.now()
+    };
+    
     return profileData;
   } catch (error) {
     console.error('15. Erro inesperado ao buscar usuário:', error); // DEBUG
+    // Limpar cache em caso de erro
+    getUserCache = null;
     return null;
   }
 };
@@ -207,6 +235,8 @@ export const signUp = async (email: string, password: string, name: string, role
 
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut();
+  // Limpar cache ao fazer logout
+  getUserCache = null;
   if (error) throw error;
 };
 

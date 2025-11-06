@@ -14,6 +14,8 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const init = async () => {
       try {
@@ -24,18 +26,16 @@ const ResetPasswordPage = () => {
           return;
         }
         // Em alguns casos, a sessão chega via evento
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event) => {
           if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
             if (isMounted) setIsSessionReady(true);
           }
         });
+        subscription = authSubscription;
         // Pequeno timeout de segurança para evitar ficar travado
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           if (isMounted) setIsSessionReady(true);
         }, 800);
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch {
         if (isMounted) setIsSessionReady(true);
       }
@@ -44,6 +44,12 @@ const ResetPasswordPage = () => {
     init();
     return () => {
       isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, []);
 

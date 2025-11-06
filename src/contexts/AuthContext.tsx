@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase, getUser, signInWithEmail, signInWithGoogle, signUp, signOut } from '../lib/supabase';
 import type { UserProfile } from '../types/supabase';
 import { AuthError } from '@supabase/supabase-js';
@@ -120,11 +120,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Sincronizar sessão entre abas do navegador
+    // Sincronizar sessão entre abas do navegador com debounce para evitar múltiplas chamadas
+    let checkUserTimeout: NodeJS.Timeout | null = null;
+    const debouncedCheckUser = () => {
+      if (checkUserTimeout) {
+        clearTimeout(checkUserTimeout);
+      }
+      checkUserTimeout = setTimeout(() => {
+        checkUser();
+      }, 300); // Debounce de 300ms
+    };
+
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'pulacatraca-auth' || e.key?.startsWith('sb-')) {
         console.log('🔄 Sessão alterada em outra aba, verificando usuário...');
-        checkUser();
+        debouncedCheckUser();
       }
     };
 
@@ -137,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       authChannel.onmessage = (event) => {
         if (event.data.type === 'AUTH_CHANGE') {
           console.log('🔄 Sincronização de auth via BroadcastChannel');
-          checkUser();
+          debouncedCheckUser();
         }
       };
     } catch (error) {
@@ -151,11 +161,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authChannel) {
         authChannel.close();
       }
+      if (checkUserTimeout) {
+        clearTimeout(checkUserTimeout);
+      }
       isInitialized.current = false;
     };
   }, []);
 
-  const tryRestoreCheckout = (): string => {
+  const tryRestoreCheckout = useCallback((): string => {
     if (!hasValidCartData()) {
       console.log('🔍 Nenhum dado de carrinho válido encontrado');
       return '';
@@ -222,7 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('checkout_data');
       return '';
     }
-  };
+  }, [navigate]);
 
   // Restaurar checkout ao detectar usuário logado após qualquer mudança de sessão (ex: retorno do OAuth)
   useEffect(() => {
@@ -233,7 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [loading, user]);
 
-  const login = async (email: string, password: string): Promise<string> => {
+  const login = useCallback(async (email: string, password: string): Promise<string> => {
     setLoading(true);
     try {
       console.log('🔐 Tentando login com email:', email);
@@ -269,9 +282,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [tryRestoreCheckout]);
 
-  const loginWithGoogle = async (): Promise<string> => {
+  const loginWithGoogle = useCallback(async (): Promise<string> => {
     setLoading(true);
     try {
       console.log('🔐 Tentando login com Google');
@@ -292,9 +305,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [tryRestoreCheckout]);
 
-  const register = async (
+  const register = useCallback(async (
     name: string,
     email: string,
     password: string,
@@ -332,26 +345,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, [tryRestoreCheckout]);
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     try {
       await signOut();
     } finally {
       setUser(null);
       navigate('/');
     }
-  };
+  }, [navigate]);
 
-  const getDashboardRoute = () => {
+  const getDashboardRoute = useCallback(() => {
     if (!user) return '/';
     if (user.role === 'organizer' || user.role === 'admin') {
       return '/organizer-dashboard';
     }
     return '/profile';
-  };
+  }, [user]);
 
-  const value = { user, login, loginWithGoogle, register, logout, loading, getDashboardRoute };
+  // Memoizar o value para evitar re-renders desnecessários
+  const value = useMemo(() => ({
+    user,
+    login,
+    loginWithGoogle,
+    register,
+    logout,
+    loading,
+    getDashboardRoute
+  }), [user, loading, login, loginWithGoogle, register, logout, getDashboardRoute]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

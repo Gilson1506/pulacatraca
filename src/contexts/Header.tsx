@@ -6,6 +6,7 @@ import LocationModal from '../components/LocationModal';
 import { Search, MapPin, User, Menu, X } from 'lucide-react';
 
 const Header: React.FC = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { searchQuery, setSearchQuery, selectedLocation, setSelectedLocation } = useSearch();
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
