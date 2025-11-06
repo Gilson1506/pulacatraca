@@ -211,9 +211,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('checkout_restore_data', JSON.stringify(state));
       console.log('💾 Dados salvos no localStorage como backup');
       
-      // Navegar para checkout - os dados serão recuperados via localStorage
-      console.log('🚀 Executando navigate para:', target);
-      navigate(target);
+      // Navegar para checkout passando o state diretamente E mantendo no localStorage como fallback
+      console.log('🚀 Executando navigate para:', target, 'com state:', state);
+      navigate(target, { state });
       
       return target as string;
     } catch (error) {

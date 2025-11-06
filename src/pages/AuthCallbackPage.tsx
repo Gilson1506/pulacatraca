@@ -66,17 +66,50 @@ const AuthCallbackPage = () => {
           }
         }
 
-        // Verificar se há checkout pendente para restaurar
-        const checkoutData = localStorage.getItem('checkoutBeforeLogin');
-        if (checkoutData) {
-          console.log('🛒 Restaurando checkout pendente...');
-          localStorage.removeItem('checkoutBeforeLogin');
+        // Verificar se há checkout pendente para restaurar (usando a mesma chave do AuthContext)
+        const checkoutRestoreData = localStorage.getItem('checkout_restore_data');
+        if (checkoutRestoreData) {
+          console.log('🛒 Restaurando checkout pendente do localStorage...');
           try {
-            const parsed = JSON.parse(checkoutData);
-            navigate(parsed.route, { state: parsed.state });
+            const parsed = JSON.parse(checkoutRestoreData);
+            localStorage.removeItem('checkout_restore_data');
+            console.log('🔄 Navegando para checkout com dados restaurados:', parsed);
+            navigate('/checkout', { state: parsed });
             return;
           } catch (e) {
             console.error('Erro ao parsear checkout data:', e);
+            localStorage.removeItem('checkout_restore_data');
+          }
+        }
+        
+        // Fallback: verificar se há dados no formato antigo (checkoutBeforeLogin)
+        const checkoutData = localStorage.getItem('checkoutBeforeLogin');
+        if (checkoutData) {
+          console.log('🛒 Restaurando checkout pendente (formato antigo)...');
+          localStorage.removeItem('checkoutBeforeLogin');
+          try {
+            const parsed = JSON.parse(checkoutData);
+            navigate(parsed.route || '/checkout', { state: parsed.state || parsed });
+            return;
+          } catch (e) {
+            console.error('Erro ao parsear checkout data:', e);
+          }
+        }
+        
+        // Verificar se há dados válidos do carrinho usando cartStorage
+        const { hasValidCartData, getCartData } = await import('../utils/cartStorage');
+        if (hasValidCartData()) {
+          const cartData = getCartData();
+          if (cartData && cartData.state) {
+            console.log('🛒 Restaurando checkout do carrinho...');
+            const state = {
+              event: cartData.state.event,
+              selectedTickets: cartData.state.selectedTickets,
+              totalAmount: cartData.state.totalAmount,
+              ticket: cartData.state.ticket
+            };
+            navigate('/checkout', { state });
+            return;
           }
         }
 

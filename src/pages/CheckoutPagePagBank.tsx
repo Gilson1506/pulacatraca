@@ -107,21 +107,47 @@ const CheckoutPagePagBank = () => {
 
   // useEffect para restaurar dados do localStorage (executa apenas uma vez)
   useEffect(() => {
+    // Se já temos dados via useLocation, não precisamos restaurar do localStorage
+    if (event && (selectedTickets || ticket)) {
+      console.log('✅ Dados já recebidos via useLocation, não precisa restaurar do localStorage');
+      return;
+    }
+    
+    // Tentar restaurar de checkout_restore_data primeiro
     const localStorageData = localStorage.getItem('checkout_restore_data');
     if (localStorageData && !restoredData) {
       try {
         const parsedData = JSON.parse(localStorageData);
-        console.log('💾 Dados encontrados no localStorage:', parsedData);
-        
-        // Se não temos dados via useLocation, usar localStorage
-        if (!event && !selectedTickets && !ticket) {
-          console.log('🔄 Usando dados do localStorage como fallback');
-          localStorage.removeItem('checkout_restore_data');
-          setRestoredData(parsedData);
+        console.log('💾 Dados encontrados no checkout_restore_data:', parsedData);
+        localStorage.removeItem('checkout_restore_data');
+        setRestoredData(parsedData);
+        return;
+      } catch (error) {
+        console.error('❌ Erro ao parsear checkout_restore_data:', error);
+        localStorage.removeItem('checkout_restore_data');
+      }
+    }
+    
+    // Fallback: tentar restaurar do cartStorage
+    const { hasValidCartData, getCartData } = require('../utils/cartStorage');
+    if (hasValidCartData() && !restoredData) {
+      try {
+        const cartData = getCartData();
+        if (cartData && cartData.state) {
+          console.log('💾 Dados encontrados no cartStorage:', cartData);
+          const restoredState = {
+            event: cartData.state.event,
+            selectedTickets: cartData.state.selectedTickets,
+            totalAmount: cartData.state.totalAmount,
+            ticket: cartData.state.ticket
+          };
+          setRestoredData(restoredState);
+          // Limpar dados do carrinho após restaurar
+          const { clearCartData } = require('../utils/cartStorage');
+          clearCartData();
         }
       } catch (error) {
-        console.error('❌ Erro ao parsear dados do localStorage:', error);
-        localStorage.removeItem('checkout_restore_data');
+        console.error('❌ Erro ao restaurar do cartStorage:', error);
       }
     }
   }, []); // SEM dependências - executa apenas uma vez
