@@ -174,32 +174,22 @@ const DashboardOverview = () => {
         return;
       }
 
-      // Adicionar timeout para evitar travamento
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => {
-          if (!abortSignal.aborted) {
-            reject(new Error('Timeout: Dados não carregaram em tempo hábil'));
-          }
-        }, 15000)
-      );
+      // Verificar abort antes de cada requisição
+      if (abortSignal.aborted || !isMountedRef.current) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
 
-      const dataPromise = (async () => {
-        // Verificar abort antes de cada requisição
-        if (abortSignal.aborted || !isMountedRef.current) {
-          throw new DOMException('Aborted', 'AbortError');
-        }
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Usuário não autenticado');
+      }
 
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          throw new Error('Usuário não autenticado');
-        }
+      if (abortSignal.aborted || !isMountedRef.current) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
 
-        if (abortSignal.aborted || !isMountedRef.current) {
-          throw new DOMException('Aborted', 'AbortError');
-        }
-
-        // Buscar eventos do organizador com dados completos
-        const { data: events, error: eventsError } = await supabase
+      // Buscar eventos do organizador com dados completos
+      const { data: events, error: eventsError } = await supabase
           .from('events')
           .select(`
             id, title, description, start_date, end_date, location, image, subject, subcategory, category,
@@ -336,15 +326,9 @@ const DashboardOverview = () => {
           throw new DOMException('Aborted', 'AbortError');
         }
 
-        setLabelsSeries(labels);
-        setRevenueSeries(revenueData);
-        setTicketsSeries(ticketsSeries);
-
-        return { events: eventsData };
-      })();
-
-      // Executar com timeout
-      await Promise.race([dataPromise, timeoutPromise]);
+      setLabelsSeries(labels);
+      setRevenueSeries(revenueData);
+      setTicketsSeries(ticketsSeries);
       
     } catch (error: any) {
       // Ignorar erros de abort
@@ -368,10 +352,7 @@ const DashboardOverview = () => {
       // Configurar estado de erro
       setHasError(true);
       if (error instanceof Error) {
-        if (error.message.includes('Timeout')) {
-          setErrorMessage('Dados não carregaram em tempo hábil. Tente novamente.');
-          console.warn('⚠️ Timeout no carregamento, usando dados padrão');
-        } else if (error.message.includes('Usuário não autenticado')) {
+        if (error.message.includes('Usuário não autenticado')) {
           setErrorMessage('Usuário não autenticado. Faça login novamente.');
           console.warn('⚠️ Usuário não autenticado');
         } else {
