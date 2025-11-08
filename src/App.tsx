@@ -1,5 +1,4 @@
 import React from 'react';
-import { abort } from '@/lib/globalAbort';
 import { AuthProvider } from './contexts/AuthContext';
 import { SearchProvider } from './contexts/SearchContext';
 import { ModalProvider } from './contexts/ModalContext';
@@ -37,14 +36,6 @@ function App() {
             message="Olá! Gostaria de mais informações sobre os eventos do Pulakatraca."
             position="bottom-left"
           />
-
-          {/* Botão de emergência para abortar e recarregar */}
-          <button
-            onClick={() => { abort(); location.reload(); }}
-            className="fixed bottom-4 right-4 bg-red-600 text-white w-12 h-12 rounded-full z-50 shadow-lg"
-          >
-            Refresh
-          </button>
         </ModalProvider>
       </SearchProvider>
     </AuthProvider>

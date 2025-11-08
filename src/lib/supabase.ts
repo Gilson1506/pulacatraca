@@ -38,32 +38,22 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Force all .select() calls to use abort signal by default
-const originalFrom = supabase.from.bind(supabase) as (table: string) => any;
-supabase.from = (table: string) => {
-  const query: any = originalFrom(table);
-  const originalSelect = query.select.bind(query);
-  query.select = (...args: any[]) => {
-    // Create a new AbortController for each query
-    const controller = new AbortController();
-    
-    // Listen to global abort to cancel this specific query
-    const globalSig = signal();
-    if (globalSig.aborted) {
-      controller.abort();
-    } else {
-      globalSig.addEventListener('abort', () => controller.abort(), { once: true });
-    }
-    
-    return originalSelect(...args).abortSignal(controller.signal);
-  };
-  return query;
+// Helper to create a fresh abort signal for manual use when needed
+export const createQuerySignal = () => {
+  const controller = new AbortController();
+  return controller.signal;
 };
 
 // Cache simples para evitar múltiplas chamadas simultâneas
 let getUserCache: { data: any; timestamp: number } | null = null;
 const GET_USER_CACHE_TTL = 30000; // 30 segundos (aumentado)
 let getUserPromise: Promise<any> | null = null; // Lock para evitar chamadas simultâneas
+
+// Helper to clear user cache
+const clearUserCache = () => {
+  getUserCache = null;
+  getUserPromise = null;
+};
 
 export const getUser = async (forceRefresh = false) => {
   // Se já há uma chamada em andamento, aguardar ela

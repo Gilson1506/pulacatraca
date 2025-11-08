@@ -1,4 +1,5 @@
 // src/lib/globalAbort.ts
+// Simple abort controller for manual cancellation when needed
 let controller: AbortController = new AbortController();
 
 const abort = () => {
@@ -7,14 +8,5 @@ const abort = () => {
 };
 
 const signal = () => controller.signal;
-
-if (typeof window !== 'undefined') {
-  const pushState = history.pushState;
-  history.pushState = (...args: any[]) => {
-    abort();
-    return pushState.apply(history, args as any);
-  };
-  window.addEventListener('popstate', abort);
-}
 
 export { abort, signal };
