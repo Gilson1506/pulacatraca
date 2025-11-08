@@ -4,20 +4,16 @@ import type { Database } from '../types/supabase';
 
 // Hook para cleanup automático de requisições ao desmontar componente
 export const useAbortOnUnmount = () => {
-  const controllerRef = useRef<AbortController | null>(null);
+  const controllerRef = useRef<AbortController>(new AbortController());
   
   useEffect(() => {
-    controllerRef.current = new AbortController();
-    
     return () => {
       // Cancela requisições pendentes quando componente desmonta
-      if (controllerRef.current) {
-        controllerRef.current.abort();
-      }
+      controllerRef.current.abort();
     };
   }, []);
   
-  return controllerRef.current?.signal;
+  return controllerRef.current.signal;
 };
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
