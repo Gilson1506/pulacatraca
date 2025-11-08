@@ -105,7 +105,17 @@ export const getUser = async (forceRefresh = false) => {
     try {
       // Primeiro verificar se há uma sessão ativa
       console.log('1️⃣ Verificando sessão...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      // Adicionar timeout de 8 segundos para getSession
+      const sessionPromise = supabase.auth.getSession();
+      const sessionTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao verificar sessão')), 8000);
+      });
+      
+      const { data: { session }, error: sessionError } = await Promise.race([
+        sessionPromise,
+        sessionTimeoutPromise
+      ]) as any;
       
       if (sessionError) {
         console.error('❌ Erro de sessão:', sessionError);
@@ -129,7 +139,17 @@ export const getUser = async (forceRefresh = false) => {
       }
       
       console.log('2️⃣ Buscando dados do usuário...');
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      // Adicionar timeout de 8 segundos para getUser
+      const userPromise = supabase.auth.getUser();
+      const userTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao buscar dados do usuário')), 8000);
+      });
+      
+      const { data: { user }, error: authError } = await Promise.race([
+        userPromise,
+        userTimeoutPromise
+      ]) as any;
       
       if (authError) {
         console.error('❌ Erro ao buscar usuário:', authError);
