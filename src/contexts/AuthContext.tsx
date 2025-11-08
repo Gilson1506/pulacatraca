@@ -86,9 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Ignorar SIGNED_IN se ainda não recebemos INITIAL_SESSION (é parte da inicialização)
-        if (event === 'SIGNED_IN' && !hasReceivedInitialSession) {
-          console.log('⏭️ Ignorando SIGNED_IN durante inicialização, aguardando INITIAL_SESSION...');
+        // Ignorar SIGNED_IN - ele é disparado automaticamente pelo Supabase em várias situações:
+        // 1. Durante inicialização (antes de INITIAL_SESSION)
+        // 2. Quando faz refresh do token automaticamente
+        // 3. Quando restaura sessão de outra aba
+        // O INITIAL_SESSION já cuida de carregar o perfil na inicialização
+        // E o cache de 30s evita recarregamentos desnecessários
+        if (event === 'SIGNED_IN') {
+          console.log('⏭️ Ignorando SIGNED_IN automático (perfil já carregado via INITIAL_SESSION ou cache)');
           return;
         }
 
@@ -98,39 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        if (event === 'SIGNED_IN' && session) {
-          isProcessingAuth.current = true;
-          try {
-            // Pequeno delay para garantir que o perfil foi criado no callback
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            // Usar getUser com cache para evitar múltiplas chamadas
-            const profile = await getUser(true); // Force refresh para garantir dados atualizados
-            
-            if (profile) {
-              console.log('✅ Perfil carregado após login:', profile.email);
-              setUser(profile);
-              
-              // Notificar outras abas sobre mudança de auth (com debounce)
-              try {
-                const channel = new BroadcastChannel('pulacatraca-auth-sync');
-                // Pequeno delay antes de notificar para evitar spam
-                setTimeout(() => {
-                  channel.postMessage({ type: 'AUTH_CHANGE' });
-                  channel.close();
-                }, 500);
-              } catch (e) {
-                // Ignorar se BroadcastChannel não estiver disponível
-              }
-            } else {
-              console.warn('⚠️ Perfil não encontrado após login');
-            }
-          } catch (error) {
-            console.error('❌ Erro ao carregar perfil após login:', error);
-          } finally {
-            isProcessingAuth.current = false;
-          }
-        } else if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT') {
           console.log('👋 Usuário saiu');
           setUser(null);
           
