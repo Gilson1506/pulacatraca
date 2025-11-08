@@ -1,15 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Database } from '../types/supabase';
-import { abort as globalAbort, signal as globalSignal } from '@/lib/globalAbort';
 
-// Re-export to keep current imports working across the app
-export const abort = globalAbort;
-export const signal = globalSignal;
-
-// Hook to auto-abort on unmount
-export const useAbort = () => {
-  useEffect(() => () => abort(), []);
+// Hook para cleanup automático de requisições ao desmontar componente
+export const useAbortOnUnmount = () => {
+  const controllerRef = useRef<AbortController | null>(null);
+  
+  useEffect(() => {
+    controllerRef.current = new AbortController();
+    
+    return () => {
+      // Cancela requisições pendentes quando componente desmonta
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
+    };
+  }, []);
+  
+  return controllerRef.current?.signal;
 };
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -35,13 +43,37 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   db: {
     schema: 'public'
+  },
+  // Configurações de realtime otimizadas
+  realtime: {
+    params: {
+      eventsPerSecond: 10 // Limita eventos para evitar sobrecarga
+    }
   }
 });
 
-// Helper to create a fresh abort signal for manual use when needed
-export const createQuerySignal = () => {
-  const controller = new AbortController();
-  return controller.signal;
+// Sistema de deduplicação de requisições para evitar chamadas duplicadas
+const pendingRequests = new Map<string, Promise<any>>();
+
+export const deduplicateRequest = async <T>(
+  key: string,
+  requestFn: () => Promise<T>,
+  ttl: number = 5000
+): Promise<T> => {
+  // Se já existe uma requisição pendente com essa chave, retorna ela
+  if (pendingRequests.has(key)) {
+    console.log(`🔄 Reutilizando requisição pendente: ${key}`);
+    return pendingRequests.get(key) as Promise<T>;
+  }
+
+  // Cria nova requisição
+  const promise = requestFn().finally(() => {
+    // Remove da lista após completar
+    setTimeout(() => pendingRequests.delete(key), ttl);
+  });
+
+  pendingRequests.set(key, promise);
+  return promise;
 };
 
 // Cache simples para evitar múltiplas chamadas simultâneas

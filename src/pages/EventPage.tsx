@@ -9,7 +9,7 @@ import HeroContainer from '../components/HeroContainer';
 import LoginPromptModal from '../components/LoginPromptModal';
 import TicketSelectorModal from '../components/TicketSelectorModal';
 
-import { supabase, useAbort, abort, signal } from '@/lib/supabase';
+import { supabase, useAbortOnUnmount } from '@/lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
@@ -258,8 +258,7 @@ const EventPage = () => {
   const [halfPriceQuantity, setHalfPriceQuantity] = useState(0);
   const { trackPurchaseFlow } = useAnalytics();
   const { shouldUseAuthModal } = useABTesting();
-  const ABORT_KEY = 'event-page';
-  useAbort(ABORT_KEY);
+  const abortSignal = useAbortOnUnmount();
   const isMountedRef = useRef(true);
   
   // Track page view automaticamente
@@ -285,8 +284,6 @@ const EventPage = () => {
   }, [event, eventId]);
 
   const fetchEvent = async () => {
-    abort(ABORT_KEY);
-    const abortSignal = signal(ABORT_KEY);
     let attractions: string[] = [];
     let importantInfo: string[] = [];
     let classification: string = 'LIVRE';

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -23,7 +23,6 @@ import SearchPage from './pages/SearchPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import { abort, useAbort } from '@/lib/supabase';
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -32,13 +31,6 @@ const AppRoutes = () => {
   
   // A/B Testing Dashboard (apenas em desenvolvimento)
   const { isOpen, setIsOpen } = useABTestingDashboardShortcut();
-
-  const ROUTER_ABORT_KEY = 'router';
-  useAbort(ROUTER_ABORT_KEY);
-
-  useEffect(() => {
-    abort(ROUTER_ABORT_KEY);
-  }, [ROUTER_ABORT_KEY, location.pathname]);
 
   return (
     <div className="flex flex-col min-h-screen">
