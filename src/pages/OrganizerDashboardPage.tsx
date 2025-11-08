@@ -5,7 +5,7 @@ import {
 import EventFormModal from '../components/EventFormModal';
 import ShareEventModal from '../components/ShareEventModal';
 // QrScanner removido - conflitava com html5-qrcode
-import { supabase, abort } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import LoadingButton from '../components/LoadingButton';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate } from 'react-router-dom';
@@ -158,8 +158,7 @@ const DashboardOverview = () => {
     
     return () => {
       isMountedRef.current = false;
-      // Cancelar requisições pendentes ao desmontar
-      abort(DASHBOARD_ABORT_KEY);
+      // useAbortController já faz o cleanup automático
     };
   }, []);
 
@@ -758,7 +757,7 @@ const OrganizerSupport = () => {
     
     return () => {
       isSupportMountedRef.current = false;
-      abort(SUPPORT_ABORT_KEY);
+      // useAbortController já faz o cleanup automático
     };
   }, []);
 
@@ -900,7 +899,7 @@ const OrganizerEvents = () => {
     
     return () => {
       isEventsMountedRef.current = false;
-      abort(EVENTS_ABORT_KEY);
+      // useAbortController já faz o cleanup automático
     };
   }, []);
 
