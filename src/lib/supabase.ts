@@ -38,15 +38,14 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Force all .select() calls to use abort + timeout by default
+// Force all .select() calls to use abort signal by default
 const originalFrom = supabase.from.bind(supabase) as (table: string) => any;
 supabase.from = (table: string) => {
   const query: any = originalFrom(table);
   const originalSelect = query.select.bind(query);
   query.select = (...args: any[]) =>
     originalSelect(...args)
-      .abortSignal(signal())
-      .timeout(8000);
+      .abortSignal(signal());
   return query;
 };
 
