@@ -66,26 +66,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // NÃO chamar checkUser() aqui - aguardar INITIAL_SESSION do Supabase
     // checkUser();
 
+    // Flag para saber se já recebemos INITIAL_SESSION
+    let hasReceivedInitialSession = false;
+
     // Listener para mudanças de autenticação (OAuth, etc)
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Evitar processamento duplicado
-        if (isProcessingAuth.current) {
-          console.log('⚠️ Processamento de auth já em andamento, ignorando...');
-          return;
-        }
-        
         console.log('🔐 Auth state changed:', event, session?.user?.email);
 
         // INITIAL_SESSION é disparado quando o Supabase termina de carregar a sessão
         if (event === 'INITIAL_SESSION') {
+          hasReceivedInitialSession = true;
           console.log('🎬 Sessão inicial carregada');
           setLoading(false);
           if (session) {
             // Chamar checkUser apenas se houver sessão
             checkUser();
           }
-        } else if (event === 'SIGNED_IN' && session) {
+          return;
+        }
+
+        // Ignorar SIGNED_IN se ainda não recebemos INITIAL_SESSION (é parte da inicialização)
+        if (event === 'SIGNED_IN' && !hasReceivedInitialSession) {
+          console.log('⏭️ Ignorando SIGNED_IN durante inicialização, aguardando INITIAL_SESSION...');
+          return;
+        }
+
+        // Evitar processamento duplicado
+        if (isProcessingAuth.current) {
+          console.log('⚠️ Processamento de auth já em andamento, ignorando...');
+          return;
+        }
+
+        if (event === 'SIGNED_IN' && session) {
           isProcessingAuth.current = true;
           try {
             // Pequeno delay para garantir que o perfil foi criado no callback
