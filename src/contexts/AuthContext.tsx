@@ -63,7 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    checkUser();
+    // NÃO chamar checkUser() aqui - aguardar INITIAL_SESSION do Supabase
+    // checkUser();
 
     // Listener para mudanças de autenticação (OAuth, etc)
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -76,7 +77,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('🔐 Auth state changed:', event, session?.user?.email);
 
-        if (event === 'SIGNED_IN' && session) {
+        // INITIAL_SESSION é disparado quando o Supabase termina de carregar a sessão
+        if (event === 'INITIAL_SESSION') {
+          console.log('🎬 Sessão inicial carregada');
+          setLoading(false);
+          if (session) {
+            // Chamar checkUser apenas se houver sessão
+            checkUser();
+          }
+        } else if (event === 'SIGNED_IN' && session) {
           isProcessingAuth.current = true;
           try {
             // Pequeno delay para garantir que o perfil foi criado no callback

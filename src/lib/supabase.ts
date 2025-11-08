@@ -106,10 +106,10 @@ export const getUser = async (forceRefresh = false) => {
       // Primeiro verificar se há uma sessão ativa
       console.log('1️⃣ Verificando sessão...');
       
-      // Adicionar timeout de 8 segundos para getSession
+      // Adicionar timeout de 15 segundos para getSession (primeira chamada pode ser lenta)
       const sessionPromise = supabase.auth.getSession();
       const sessionTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout ao verificar sessão')), 8000);
+        setTimeout(() => reject(new Error('Timeout ao verificar sessão')), 15000);
       });
       
       const { data: { session }, error: sessionError } = await Promise.race([
@@ -140,10 +140,10 @@ export const getUser = async (forceRefresh = false) => {
       
       console.log('2️⃣ Buscando dados do usuário...');
       
-      // Adicionar timeout de 8 segundos para getUser
+      // Adicionar timeout de 15 segundos para getUser
       const userPromise = supabase.auth.getUser();
       const userTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout ao buscar dados do usuário')), 8000);
+        setTimeout(() => reject(new Error('Timeout ao buscar dados do usuário')), 15000);
       });
       
       const { data: { user }, error: authError } = await Promise.race([
