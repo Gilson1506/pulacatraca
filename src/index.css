@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes highlight {
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 rgba(236, 72, 153, 0);
+  }
+  25% {
+    transform: translateX(-4px);
+    box-shadow: 4px 0 12px rgba(236, 72, 153, 0.3);
+  }
+  75% {
+    transform: translateX(4px);
+    box-shadow: -4px 0 12px rgba(236, 72, 153, 0.3);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 rgba(236, 72, 153, 0);
+  }
+}
+
+.animate-highlight {
+  animation: highlight 1s ease-in-out;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Toast animation */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* Bounce in animation for copy success */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0) translateY(-20px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1) translateY(0);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}

@@ -1,0 +1,82 @@
+.carouselContainer {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Estilos específicos para diferentes tipos de carrossel */
+.one-card .swiper-slide {
+  width: auto;
+}
+
+.sponsored .swiper-slide {
+  width: 100%;
+}
+
+.event-card .swiper-slide {
+  width: auto;
+}
+
+.recent-card .swiper-slide {
+  width: auto;
+}
+
+.collection-card .swiper-slide {
+  width: auto;
+}
+
+.venue-card .swiper-slide {
+  width: auto;
+}
+
+.city-card .swiper-slide {
+  width: auto;
+}
+
+.organizer-card .swiper-slide {
+  width: auto;
+}
+
+.banner-card .swiper-slide,
+.banner-login .swiper-slide,
+.banner-oss .swiper-slide {
+  width: 100%;
+}
+
+/* Paginação customizada */
+.swiper-pagination {
+  position: relative;
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #d1d5db;
+  border-radius: 50%;
+  margin: 0 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
+.swiper-pagination-bullet-active {
+  background-color: #3b82f6;
+  transform: scale(1.2);
+}
+
+.swiper-pagination-bullet:hover {
+  background-color: #6b7280;
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+  .swiper-pagination-bullet {
+    width: 6px;
+    height: 6px;
+    margin: 0 3px;
+  }
+}

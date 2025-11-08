@@ -1,0 +1,267 @@
+Webhooks
+Os webhooks permitem que os aplicativos forneçam informações em tempo real sempre que um evento ocorre sem a necessidade de solicitações constantes. Assim, requisições sucessivas para verificar se o status da operação foi alterada tornam-se desnecessárias. Após configurar os webhooks, o Pagbank enviará notificações via webhook para seu ambiente sempre que um evento (uma mudança de status de transação) acontecer, possibilitando a automação de seus processos de gestão de vendas.
+
+📘
+Formato e conteúdo dos webhooks
+
+Por padrão nossos webhooks possuem o mesmo payload (formato e conteúdo) do response síncrono das requisições das APIs na nova plataforma.
+
+Configurando o recebimento de notificação
+Para receber notificações via webhook utilizando a API de Pedidos, é necessário enviar no payload o campo opcional notification_urls. Assim, sempre que ocorrer um evento nessa transação, o PagSeguro enviará as notificações para a URL de destino (método POST).
+
+No bloco de código a seguir são apresentados exemplos de payload enviados na notificação para transações utilizando PIX e cartão de crédito:
+
+Pedido pago com PIX
+Pedido pago com Cartão de Crédito
+
+{
+    "id": "ORDE_F87334AC-BB8B-42E2-AA85-8579F70AA328",
+    "reference_id": "ex-00001",
+    "created_at": "2020-11-21T23:23:22.69-03:00",
+    "shipping": {
+        "address": {
+            "street": "Avenida Brigadeiro Faria Lima",
+            "number": "1384",
+            "complement": "apto 12",
+            "locality": "Pinheiros",
+            "city": "São Paulo",
+            "region_code": "SP",
+            "country": "BRA",
+            "postal_code": "01452002"
+        }
+    },
+    "items": [
+        {
+            "reference_id": "referencia do item",
+            "name": "nome do item",
+            "quantity": 1,
+            "unit_amount": 500
+        }
+    ],
+    "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909",
+        "phones": [
+            {
+                "country": "55",
+                "area": "11",
+                "number": "999999999",
+                "type": "MOBILE"
+            }
+        ]
+    },
+    "charges": [
+        {
+            "id": "CHAR_F1F10115-09F4-4560-85F5-A828D9F96300",
+            "reference_id": "referencia da cobranca",
+            "status": "PAID",
+            "created_at": "2020-11-21T23:30:22.695-03:00",
+            "paid_at": "2020-11-21T23:30:24.352-03:00",
+            "description": "descricao da cobranca",
+            "amount": {
+                "value": 500,
+                "currency": "BRL",
+                "summary": {
+                    "total": 500,
+                    "paid": 500,
+                    "refunded": 0
+                }
+            },
+            "payment_response": {
+                "code": "20000",
+                "message": "SUCESSO",
+                "reference": "1606012224352"
+            },
+            "payment_method": {
+                "type": "PIX",
+              	"pix":{
+                	"notification_id": "NTF_13EE7E12-E1E0-4A32-8E1B-B7C06EA49B7F",
+                  "end_to_end_id": "E18236120202306271832s05145d8d3d",
+                  "holder": {
+                        "name": "Francisco da Silva",
+                        "tax_id": "***534218**"
+                  }
+                }
+            },
+            "links": [
+                {
+                    "rel": "SELF",
+                    "href": "https://sandbox.api.pagseguro.com/charges/CHAR_F1F10115-09F4-4560-85F5-A828D9F96300",
+                    "media": "application/json",
+                    "type": "GET"
+                },
+                {
+                    "rel": "CHARGE.CANCEL",
+                    "href": "https://sandbox.api.pagseguro.com/charges/CHAR_F1F10115-09F4-4560-85F5-A828D9F96300/cancel",
+                    "media": "application/json",
+                    "type": "POST"
+                }
+            ]
+        }
+    ],
+    "qr_code": [
+        {
+            "id": "QRCO_86FE511B-E945-4FE1-BB5D-297974C0DB74",
+            "amount": {
+                "value": 500
+            },
+            "text": "00020101021226600016BR.COM.PAGSEGURO013686FE511B-E945-4FE1-BB5D-297974C0DB7452048999530398654045.005802BR5922Rafael Gouveia Firmino6009SAO PAULO63049879",
+            "links": [
+                {
+                    "rel": "QRCODE.PNG",
+                    "href": "https://sandbox.api.pagseguro.com/qrcode/QRCO_86FE511B-E945-4FE1-BB5D-297974C0DB74/png",
+                    "media": "image/png",
+                    "type": "GET"
+                },
+                {
+                    "rel": "QRCODE.BASE64",
+                    "href": "https://sandbox.api.pagseguro.com/qrcode/QRCO_86FE511B-E945-4FE1-BB5D-297974C0DB74/base64",
+                    "media": "text/plain",
+                    "type": "GET"
+                }
+            ]
+        }
+    ],
+    "links": [
+        {
+            "rel": "SELF",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_F87334AC-BB8B-42E2-AA85-8579F70AA328",
+            "media": "application/json",
+            "type": "GET"
+        },
+        {
+            "rel": "PAY",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_F87334AC-BB8B-42E2-AA85-8579F70AA328/pay",
+            "media": "application/json",
+            "type": "POST"
+        }
+    ]
+}
+👍
+Confirmando autenticidade da notificação
+
+É importante se certificar de que as notificações enviadas ao seu sistema são de propriedade e origem do Pagbank e que o conteúdo não foi manipulado ou sofreu nenhuma intervenção externa. Dessa forma, você pode fazer uma confirmação de autenticidade e garantir a integridade das notificações recebidas pelo seu sistema.
+
+Veja como confirmar a autenticidade da notificação usando SHA256 aqui.
+
+Headers de identificação
+O header serve para identificar o produto Pagbank, que originou o pedido. A tabela a seguir apresenta os possíveis tipos de produtos e seus respectivos ids.
+
+Header	Valor	Tipo
+x-product-origin	ORDER	String (128 caracteres)
+CHECKOUT
+x-product-id	ORDE_XXXXXXXXXXXX
+CHEC_XXXXXXXXXXXX
+Status de eventos transacionais
+Os status de transação pode variar de um método de pagamento para outro. A tabela a seguir apresenta os possíveis status para transações realizadas com Cartão de Crédito e Boleto Bancário.
+
+Método de pagamento	Status transacional	Descrição
+Cartão de Crédito	AUTHORIZED	Esse status indica que a transação foi autorizada.
+PAID	A transação foi concluída com sucesso.
+IN_ANALYSIS	A transação está em análise pela operadora do Cartão de Crédito.
+DECLINED	Esse status indica que a transação foi rejeitada.
+CANCELED	A transação foi cancelada sem ter sido finalizada.
+Boleto Bancário	WAITING	Aguardando pagamento ou aprovação do Boleto Bancário.
+PAID	A transação foi concluída com sucesso.
+CANCELED	A transação foi cancelada sem ter sido finalizada. Quando o comprador opta por pagar com Boleto Bancário e não finaliza o pagamento, a transação assume este status.
+Eventos pós-transacionais
+❗️
+ATENÇÃO
+
+No momento, eventos de pós-transação (disponibilização de saldo, chargebacks e cancelamentos) serão enviados para a mesma URL, mas em outro formato, conforme exemplo abaixo.
+
+EVENTO: CHARGE Disponível
+
+notificationCode=093C100E7FA87FA8C0B664B79F8359773B96
+notificationType=transaction
+A tabela a seguir apresenta os possíveis status de eventos pós transacionais para pedidos com Cartão de Crédito e Boleto Bancário.
+
+Método de pagamento	Status pós-transacional	Descrição
+Cartão de Crédito e
+Boleto Bancário	Disponível	Este status indica que o valor da transação está disponível para saque.
+Devolvida	O valor da transação foi devolvido ao comprador.
+Cancelada	A transação foi cancelada sem ter sido finalizada. Por exemplo, quando o comprador opta por pagar com
+Boleto Bancário e não finaliza o pagamento, a transação assume este status.
+Retenção temporária	O comprador abriu uma solicitação de chargeback junto à operadora de cartão de crédito.
+Os passos seguintes descrevem como você deve proceder com a identificação de eventos pós-transacionais.
+
+1. Tratar a notificação
+O primeiro passo para proceder com notificações derivadas de eventos pós-transacionais é tratar a notificação. A tabela a seguir apresenta a descrição dos parâmetros que você receberá na resposta:
+
+Campo	Tipo	Descrição
+notificationCode	String (36 caracteres)	Este campo identifica a notificação. Ele é usado para consultar a notificação e obter os dados da transação. Note que o código que identifica a notificação não é o mesmo código que identifica a transação.
+notificationType	String (41 caracteres)	Tipo de notificação enviada.
+token_api	String	Esse parâmetro corresponde a chave de autenticação utilizada nas requisições da API de Cobrança (Charge).
+2. Consultar as informações no Pagbank
+Para saber o status que foi notificado nesse formato, é necessário realizar um GET na API de notificação, cujo endpoint é apresentado como segue:
+
+Endpoint de Notificação
+
+<https://ws.pagseguro.uol.com.br/v3/transactions/notifications/{notificationCode}?email={email_conta_pagseguro}&token={token_api}>
+O bloco de código a seguir apresenta esse procedimento para as liguagens Java e Python.
+
+Java
+Python
+
+import java.io.IOException;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+
+private static final String URL = "https://ws.pagseguro.uol.com.br/v3/transactions/notifications/{{notificationCode}}?email={{email}}&token={{token}}";
+
+try {
+      CloseableHttpClient client = HttpClients.createDefault();
+      HttpGet getRequest = new HttpGet(URL);
+      getRequest.setHeader("Content-Type", "application/xml");
+      CloseableHttpResponse response = client.execute(getRequest);
+      String result = EntityUtils.toString(response.getEntity());
+      System.out.println(result);
+      client.close();
+      return response;
+
+} catch (IOException e) {
+	e.printStackTrace();
+}
+Um exemplo de resposta no formato XML é apresentado a seguir:
+
+EVENTO: CHARGE Disponível
+
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<transaction>
+    <date>2019-08-19T18:10:02.000-03:00</date>
+    <code>992582AF-FEBF-44FB-994B-81CD00B743B0</code>
+    <type>1</type>
+    <status>4</status>
+    <lastEventDate>2019-09-18T03:31:52.000-03:00</lastEventDate>
+    <paymentMethod>
+        <type>1</type>
+        <code>102</code>
+    </paymentMethod>
+    <grossAmount>5.00</grossAmount>
+    <discountAmount>0.00</discountAmount>
+    <creditorFees>
+        <installmentFeeAmount>0.00</installmentFeeAmount>
+        <intermediationRateAmount>0.40</intermediationRateAmount>
+        <intermediationFeeAmount>0.20</intermediationFeeAmount>
+    </creditorFees>
+    <netAmount>4.40</netAmount>
+    <extraAmount>0.00</extraAmount>
+    <escrowEndDate>2019-09-18T01:00:00.000-03:00</escrowEndDate>
+    <installmentCount>1</installmentCount>
+    <itemCount>1</itemCount>
+    <items>
+        <item>
+            <id>1</id>
+            <description>Web</description>
+            <quantity>1</quantity>
+            <amount>5.00</amount>
+        </item>
+    </items>
+    <primaryReceiver>
+        <publicKey>PUB********************************</publicKey>
+    </primaryReceiver>
+</transaction>
