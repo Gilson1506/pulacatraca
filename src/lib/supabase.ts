@@ -43,9 +43,20 @@ const originalFrom = supabase.from.bind(supabase) as (table: string) => any;
 supabase.from = (table: string) => {
   const query: any = originalFrom(table);
   const originalSelect = query.select.bind(query);
-  query.select = (...args: any[]) =>
-    originalSelect(...args)
-      .abortSignal(signal());
+  query.select = (...args: any[]) => {
+    // Create a new AbortController for each query
+    const controller = new AbortController();
+    
+    // Listen to global abort to cancel this specific query
+    const globalSig = signal();
+    if (globalSig.aborted) {
+      controller.abort();
+    } else {
+      globalSig.addEventListener('abort', () => controller.abort(), { once: true });
+    }
+    
+    return originalSelect(...args).abortSignal(controller.signal);
+  };
   return query;
 };
 
@@ -106,16 +117,12 @@ export const getUser = async (forceRefresh = false) => {
         return null;
       }
 
-      // Buscar perfil na tabela profiles (usa abort/signal globais)
-      abort();
-      const profileSignal = signal();
-
+      // Buscar perfil na tabela profiles (abort signal é adicionado automaticamente)
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, name, role, is_verified, is_active, created_at')
         .eq('id', user.id)
-        .single()
-        .abortSignal(profileSignal);
+        .single();
 
       if (profileError) {
         // Se o erro for "not found", tentar criar o perfil
@@ -134,8 +141,7 @@ export const getUser = async (forceRefresh = false) => {
               }
             ])
             .select()
-            .single()
-            .abortSignal(profileSignal);
+            .single();
 
           if (insertError) {
             console.error('❌ Erro ao criar perfil:', insertError);
