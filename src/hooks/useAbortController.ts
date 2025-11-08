@@ -1,16 +1,33 @@
-import { useEffect } from 'react';
-import { abort, signal } from '@/lib/supabase';
+import { useEffect, useRef } from 'react';
 
-export const useAbortController = (key = "global") => {
-  useEffect(() => () => abort(key), [key]);
+/**
+ * Hook para gerenciar AbortController com cleanup automático
+ * @deprecated Use useAbortOnUnmount from @/lib/supabase instead
+ */
+export const useAbortController = () => {
+  const controllerRef = useRef<AbortController | null>(null);
+  
+  useEffect(() => {
+    controllerRef.current = new AbortController();
+    
+    return () => {
+      // Cancela requisições pendentes quando componente desmonta
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const createNewController = () => {
-    abort(key);
-    return { signal: signal(key) };
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    controllerRef.current = new AbortController();
+    return { signal: controllerRef.current.signal };
   };
 
   return {
-    abortController: { signal: signal(key) },
+    abortController: { signal: controllerRef.current?.signal },
     createNewController
   };
 };
