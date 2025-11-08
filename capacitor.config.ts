@@ -1,9 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.pulakatraca.app',
-  appName: '\x16',
-  webDir: 'dist'
+  appId: 'com.pulacatraca.app',
+  appName: 'Pula Catraca',
+  webDir: 'dist',
+  server: {
+    androidScheme: 'https'
+  }
 };
 
 export default config;
