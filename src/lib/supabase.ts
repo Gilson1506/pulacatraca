@@ -84,8 +84,10 @@ const clearUserCache = () => {
 };
 
 export const getUser = async (forceRefresh = false) => {
-  // Se já há uma chamada em andamento, aguardar ela
-  if (getUserPromise && !forceRefresh) {
+  console.log('🔍 getUser chamado, forceRefresh:', forceRefresh);
+  
+  // Se já há uma chamada em andamento, SEMPRE aguardar ela (mesmo com forceRefresh)
+  if (getUserPromise) {
     console.log('⏳ Aguardando chamada getUser em andamento...');
     return getUserPromise;
   }
@@ -96,10 +98,13 @@ export const getUser = async (forceRefresh = false) => {
     return getUserCache.data;
   }
 
+  console.log('🚀 Iniciando nova chamada getUser...');
+  
   // Criar promise única para esta chamada
   getUserPromise = (async () => {
     try {
       // Primeiro verificar se há uma sessão ativa
+      console.log('1️⃣ Verificando sessão...');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -117,11 +122,13 @@ export const getUser = async (forceRefresh = false) => {
       }
       
       if (!session?.user) {
+        console.log('⚠️ Sem sessão ativa');
         // Limpar cache se não há sessão
         getUserCache = null;
         return null;
       }
       
+      console.log('2️⃣ Buscando dados do usuário...');
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) {
@@ -131,20 +138,34 @@ export const getUser = async (forceRefresh = false) => {
       }
 
       if (!user) {
+        console.log('⚠️ Usuário não encontrado');
         getUserCache = null;
         return null;
       }
 
-      // Buscar perfil na tabela profiles (abort signal é adicionado automaticamente)
-      const { data: profileData, error: profileError } = await supabase
+      console.log('3️⃣ Buscando perfil na tabela profiles...');
+      // Buscar perfil na tabela profiles com timeout de 10 segundos
+      const profilePromise = supabase
         .from('profiles')
         .select('id, email, name, role, is_verified, is_active, created_at')
         .eq('id', user.id)
         .single();
+      
+      // Adicionar timeout de 10 segundos
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao buscar perfil')), 10000);
+      });
+      
+      const { data: profileData, error: profileError } = await Promise.race([
+        profilePromise,
+        timeoutPromise
+      ]) as any;
 
       if (profileError) {
+        console.log('⚠️ Erro ao buscar perfil:', profileError);
         // Se o erro for "not found", tentar criar o perfil
         if (profileError.code === 'PGRST116') {
+          console.log('📝 Perfil não existe, criando...');
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
             .insert([
@@ -167,6 +188,7 @@ export const getUser = async (forceRefresh = false) => {
             return null;
           }
 
+          console.log('✅ Perfil criado com sucesso');
           // Atualizar cache com novo perfil
           getUserCache = {
             data: newProfile,
@@ -181,10 +203,12 @@ export const getUser = async (forceRefresh = false) => {
       }
 
       if (!profileData) {
+        console.log('⚠️ Dados do perfil não encontrados');
         getUserCache = null;
         return null;
       }
       
+      console.log('✅ Perfil carregado com sucesso:', profileData.email);
       // Atualizar cache
       getUserCache = {
         data: profileData,
@@ -199,6 +223,7 @@ export const getUser = async (forceRefresh = false) => {
       return null;
     } finally {
       // Limpar promise após completar
+      console.log('🏁 getUser finalizado, liberando lock');
       getUserPromise = null;
     }
   })();
