@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
 import ShareEventModal from '../components/ShareEventModal';
+import OperatorsManagement from '../components/OperatorsManagement';
 // QrScanner removido - conflitava com html5-qrcode
 import { supabase } from '@/lib/supabase';
 import LoadingButton from '../components/LoadingButton';
@@ -11,6 +12,7 @@ import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate } from 'react-router-dom';
 import { useModal } from '../contexts/ModalContext';
 import { useAbortController } from '../hooks/useAbortController';
+import { useAuth } from '../contexts/AuthContext';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -4057,6 +4059,7 @@ const OrganizerDashboardPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { setIsModalOpen } = useModal();
+  const { user } = useAuth();
 
   const handleSetActive = (v: string) => {
     setActive(v);
@@ -4089,6 +4092,7 @@ const OrganizerDashboardPage = () => {
             <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
             <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
             <button onClick={() => navigate('/checkin')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base hover:bg-pink-50 text-gray-700`}>Check-in</button>
+            <button onClick={() => handleSetActive('operators')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='operators'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Operadores</button>
             <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Config</button>
             <button onClick={() => handleSetActive('support')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='support'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Atendimento</button>
           </nav>
@@ -4101,6 +4105,7 @@ const OrganizerDashboardPage = () => {
         {active === 'events' && <OrganizerEvents />}
         {active === 'sales' && <OrganizerSales />}
         {active === 'finance' && <OrganizerFinancial />}
+        {active === 'operators' && user && <OperatorsManagement organizerId={user.id} />}
         {active === 'settings' && <OrganizerSettings />}
         {active === 'support' && <OrganizerSupport />}
       </main>

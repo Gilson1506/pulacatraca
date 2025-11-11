@@ -150,6 +150,73 @@ export interface ParticipantSearchResult {
   checkin_date?: string;
 }
 
+export interface EventOperator {
+  id: string;
+  organizer_id: string;
+  event_id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  access_code: string;
+  is_active: boolean;
+  can_checkin: boolean;
+  can_view_stats: boolean;
+  created_at: string;
+  updated_at: string;
+  last_access?: string;
+  total_checkins: number;
+  notes?: string;
+  event_title?: string; // Joined field
+}
+
+export interface OperatorActivityLog {
+  id: string;
+  operator_id: string;
+  event_id?: string;
+  action: 'login' | 'logout' | 'checkin_success' | 'checkin_duplicate' | 'checkin_error' | 'view_stats' | 'access_denied';
+  details?: Record<string, unknown>;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
+
+export interface OperatorCheckin {
+  id: string;
+  checkin_id: string;
+  operator_id: string;
+  created_at: string;
+}
+
+export interface OperatorAuthResponse {
+  success: boolean;
+  message: string;
+  operator?: {
+    id: string;
+    name: string;
+    email?: string;
+    can_checkin: boolean;
+    can_view_stats: boolean;
+    total_checkins: number;
+  };
+  events?: Array<{
+    id: string;
+    title: string;
+    start_date: string;
+    location: string;
+  }>;
+}
+
+export interface OperatorStatistics {
+  total_checkins: number;
+  checkins_today: number;
+  last_checkin?: string;
+  events_worked: number;
+  activity_by_day?: Array<{
+    date: string;
+    checkins: number;
+  }>;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -212,6 +279,21 @@ export interface Database {
         Row: CheckIn;
         Insert: Omit<CheckIn, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<CheckIn, 'id'>>;
+      };
+      event_operators: {
+        Row: EventOperator;
+        Insert: Omit<EventOperator, 'id' | 'created_at' | 'updated_at' | 'total_checkins'>;
+        Update: Partial<Omit<EventOperator, 'id'>>;
+      };
+      operator_activity_log: {
+        Row: OperatorActivityLog;
+        Insert: Omit<OperatorActivityLog, 'id' | 'created_at'>;
+        Update: Partial<Omit<OperatorActivityLog, 'id'>>;
+      };
+      operator_checkins: {
+        Row: OperatorCheckin;
+        Insert: Omit<OperatorCheckin, 'id' | 'created_at'>;
+        Update: Partial<Omit<OperatorCheckin, 'id'>>;
       };
     };
   };

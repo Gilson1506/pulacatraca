@@ -283,6 +283,11 @@ const EventPage = () => {
     }
   }, [event, eventId]);
 
+  // Debug: Monitorar mudanças no estado event
+  useEffect(() => {
+    console.log('🔄 Estado EVENT mudou:', event ? `EVENTO SETADO: ${event.title}` : 'EVENT é NULL');
+  }, [event]);
+
   const fetchEvent = async () => {
     let attractions: string[] = [];
     let importantInfo: string[] = [];
@@ -301,7 +306,34 @@ const EventPage = () => {
       }
 
       console.log('EventPage - Buscando evento com ID:', eventId);
+      console.log('EventPage - Cliente Supabase URL:', supabase['supabaseUrl']);
 
+      // Primeiro, buscar o evento SEM filtro para ver o status
+      const { data: eventCheck, error: checkError } = await supabase
+        .from('events')
+        .select('id, title, status')
+        .eq('id', eventId)
+        .single();
+      
+      console.log('🔍 DEBUG - Evento encontrado:', eventCheck);
+      console.log('🔍 DEBUG - Erro ao buscar:', checkError);
+      console.log('🔍 DEBUG - Status do evento:', eventCheck?.status);
+      
+      if (checkError) {
+        console.error('❌ ERRO na busca inicial:', checkError);
+        console.error('💡 Possíveis causas:');
+        console.error('  1. RLS (Row Level Security) bloqueando acesso');
+        console.error('  2. Evento não existe neste banco');
+        console.error('  3. Problema de conexão com Supabase');
+      }
+      
+      if (eventCheck && eventCheck.status !== 'approved') {
+        console.warn('⚠️ Evento existe mas status não é "approved":', eventCheck.status);
+        console.warn('💡 Para ver este evento, altere o status para "approved" no banco de dados');
+      }
+
+      // Agora buscar com filtro de approved
+      console.log('EventPage - Buscando com filtro approved...');
       const { data: eventData, error } = await supabase
         .from('events')
         .select(`
@@ -341,8 +373,13 @@ const EventPage = () => {
         `)
         .eq('id', eventId)
         .eq('status', 'approved')
-        .single()
-        .abortSignal(abortSignal);
+        .single();
+      // REMOVIDO .abortSignal(abortSignal) - estava causando AbortError
+      
+      console.log('📊 EventPage - Resultado da query principal:');
+      console.log('  - eventData:', eventData ? 'ENCONTRADO' : 'NULL');
+      console.log('  - error:', error);
+      console.log('  - eventData completo:', eventData);
 
       if (abortSignal.aborted || !isMountedRef.current) {
         return;
@@ -360,8 +397,7 @@ const EventPage = () => {
         .select('*')
         .eq('event_id', eventId)
         .eq('status', 'active')
-        .order('created_at', { ascending: true })
-        .abortSignal(abortSignal);
+        .order('created_at', { ascending: true });
       
       ticketsData = ticketsDataRaw || [];
       ticketsError = ticketsErrorRaw;
@@ -468,8 +504,7 @@ const EventPage = () => {
         const { data: allTickets, error: allTicketsError } = await supabase
           .from('event_ticket_types')
           .select('*')
-          .eq('event_id', eventId)
-          .abortSignal(abortSignal);
+          .eq('event_id', eventId);
         
         console.log('EventPage - Todos os tipos de tickets para este evento (qualquer status):', allTickets);
         if (allTicketsError) {
@@ -484,8 +519,7 @@ const EventPage = () => {
         const { data: anyTickets, error: anyTicketsError } = await supabase
           .from('event_ticket_types')
           .select('event_id, status')
-          .limit(5)
-          .abortSignal(abortSignal);
+          .limit(5);
         
         console.log('EventPage - Exemplo de dados na tabela event_ticket_types:', anyTickets);
         if (anyTicketsError) {
@@ -502,8 +536,7 @@ const EventPage = () => {
           .from('tickets')
           .select('*')
           .eq('event_id', eventId)
-          .eq('status', 'active')
-          .abortSignal(abortSignal);
+          .eq('status', 'active');
         
         if (!fallbackError && fallbackTickets && fallbackTickets.length > 0) {
           console.log('EventPage - Fallback funcionou! Encontrados', fallbackTickets.length, 'tickets na tabela tickets');
@@ -891,10 +924,17 @@ const EventPage = () => {
       };
 
       if (abortSignal.aborted || !isMountedRef.current) {
+        console.log('⚠️ Abortado antes de setEvent:', { aborted: abortSignal.aborted, mounted: isMountedRef.current });
         return;
       }
 
+      console.log('📦 Chamando setEvent com formattedEvent:', {
+        id: formattedEvent.id,
+        title: formattedEvent.title,
+        hasTickets: formattedEvent.tickets.length
+      });
       setEvent(formattedEvent);
+      console.log('✅ setEvent executado com sucesso!');
       
       // Processar tickets pro modal com lotes completos
       if (ticketsData && ticketsData.length > 0) {
