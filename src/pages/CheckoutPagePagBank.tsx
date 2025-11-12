@@ -412,7 +412,9 @@ const CheckoutPagePagBank = () => {
       alert('Por favor, informe um telefone válido para continuar.');
       return;
     }
-
+    
+   const eventToUse = finalEvent || event;
+    
     setIsProcessing(true);
     setPaymentStep('processing');
 
