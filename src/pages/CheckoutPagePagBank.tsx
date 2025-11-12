@@ -557,6 +557,8 @@ const CheckoutPagePagBank = () => {
       return;
     }
 
+    const eventToUse = finalEvent || event;
+    
     setIsProcessing(true);
     setPaymentStep('processing');
 
