@@ -17,7 +17,7 @@ const CenteredCarousel: React.FC<CenteredCarouselProps> = ({
   options,
   id,
   autoplay = true,
-  autoplayDelay = 5000,
+  autoplayDelay = 3000,
   onSlideChange,
 }) => {
   const swiperRef = useRef<SwiperClass | null>(null)
@@ -53,7 +53,7 @@ const CenteredCarousel: React.FC<CenteredCarouselProps> = ({
           slidesOffsetAfter={12}
           loop={options.length > 1}
           autoplay={autoplay ? { delay: autoplayDelay, disableOnInteraction: false } : false}
-          speed={800}
+          speed={400}
           style={{ overflow: 'visible' }}
           breakpoints={{
             640: {
