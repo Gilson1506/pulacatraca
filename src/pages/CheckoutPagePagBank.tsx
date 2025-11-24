@@ -3,17 +3,22 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, CreditCard, Loader2, Check, XCircle } from 'lucide-react';
+import { AlertTriangle, CreditCard, Loader2, Check, XCircle, Tag } from 'lucide-react';
 import PagBankService from '../services/pagbankService';
+import { useAffiliateCode } from '../hooks/useAffiliateTracking';
+import { createAffiliateSale } from '../services/affiliateTracking';
+import { validateCoupon, registerCouponUsage } from '../services/couponService';
+import CouponField from '../components/CouponField';
 
 const CheckoutPagePagBank = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+  const affiliateCode = useAffiliateCode(); // Obter código do afiliado do cookie
+
   // Ref para armazenar timeouts e garantir cleanup
   const timeoutRefs = useRef<Set<NodeJS.Timeout>>(new Set());
-  
+
   // Função helper para criar timeouts com cleanup automático
   const createTimeout = (callback: () => void, delay: number): NodeJS.Timeout => {
     const timeout = setTimeout(() => {
@@ -23,7 +28,7 @@ const CheckoutPagePagBank = () => {
     timeoutRefs.current.add(timeout);
     return timeout;
   };
-  
+
   // Cleanup de todos os timeouts ao desmontar
   useEffect(() => {
     return () => {
@@ -42,16 +47,16 @@ const CheckoutPagePagBank = () => {
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [declineError, setDeclineError] = useState<string | null>(null);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
-  
+
   // Estado local para dados restaurados do localStorage
   const [restoredData, setRestoredData] = useState(null);
-  
+
   // Estados do formulário de dados do cliente
   const [customerData, setCustomerData] = useState({
     document: '',
     phone: ''
   });
-  
+
   // Estados do formulário de cartão
   const [cardData, setCardData] = useState({
     number: '',
@@ -61,10 +66,16 @@ const CheckoutPagePagBank = () => {
     security_code: ''
   });
 
+  // Estados do cupom de desconto
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
   // Usar restoredData se disponível, senão usar state do useLocation
   const finalData = restoredData || state || {};
   const { event, selectedTickets, totalAmount, ticket } = finalData;
-  
+
   // Calcular valores usando dados finais (restoredData ou state) - DECLARAR ANTES DOS CALLBACKS
   const finalSelectedTickets = (restoredData as any)?.selectedTickets || selectedTickets;
   const finalTicket = (restoredData as any)?.ticket || ticket;
@@ -79,7 +90,7 @@ const CheckoutPagePagBank = () => {
   const loadUserData = useCallback(async () => {
     try {
       if (!user?.id) return;
-      
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -107,13 +118,13 @@ const CheckoutPagePagBank = () => {
     try {
       // Usar finalEvent se disponível
       const eventIdToLoad = finalEvent?.id;
-      
+
       if (!eventIdToLoad) {
         console.error('❌ ID do evento não encontrado');
         console.error('📦 Dados disponíveis:', { finalEvent, restoredData, event });
         return;
       }
-      
+
       const { data: eventDetails, error } = await supabase
         .from('events')
         .select('*, service_fee_payer, service_fee_type')
@@ -148,7 +159,7 @@ const CheckoutPagePagBank = () => {
     console.log('🔄 CheckoutPagePagBank - useEffect de restauração iniciado');
     console.log('📦 state do useLocation:', state);
     console.log('📦 restoredData atual:', restoredData);
-    
+
     // Se já temos dados via useLocation, não precisamos restaurar do localStorage
     if (state && (state.event || state.selectedTickets || state.ticket)) {
       console.log('✅ Dados já recebidos via useLocation, não precisa restaurar do localStorage');
@@ -157,20 +168,20 @@ const CheckoutPagePagBank = () => {
         return;
       }
     }
-    
+
     // Se já temos restoredData válido, não fazer nada
     if (restoredData && restoredData.event && (restoredData.selectedTickets || restoredData.ticket)) {
       console.log('✅ restoredData já está válido, não precisa restaurar novamente');
       return;
     }
-    
+
     // Tentar restaurar de checkout_restore_data primeiro
     const localStorageData = localStorage.getItem('checkout_restore_data');
     if (localStorageData) {
       try {
         const parsedData = JSON.parse(localStorageData);
         console.log('💾 Dados encontrados no checkout_restore_data:', parsedData);
-        
+
         // Validar se os dados são completos
         if (parsedData.event && (parsedData.selectedTickets || parsedData.ticket)) {
           console.log('✅ Dados válidos encontrados, restaurando...');
@@ -186,7 +197,7 @@ const CheckoutPagePagBank = () => {
         localStorage.removeItem('checkout_restore_data');
       }
     }
-    
+
     // Fallback: tentar restaurar do cartStorage
     try {
       const { hasValidCartData, getCartData, clearCartData } = require('../utils/cartStorage');
@@ -200,7 +211,7 @@ const CheckoutPagePagBank = () => {
             totalAmount: cartData.state.totalAmount,
             ticket: cartData.state.ticket
           };
-          
+
           // Validar se os dados são completos
           if (restoredState.event && (restoredState.selectedTickets || restoredState.ticket)) {
             console.log('✅ Dados válidos do cartStorage, restaurando...');
@@ -216,8 +227,8 @@ const CheckoutPagePagBank = () => {
 
   // useEffect para carregar dados (executa quando dados mudarem)
   useEffect(() => {
-    console.log('🔄 CheckoutPagePagBank - Dados recebidos:', { 
-      event: finalEvent?.id, 
+    console.log('🔄 CheckoutPagePagBank - Dados recebidos:', {
+      event: finalEvent?.id,
       selectedTickets: finalSelectedTickets?.length,
       totalAmount: finalTotalAmount,
       ticket: finalTicket?.id,
@@ -225,7 +236,7 @@ const CheckoutPagePagBank = () => {
       restoredData: !!restoredData
     });
     console.log('🌐 Backend URL configurada:', backendUrl);
-    
+
     console.log('🔍 Validação de dados:', {
       hasEvent: !!finalEvent,
       eventId: finalEvent?.id,
@@ -233,7 +244,7 @@ const CheckoutPagePagBank = () => {
       ticketsCount: finalSelectedTickets?.length,
       hasTicket: !!finalTicket
     });
-    
+
     if (!finalEvent || (!finalSelectedTickets?.length && !finalTicket)) {
       console.warn('❌ Dados do evento ou dos ingressos não encontrados. Redirecionando...');
       console.warn('📦 Dados disponíveis:', {
@@ -248,7 +259,7 @@ const CheckoutPagePagBank = () => {
         const currentFinalEvent = (restoredData as any)?.event || event;
         const currentFinalTickets = (restoredData as any)?.selectedTickets || selectedTickets;
         const currentFinalTicket = (restoredData as any)?.ticket || ticket;
-        
+
         if (!currentFinalEvent || (!currentFinalTickets?.length && !currentFinalTicket)) {
           navigate('/');
         }
@@ -270,17 +281,17 @@ const CheckoutPagePagBank = () => {
   // Determinar quem paga as taxas baseado no evento (usar finalEvent se eventData ainda não carregou)
   const serviceFeePayer = eventData?.service_fee_payer || finalEvent?.service_fee_payer || 'buyer'; // Default para buyer se não definido
   const isBuyerPayingConvenienceFee = serviceFeePayer === 'buyer';
-  
+
   console.log('💰 Configuração de taxas:', {
     serviceFeePayer,
     isBuyerPayingConvenienceFee,
     eventTitle: eventData?.title
   });
-  
+
   // SEMPRE calcular as taxas
   const taxaConveniencia = subtotal < 3000 ? 300 : Math.round(subtotal * 0.10);
   const taxaProcessadora = selectedPaymentMethod === 'credit_card' ? Math.round(subtotal * 0.06) : Math.round(subtotal * 0.025);
-  
+
   // LÓGICA CORRETA:
   // - Taxa da Processadora: SEMPRE paga pelo cliente
   // - Taxa de Conveniência: paga pelo cliente OU pelo organizador (conforme configuração)
@@ -301,6 +312,80 @@ const CheckoutPagePagBank = () => {
     totalOrganizadorPaga: !isBuyerPayingConvenienceFee ? taxaConveniencia : 0
   });
 
+  // Função para validar e aplicar cupom
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Digite um código de cupom');
+      return;
+    }
+
+    // Regra: Não permitir cupom se houver código de afiliado
+    if (affiliateCode) {
+      setCouponError('Não é possível usar cupom com link de afiliado');
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    setCouponError(null);
+
+    try {
+      const result = await validateCoupon(
+        couponCode,
+        finalEvent.id,
+        user!.id,
+        subtotalReais
+      );
+
+      if (result.isValid && result.coupon) {
+        setAppliedCoupon(result.coupon);
+        setCouponError(null);
+        console.log('✅ Cupom aplicado:', result.coupon.code, '- Desconto:', result.discountAmount);
+      } else {
+        setCouponError(result.error || 'Cupom inválido');
+        setAppliedCoupon(null);
+      }
+    } catch (error) {
+      console.error('Erro ao validar cupom:', error);
+      setCouponError('Erro ao validar cupom. Tente novamente.');
+      setAppliedCoupon(null);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError(null);
+  };
+
+  // Calcular desconto do cupom
+  const calculateCouponDiscount = () => {
+    if (!appliedCoupon) return 0;
+
+    let discount = 0;
+    if (appliedCoupon.discount_type === 'percentage') {
+      discount = subtotal * (appliedCoupon.discount_value / 100);
+    } else {
+      discount = Math.round(appliedCoupon.discount_value * 100); // Converter para centavos
+    }
+
+    // Garantir que o desconto não seja maior que o subtotal
+    return Math.min(discount, subtotal);
+  };
+
+  const couponDiscount = calculateCouponDiscount();
+  const subtotalAfterDiscount = subtotal - couponDiscount;
+
+  // Recalcular taxas baseadas no subtotal com desconto
+  const taxaConvenienciaFinal = subtotalAfterDiscount < 3000 ? 300 : Math.round(subtotalAfterDiscount * 0.10);
+  const taxaProcessadoraFinal = selectedPaymentMethod === 'credit_card'
+    ? Math.round(subtotalAfterDiscount * 0.06)
+    : Math.round(subtotalAfterDiscount * 0.025);
+
+  // Total final com desconto aplicado
+  const totalPriceWithDiscount = subtotalAfterDiscount + taxaProcessadoraFinal + (isBuyerPayingConvenienceFee ? taxaConvenienciaFinal : 0);
+
   const handlePaymentMethodSelect = (method: 'pix' | 'credit_card') => {
     setSelectedPaymentMethod(method);
     setPaymentStep('form');
@@ -309,13 +394,13 @@ const CheckoutPagePagBank = () => {
   const createOrder = async () => {
     try {
       if (!user?.id) throw new Error('Usuário não autenticado');
-      
+
       // Preparar itens do pedido usando dados finais
       const orderItems = [];
       const ticketsToUse = finalSelectedTickets || selectedTickets;
       const ticketToUse = finalTicket || ticket;
       const eventToUse = finalEvent || event;
-      
+
       if (ticketsToUse && ticketsToUse.length > 0) {
         ticketsToUse.forEach((ticket: any) => {
           orderItems.push({
@@ -347,17 +432,19 @@ const CheckoutPagePagBank = () => {
         event_id: eventToUse.id,
         order_code: `ORD-${Date.now()}`,
         quantity: ticketsToUse?.reduce((sum: number, t: any) => sum + t.quantity, 0) || 1,
-        total_amount: totalPrice / 100,
+        total_amount: (appliedCoupon ? totalPriceWithDiscount : totalPrice) / 100,
         payment_status: 'pending',
         ticket_type: ticketsToUse?.[0]?.ticketName || ticketToUse?.name || 'Ingresso',
         payment_method: selectedPaymentMethod === 'pix' ? 'pix' : 'credit_card',
         metadata: {
           items: orderItems,
           fees: {
-            convenience_fee_cents: taxaConveniencia,
-            processor_fee_cents: taxaProcessadora,
+            convenience_fee_cents: appliedCoupon ? taxaConvenienciaFinal : taxaConveniencia,
+            processor_fee_cents: appliedCoupon ? taxaProcessadoraFinal : taxaProcessadora,
             subtotal_cents: subtotal,
-            total_cents: totalPrice,
+            discount_cents: couponDiscount,
+            subtotal_after_discount_cents: subtotalAfterDiscount,
+            total_cents: appliedCoupon ? totalPriceWithDiscount : totalPrice,
             service_fee_payer: serviceFeePayer,
             is_buyer_paying_convenience_fee: isBuyerPayingConvenienceFee,
             buyer_pays_convenience: isBuyerPayingConvenienceFee,
@@ -366,6 +453,13 @@ const CheckoutPagePagBank = () => {
             buyer_total_fees: taxaProcessadora + (isBuyerPayingConvenienceFee ? taxaConveniencia : 0),
             organizer_total_fees: !isBuyerPayingConvenienceFee ? taxaConveniencia : 0
           },
+          coupon: appliedCoupon ? {
+            id: appliedCoupon.id,
+            code: appliedCoupon.code,
+            discount_type: appliedCoupon.discount_type,
+            discount_value: appliedCoupon.discount_value,
+            discount_amount_cents: couponDiscount
+          } : null,
           event_id: eventToUse.id,
           customer: {
             name: userProfile?.name || user.email,
@@ -450,7 +544,7 @@ const CheckoutPagePagBank = () => {
 
       // 3. Criar PIX no PagBank
       const response = await pagBankService.createPixOrder(pixOrder);
-      
+
       console.log('✅ PIX criado:', response);
 
       // 4. Atualizar order com ID do PagBank
@@ -458,11 +552,29 @@ const CheckoutPagePagBank = () => {
         .from('orders')
         .update({ pagbank_order_id: response.id })
         .eq('id', order.id);
-      
+
       if (updateError) {
         console.error('❌ Erro ao atualizar pagbank_order_id:', updateError);
       } else {
         console.log('✅ pagbank_order_id salvo:', response.id);
+      }
+
+      // Registrar uso do cupom (se aplicado)
+      if (appliedCoupon) {
+        try {
+          await registerCouponUsage(
+            appliedCoupon.id,
+            user.id,
+            order.id,
+            subtotalReais,
+            couponDiscount / 100,
+            subtotalAfterDiscount / 100
+          );
+          console.log('✅ Uso do cupom registrado');
+        } catch (couponError) {
+          console.error('❌ Erro ao registrar uso do cupom:', couponError);
+          // Não bloquear a compra por erro no cupom
+        }
       }
 
       // 5. Criar transactions expandidas por quantidade
@@ -470,9 +582,9 @@ const CheckoutPagePagBank = () => {
       if (response.qr_codes && response.qr_codes[0]) {
         const paymentId = (response.qr_codes[0] as any).id || response.id;
         const orderItems = order.metadata?.items || [];
-        
+
         let globalIndex = 0; // Contador global para garantir que apenas a primeira transaction tenha pagbank_transaction_id
-        
+
         orderItems.forEach((it: any) => {
           const qty = Number(it.quantity || 1);
           const unitReais = Number((it.amount / 100).toFixed(2));
@@ -509,7 +621,7 @@ const CheckoutPagePagBank = () => {
             .from('transactions')
             .insert(transactionRows)
             .select('id, status, amount, payment_method');
-          
+
           if (trxErr) {
             console.error('❌ Erro ao criar transactions:', trxErr);
           } else {
@@ -561,7 +673,7 @@ const CheckoutPagePagBank = () => {
     try {
       // **IMPORTANTE: Criptografar o cartão usando o SDK do PagBank**
       const publicKey = import.meta.env.VITE_PAGBANK_PUBLIC_KEY;
-      
+
       if (!publicKey) {
         throw new Error('Chave pública do PagBank não configurada. Configure VITE_PAGBANK_PUBLIC_KEY no arquivo .env');
       }
@@ -572,10 +684,10 @@ const CheckoutPagePagBank = () => {
       }
 
       console.log('🔐 Criptografando dados do cartão...');
-      
+
       // Converter ano de 2 para 4 dígitos
       const fullYear = cardData.exp_year.length === 2 ? `20${cardData.exp_year}` : cardData.exp_year;
-      
+
       const cardEncryption = window.PagSeguro.encryptCard({
         publicKey: publicKey,
         holder: cardData.holder_name,
@@ -643,7 +755,7 @@ const CheckoutPagePagBank = () => {
 
       // 3. Processar pagamento no PagBank
       const response = await pagBankService.createCardOrder(cardOrder);
-      
+
       console.log('✅ Cartão processado:', response);
       console.log('🔍 Status do PagBank:', response.charges?.[0]?.status);
 
@@ -651,27 +763,27 @@ const CheckoutPagePagBank = () => {
       const chargeStatus = response.charges?.[0]?.status;
       const paymentId = response.charges?.[0]?.id;
       const paymentResponse = response.charges?.[0]?.payment_response;
-      
+
       // Mapear status do PagBank para nosso sistema
       const getPaymentStatus = (status: string) => {
-        switch(status) {
+        switch (status) {
           case 'PAID': return 'paid';
-          case 'DECLINED': 
+          case 'DECLINED':
           case 'CANCELED': return 'failed';
-          case 'IN_ANALYSIS': 
+          case 'IN_ANALYSIS':
           case 'WAITING': return 'pending';
           default: return 'pending';
         }
       };
-      
+
       const orderStatus = getPaymentStatus(chargeStatus);
       const isPaid = chargeStatus === 'PAID';
       const isDeclined = chargeStatus === 'DECLINED' || chargeStatus === 'CANCELED';
-      
-      console.log('📊 Status mapeado:', { 
-        chargeStatus, 
-        orderStatus, 
-        isPaid, 
+
+      console.log('📊 Status mapeado:', {
+        chargeStatus,
+        orderStatus,
+        isPaid,
         isDeclined,
         paymentResponse: paymentResponse?.message || paymentResponse?.code
       });
@@ -679,26 +791,44 @@ const CheckoutPagePagBank = () => {
       // 4. Atualizar order com ID do PagBank e status CORRETO
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           pagbank_order_id: response.id,
           payment_status: orderStatus,
           paid_at: orderStatus === 'paid' ? new Date().toISOString() : null
         })
         .eq('id', order.id);
-      
+
       if (updateError) {
         console.error('❌ Erro ao atualizar pagbank_order_id:', updateError);
       } else {
         console.log('✅ pagbank_order_id e status salvos:', { id: response.id, status: orderStatus });
       }
 
+      // Registrar uso do cupom (se aplicado)
+      if (appliedCoupon) {
+        try {
+          await registerCouponUsage(
+            appliedCoupon.id,
+            user.id,
+            order.id,
+            subtotalReais,
+            couponDiscount / 100,
+            subtotalAfterDiscount / 100
+          );
+          console.log('✅ Uso do cupom registrado');
+        } catch (couponError) {
+          console.error('❌ Erro ao registrar uso do cupom:', couponError);
+          // Não bloquear a compra por erro no cupom
+        }
+      }
+
       // 5. Criar transaction com status CORRETO
       const transactionRows: any[] = [];
       if (response.charges && response.charges[0]) {
         const orderItems = order.metadata?.items || [];
-        
+
         let globalIndex = 0;
-        
+
         orderItems.forEach((it: any) => {
           const qty = Number(it.quantity || 1);
           const unitReais = Number((it.amount / 100).toFixed(2));
@@ -735,7 +865,7 @@ const CheckoutPagePagBank = () => {
             .from('transactions')
             .insert(transactionRows)
             .select('id, status, amount, payment_method');
-          
+
           if (trxErr) {
             console.error('❌ Erro ao criar transactions:', trxErr);
           } else {
@@ -774,7 +904,7 @@ const CheckoutPagePagBank = () => {
               .from('tickets')
               .insert(ticketsRows)
               .select('id, status, qr_code, price');
-            
+
             if (ticketsErr) {
               console.error('❌ Erro ao criar tickets:', ticketsErr);
             } else {
@@ -788,6 +918,27 @@ const CheckoutPagePagBank = () => {
       if (isPaid) {
         // Pagamento aprovado - mostrar sucesso
         console.log('✅ Pagamento aprovado!');
+
+        // Registrar venda de afiliado se houver código
+        if (affiliateCode) {
+          console.log('💰 Registrando venda de afiliado:', affiliateCode);
+          const affiliateSaleSuccess = await createAffiliateSale(
+            affiliateCode,
+            eventToUse.id,
+            {
+              transactionId: order.id,
+              ticketId: ticketsInserted?.[0]?.id || null,
+              saleAmount: order.total_amount,
+            }
+          );
+
+          if (affiliateSaleSuccess) {
+            console.log('✅ Venda de afiliado registrada com sucesso!');
+          } else {
+            console.warn('⚠️ Falha ao registrar venda de afiliado');
+          }
+        }
+
         setPaymentStep('success');
         createTimeout(() => {
           navigate('/profile', {
@@ -799,10 +950,10 @@ const CheckoutPagePagBank = () => {
         }, 3000);
       } else if (isDeclined) {
         // Pagamento recusado - mostrar erro
-        const errorMessage = paymentResponse?.message 
+        const errorMessage = paymentResponse?.message
           || paymentResponse?.code
           || 'Pagamento recusado pelo banco. Tente outro cartão.';
-        
+
         console.error('❌ Pagamento recusado:', errorMessage);
         setDeclineError(errorMessage);
         setShowDeclineModal(true);
@@ -871,9 +1022,9 @@ const CheckoutPagePagBank = () => {
                 <h2 className="text-base sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800">Detalhes do Evento</h2>
                 <div className="flex items-start space-x-3 sm:space-x-4">
                   {finalEvent.image && (
-                    <img 
-                      src={finalEvent.image} 
-                      alt={finalEvent.title} 
+                    <img
+                      src={finalEvent.image}
+                      alt={finalEvent.title}
                       className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded-lg flex-shrink-0"
                     />
                   )}
@@ -889,13 +1040,27 @@ const CheckoutPagePagBank = () => {
                 </div>
               </div>
 
+              {/* Cupom de Desconto */}
+              {paymentStep === 'select' && (
+                <CouponField
+                  couponCode={couponCode}
+                  setCouponCode={setCouponCode}
+                  appliedCoupon={appliedCoupon}
+                  couponError={couponError}
+                  isValidatingCoupon={isValidatingCoupon}
+                  onValidate={handleValidateCoupon}
+                  onRemove={handleRemoveCoupon}
+                  disabled={!!affiliateCode}
+                />
+              )}
+
               {/* Payment Method Selection or Forms */}
               {paymentStep === 'select' && (
                 <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200">
                   <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-gray-800 text-center sm:text-left">
                     Escolha o Método de Pagamento
                   </h2>
-                  
+
                   <div className="grid grid-cols-1 gap-3 sm:gap-4">
                     <button
                       onClick={() => handlePaymentMethodSelect('pix')}
@@ -904,7 +1069,7 @@ const CheckoutPagePagBank = () => {
                       <div className="flex items-center sm:flex-col sm:items-center">
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-pink-100 rounded-full flex items-center justify-center mr-4 sm:mr-0 sm:mb-4 group-hover:bg-pink-200 transition-colors flex-shrink-0">
                           <svg className="w-6 h-6 sm:w-8 sm:h-8 text-pink-600" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
                           </svg>
                         </div>
                         <div className="flex-1 text-left sm:text-center">
@@ -948,9 +1113,9 @@ const CheckoutPagePagBank = () => {
                   >
                     ← Voltar
                   </button>
-                  
+
                   <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-gray-800">Pagamento via PIX</h2>
-                  
+
                   {/* Campos de dados do cliente */}
                   <div className="space-y-4 mb-6">
                     <div>
@@ -962,7 +1127,7 @@ const CheckoutPagePagBank = () => {
                         value={customerData.document}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                          setCustomerData({...customerData, document: value});
+                          setCustomerData({ ...customerData, document: value });
                         }}
                         placeholder="000.000.000-00"
                         maxLength={14}
@@ -982,7 +1147,7 @@ const CheckoutPagePagBank = () => {
                         value={customerData.phone}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                          setCustomerData({...customerData, phone: value});
+                          setCustomerData({ ...customerData, phone: value });
                         }}
                         placeholder="(11) 99999-9999"
                         maxLength={15}
@@ -998,7 +1163,7 @@ const CheckoutPagePagBank = () => {
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
                         <svg className="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
                         </svg>
                       </div>
                       <div className="ml-3">
@@ -1039,9 +1204,9 @@ const CheckoutPagePagBank = () => {
                   >
                     ← Voltar
                   </button>
-                  
+
                   <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-gray-800">Dados do Cartão de Crédito</h2>
-                  
+
                   <div className="space-y-4">
                     {/* Campos de dados do cliente */}
                     <div>
@@ -1053,7 +1218,7 @@ const CheckoutPagePagBank = () => {
                         value={customerData.document}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                          setCustomerData({...customerData, document: value});
+                          setCustomerData({ ...customerData, document: value });
                         }}
                         placeholder="000.000.000-00"
                         maxLength={14}
@@ -1073,7 +1238,7 @@ const CheckoutPagePagBank = () => {
                         value={customerData.phone}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                          setCustomerData({...customerData, phone: value});
+                          setCustomerData({ ...customerData, phone: value });
                         }}
                         placeholder="(11) 99999-9999"
                         maxLength={15}
@@ -1089,7 +1254,7 @@ const CheckoutPagePagBank = () => {
                       <input
                         type="text"
                         value={cardData.number}
-                        onChange={(e) => setCardData({...cardData, number: e.target.value})}
+                        onChange={(e) => setCardData({ ...cardData, number: e.target.value })}
                         placeholder="0000 0000 0000 0000"
                         maxLength={19}
                         className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all"
@@ -1101,7 +1266,7 @@ const CheckoutPagePagBank = () => {
                       <input
                         type="text"
                         value={cardData.holder_name}
-                        onChange={(e) => setCardData({...cardData, holder_name: e.target.value.toUpperCase()})}
+                        onChange={(e) => setCardData({ ...cardData, holder_name: e.target.value.toUpperCase() })}
                         placeholder="NOME COMO NO CARTÃO"
                         className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 uppercase transition-all"
                       />
@@ -1113,7 +1278,7 @@ const CheckoutPagePagBank = () => {
                         <input
                           type="text"
                           value={cardData.exp_month}
-                          onChange={(e) => setCardData({...cardData, exp_month: e.target.value})}
+                          onChange={(e) => setCardData({ ...cardData, exp_month: e.target.value })}
                           placeholder="MM"
                           maxLength={2}
                           className="w-full p-2 sm:p-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all text-center"
@@ -1128,7 +1293,7 @@ const CheckoutPagePagBank = () => {
                             value={cardData.exp_year}
                             onChange={(e) => {
                               const value = e.target.value.replace(/\D/g, '').slice(0, 2);
-                              setCardData({...cardData, exp_year: value});
+                              setCardData({ ...cardData, exp_year: value });
                             }}
                             placeholder="00"
                             maxLength={2}
@@ -1141,7 +1306,7 @@ const CheckoutPagePagBank = () => {
                         <input
                           type="text"
                           value={cardData.security_code}
-                          onChange={(e) => setCardData({...cardData, security_code: e.target.value})}
+                          onChange={(e) => setCardData({ ...cardData, security_code: e.target.value })}
                           placeholder="123"
                           maxLength={3}
                           className="w-full p-2 sm:p-3 border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all text-center"
@@ -1199,14 +1364,14 @@ const CheckoutPagePagBank = () => {
                       <div className="flex justify-center mb-6">
                         <div className="bg-white p-4 sm:p-6 rounded-xl shadow-xl border-4 border-pink-500">
                           {pixData.qr_codes[0].links?.find((l: any) => l.media === 'image/png') ? (
-                            <img 
+                            <img
                               src={pixData.qr_codes[0].links.find((l: any) => l.media === 'image/png').href}
                               alt="QR Code PIX"
                               className="w-48 h-48 sm:w-64 sm:h-64"
                             />
                           ) : (
                             <div className="w-48 h-48 sm:w-64 sm:h-64">
-                              <QRCodeSVG 
+                              <QRCodeSVG
                                 value={pixData.qr_codes[0].text}
                                 size={256}
                                 level="H"
@@ -1320,7 +1485,7 @@ const CheckoutPagePagBank = () => {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200 lg:sticky lg:top-24">
                 <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800">Resumo da Compra</h2>
-                
+
                 {/* Tickets */}
                 <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
                   {finalSelectedTickets?.map((t: any, i: number) => (
@@ -1340,13 +1505,13 @@ const CheckoutPagePagBank = () => {
                     <span className="text-gray-600">Subtotal ({finalSelectedTickets ? finalSelectedTickets.reduce((sum: number, t: any) => sum + t.quantity, 0) : 1} {(finalSelectedTickets ? finalSelectedTickets.reduce((sum: number, t: any) => sum + t.quantity, 0) : 1) > 1 ? 'ingressos' : 'ingresso'})</span>
                     <span className="font-medium">R$ {(subtotal / 100).toFixed(2)}</span>
                   </div>
-                  
+
                   {/* Taxa da Processadora - SEMPRE paga pelo cliente */}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Taxa da Processadora ({selectedPaymentMethod === 'credit_card' ? 'Cartão' : 'PIX'})</span>
                     <span className="font-medium">R$ {(taxaProcessadora / 100).toFixed(2)}</span>
                   </div>
-                  
+
                   {/* Taxa de Conveniência - pode ser paga pelo cliente OU organizador */}
                   {isBuyerPayingConvenienceFee && taxaConveniencia > 0 && (
                     <div className="flex justify-between">
@@ -1354,7 +1519,7 @@ const CheckoutPagePagBank = () => {
                       <span className="font-medium">R$ {(taxaConveniencia / 100).toFixed(2)}</span>
                     </div>
                   )}
-                  
+
                   {!isBuyerPayingConvenienceFee && taxaConveniencia > 0 && (
                     <div className="space-y-2">
                       <div className="flex justify-between text-green-600">
@@ -1409,15 +1574,15 @@ const CheckoutPagePagBank = () => {
                 <XCircle className="w-10 h-10 sm:w-12 sm:h-12 text-red-600" />
               </div>
             </div>
-            
+
             <h2 className="text-2xl sm:text-3xl font-bold text-center text-red-800 mb-3">
               Pagamento Recusado
             </h2>
-            
+
             <p className="text-base sm:text-lg text-gray-700 text-center mb-4">
               {declineError || 'Não foi possível processar seu pagamento.'}
             </p>
-            
+
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-red-800 text-center">
                 <strong>O que fazer:</strong>
@@ -1428,7 +1593,7 @@ const CheckoutPagePagBank = () => {
                 <li>Tente com outro cartão</li>
               </ul>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => {

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import Toast from './Toast';
 import { withTimeout } from '../utils/api';
+import CouponManagement from './CouponManagement';
 
 interface EventFormData {
   // Seção 1: Informações básicas
@@ -14,16 +15,16 @@ interface EventFormData {
   classification: string;
   important_info: string[];
   attractions: string[];
-  
+
   // Seção 2: Data e horário
   start_date: string;
   start_time: string;
   end_date: string;
   end_time: string;
-  
+
   // Seção 3: Descrição
   description: string;
-  
+
   // Seção 4: Local
   location_type: 'tbd' | 'physical' | 'online';
   location_search: string;
@@ -36,12 +37,14 @@ interface EventFormData {
   location_neighborhood: string;
   location_city: string;
   location_state: string;
-  
+  map_image?: string;
+
   // Seção 5: Ingressos
   ticket_type: 'paid' | 'free';
   service_fee_type: 'buyer' | 'seller';
   tickets: TicketData[];
-  
+  coupons: any[];
+
   // Seção 6: Contato
   contact_phone: string;
   contact_hours: string[];
@@ -98,27 +101,27 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
   // Função utilitária para formatar qualquer par de data/hora
   const formatTimestamp = (
-    date: string | undefined, 
+    date: string | undefined,
     time: string | undefined
   ): string | null => {
     // Validação rigorosa
-    if (!date || !time || 
-        date.trim() === '' || time.trim() === '' ||
-        date === 'undefined' || time === 'undefined') {
+    if (!date || !time ||
+      date.trim() === '' || time.trim() === '' ||
+      date === 'undefined' || time === 'undefined') {
       return null;
     }
-    
+
     try {
       // Construir timestamp ISO 8601
       const timestamp = `${date.trim()}T${time.trim()}:00`;
-      
+
       // Validar se é uma data válida
       const dateObj = new Date(timestamp);
       if (isNaN(dateObj.getTime())) {
         console.warn('⚠️ Data inválida:', timestamp);
         return null;
       }
-      
+
       return timestamp;
     } catch (error: any) {
       console.error('❌ Erro ao formatar timestamp:', error);
@@ -128,22 +131,22 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
   // Função para validar pares de data/hora
   const validateDateTimePair = (
-    date: string | undefined, 
+    date: string | undefined,
     time: string | undefined,
     fieldName: string
   ): string | null => {
     if (date && !time) {
       throw new Error(`${fieldName}: Se a data for preenchida, a hora também deve ser preenchida`);
     }
-    
+
     if (!date && time) {
       throw new Error(`${fieldName}: Se a hora for preenchida, a data também deve ser preenchida`);
     }
-    
+
     if (date && time) {
       return formatTimestamp(date, time);
     }
-    
+
     return null;
   };
 
@@ -156,16 +159,16 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     classification: '',
     important_info: [],
     attractions: [],
-    
+
     // Seção 2
     start_date: '',
     start_time: '',
     end_date: '',
     end_time: '',
-    
+
     // Seção 3
     description: '',
-    
+
     // Seção 4
     location_type: 'tbd',
     location_search: '',
@@ -178,7 +181,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     location_neighborhood: '',
     location_city: '',
     location_state: '',
-    
+    map_image: '',
+
     // Seção 5
     ticket_type: 'paid',
     service_fee_type: 'buyer',
@@ -207,8 +211,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         batches: []
       }
     ],
-    
-    // Seção 6: Contato
+
+    // Seção 6: Cupons
+    coupons: [],
+
+    // Seção 7: Contato
     contact_phone: '(11) 99999-9999',
     contact_hours: [
       'Segunda a Sexta: 9h às 18h',
@@ -226,6 +233,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       try {
         // Imagem
         setImagePreview(event?.image || '');
+
+        // Debug: Verificar se map_image está vindo do evento
+        console.log('🗺️ DEBUG - event.map_image:', event?.map_image);
+        console.log('🖼️ DEBUG - event.image:', event?.image);
+
 
         // Datas
         const startDate = event?.date || (event?.start_date ? String(event.start_date).slice(0, 10) : '');
@@ -263,6 +275,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           location_number: event?.location_number || '',
           location_neighborhood: event?.location_neighborhood || '',
           location_cep: event?.location_cep || '',
+          map_image: event?.map_image || '',
           ticket_type: event?.ticket_type || 'paid',
           service_fee_type: event?.service_fee_type || 'buyer',
           contact_phone: event?.contact_info?.phone || '(11) 99999-9999',
@@ -271,6 +284,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             'Sábados: 9h às 14h'
           ]
         }));
+
+        console.log('✅ DEBUG - FormData atualizado com map_image:', event?.map_image || '(vazio)');
+
 
         // Buscar tipos de ingressos reais (se existir event.id)
         if (event?.id) {
@@ -293,17 +309,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               half_price_price: t.half_price_price || null,
               half_price_price_feminine: t.half_price_price_feminine || null,
               sale_period_type: (t.sale_period_type as any) || 'date',
-              sale_start_date: t.sale_start_date ? String(t.sale_start_date).slice(0,10) : '',
-              sale_start_time: t.sale_start_date ? String(t.sale_start_date).slice(11,16) : '',
-              sale_end_date: t.sale_end_date ? String(t.sale_end_date).slice(0,10) : '',
-              sale_end_time: t.sale_end_date ? String(t.sale_end_date).slice(11,16) : '',
+              sale_start_date: t.sale_start_date ? String(t.sale_start_date).slice(0, 10) : '',
+              sale_start_time: t.sale_start_date ? String(t.sale_start_date).slice(11, 16) : '',
+              sale_end_date: t.sale_end_date ? String(t.sale_end_date).slice(0, 10) : '',
+              sale_end_time: t.sale_end_date ? String(t.sale_end_date).slice(11, 16) : '',
               availability: (t.availability as any) || 'public',
               min_quantity: t.min_quantity || 0,
               max_quantity: t.max_quantity || 0,
               description: t.description || '',
               batches: [],
             }));
-            
+
             // Carregar lotes para cada ingresso
             for (let i = 0; i < mapped.length; i++) {
               const ticket = mapped[i];
@@ -313,17 +329,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                   .select('*')
                   .eq('ticket_type_id', ticket.id)
                   .order('batch_number', { ascending: true });
-                
+
                 if (batches && batches.length > 0) {
+                  console.log(`📦 Lotes encontrados para ingresso ${ticket.id}:`, batches);
                   mapped[i].batches = batches.map((batch: any) => ({
                     batch_number: batch.batch_number,
                     quantity: batch.quantity,
                     price_type: batch.price_type,
                     price: batch.price,
                     price_feminine: batch.price_feminine,
-                    sale_start_date: batch.sale_start_date ? String(batch.sale_start_date).slice(0,10) : '',
+                    sale_start_date: batch.sale_start_date ? String(batch.sale_start_date).slice(0, 10) : '',
                     sale_start_time: batch.sale_start_time || '',
-                    sale_end_date: batch.sale_end_date ? String(batch.sale_end_date).slice(0,10) : '',
+                    sale_end_date: batch.sale_end_date ? String(batch.sale_end_date).slice(0, 10) : '',
                     sale_end_time: batch.sale_end_time || ''
                   }));
                 }
@@ -331,8 +348,19 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 console.warn('Erro ao carregar lotes:', batchError);
               }
             }
-            
+
             setFormData(prev => ({ ...prev, tickets: mapped }));
+          }
+
+          // Buscar cupons
+          const { data: coupons } = await supabase
+            .from('event_coupons')
+            .select('*')
+            .eq('event_id', event.id);
+
+          if (coupons && coupons.length > 0) {
+            console.log('🎫 Cupons encontrados:', coupons);
+            setFormData(prev => ({ ...prev, coupons: coupons }));
           }
         }
       } catch (e) {
@@ -342,18 +370,34 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
     prefill();
   }, [event]);
 
+  // Populate description editor when entering step 3
+  useEffect(() => {
+    console.log('🔄 useEffect[currentStep] triggered:', currentStep);
+    if (currentStep === 3) {
+      console.log('📝 Entering step 3. Description ref:', !!descriptionRef.current);
+      console.log('📝 FormData description:', formData.description);
+
+      if (descriptionRef.current) {
+        descriptionRef.current.innerHTML = formData.description;
+        console.log('✅ Description innerHTML set to:', formData.description);
+      } else {
+        console.warn('⚠️ Description ref is null!');
+      }
+    }
+  }, [currentStep]);
+
   if (!isOpen) return null;
 
   // Calcular duração do evento
   const calculateEventDuration = () => {
     if (!formData.start_date || !formData.end_date) return '';
-    
+
     const start = new Date(`${formData.start_date}T${formData.start_time || '00:00'}`);
     const end = new Date(`${formData.end_date}T${formData.end_time || '23:59'}`);
-    
+
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return '1 dia';
     return `${diffDays} dias`;
   };
@@ -377,7 +421,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
     try {
       setUploadProgress(0);
-      
+
       // Preview local
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -390,15 +434,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         .replace(/[^a-zA-Z0-9.-]/g, '_')
         .replace(/_{2,}/g, '_')
         .toLowerCase();
-      
+
       const fileName = `event_${Date.now()}_${sanitizedFileName}`;
-      
+
       console.log('🔄 Iniciando upload:', fileName);
 
       // Verificar se o bucket existe
       const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
       console.log('📦 Buckets disponíveis:', buckets);
-      
+
       if (bucketsError) {
         console.error('❌ Erro ao listar buckets:', bucketsError);
       }
@@ -444,17 +488,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       setFormData(prev => ({ ...prev, image: publicUrl }));
       setUploadProgress(100);
-      
+
       // Reset input file
       if (event.target) {
         event.target.value = '';
       }
-      
+
     } catch (error: any) {
       console.error('❌ Erro no upload:', error);
       setUploadProgress(0);
       setImagePreview('');
-      
+
       // Mensagem de erro mais específica
       let errorMessage = 'Erro ao fazer upload da imagem';
       if (error.message) {
@@ -468,8 +512,66 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           errorMessage = `Erro: ${error.message}`;
         }
       }
-      
+
       alert(errorMessage);
+    }
+  };
+
+  // Upload de mapa
+  const handleMapUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Imagem muito grande. Máximo 5MB.');
+      return;
+    }
+
+    // Validar formato
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+      alert('Formato inválido. Use JPEG, PNG, GIF ou WebP.');
+      return;
+    }
+
+    try {
+      // Sanitizar nome do arquivo
+      const sanitizedFileName = file.name
+        .replace(/[^a-zA-Z0-9.-]/g, '_')
+        .replace(/_{2,}/g, '_')
+        .toLowerCase();
+
+      const fileName = `map_${Date.now()}_${sanitizedFileName}`;
+
+      console.log('🔄 Iniciando upload do mapa:', fileName);
+
+      // Upload para Supabase Storage (mesmo bucket event_banners)
+      const { data, error } = await supabase.storage
+        .from('event_banners')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) {
+        console.error('❌ Erro no upload do mapa:', error);
+        throw error;
+      }
+
+      console.log('✅ Upload do mapa concluído:', data);
+
+      // Obter URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('event_banners')
+        .getPublicUrl(fileName);
+
+      console.log('🔗 URL pública do mapa:', publicUrl);
+
+      setFormData(prev => ({ ...prev, map_image: publicUrl }));
+
+    } catch (error: any) {
+      console.error('❌ Erro no upload do mapa:', error);
+      alert('Erro ao fazer upload do mapa. Tente novamente.');
     }
   };
 
@@ -477,9 +579,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   const executeCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     if (descriptionRef.current) {
-      setFormData(prev => ({ 
-        ...prev, 
-        description: descriptionRef.current?.innerText || descriptionRef.current?.textContent || '' 
+      setFormData(prev => ({
+        ...prev,
+        description: descriptionRef.current?.innerText || descriptionRef.current?.textContent || ''
       }));
     }
   };
@@ -501,7 +603,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           return false;
         }
         return true;
-        
+
       case 2:
         if (!formData.start_date) {
           alert('Data de início é obrigatória');
@@ -519,7 +621,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           alert('Hora de término é obrigatória');
           return false;
         }
-        
+
         // Validar se data de término é após início
         const start = new Date(`${formData.start_date}T${formData.start_time}`);
         const end = new Date(`${formData.end_date}T${formData.end_time}`);
@@ -528,7 +630,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           return false;
         }
         return true;
-        
+
       case 3:
         // Descrição é opcional, mas vamos sugerir
         if (!formData.description.trim()) {
@@ -536,7 +638,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           return confirm;
         }
         return true;
-        
+
       case 4:
         if (formData.location_type === 'physical') {
           if (!formData.location_city || !formData.location_state) {
@@ -545,13 +647,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           }
         }
         return true;
-        
+
       case 5:
         if (formData.tickets.length === 0) {
           const confirm = window.confirm('Nenhum ingresso foi criado. Deseja criar um evento sem ingressos?');
           return confirm;
         }
-        
+
         // Validar ingressos
         for (let i = 0; i < formData.tickets.length; i++) {
           const ticket = formData.tickets[i];
@@ -569,7 +671,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           }
         }
         return true;
-        
+
+      case 6:
+        // Cupons são opcionais
+        return true;
+
       default:
         return true;
     }
@@ -578,7 +684,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   // Ir para próxima etapa
   const goToNextStep = () => {
     if (validateCurrentStep()) {
-      setCurrentStep(Math.min(6, currentStep + 1));
+      setCurrentStep(Math.min(7, currentStep + 1));
     }
   };
 
@@ -590,7 +696,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       quantity: 0,
       price: null,
       price_feminine: null,
+      price_type: 'unissex',
       has_half_price: false,
+      half_price_title: '',
+      half_price_quantity: 0,
+      half_price_price: null,
+      half_price_price_feminine: null,
       sale_period_type: 'date',
       sale_start_date: '',
       sale_start_time: '',
@@ -625,7 +736,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         }
       ]
     };
-    
+
     setFormData(prev => ({
       ...prev,
       tickets: [...prev.tickets, newTicket]
@@ -644,7 +755,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   const updateTicket = (ticketId: string, updates: Partial<TicketData>) => {
     setFormData(prev => ({
       ...prev,
-      tickets: prev.tickets.map(t => 
+      tickets: prev.tickets.map(t =>
         t.id === ticketId ? { ...t, ...updates } : t
       )
     }));
@@ -664,59 +775,59 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       // VALIDAÇÕES ROBUSTAS
       const validationErrors: string[] = [];
-      
+
       // 1. Campos obrigatórios básicos
       if (!formData.title?.trim()) {
         validationErrors.push('Nome do evento é obrigatório');
       }
-      
+
       if (!formData.start_date?.trim()) {
         validationErrors.push('Data de início é obrigatória');
       }
-      
+
       if (!formData.start_time?.trim()) {
         validationErrors.push('Hora de início é obrigatória');
       }
-      
+
       if (!formData.location_city?.trim()) {
         validationErrors.push('Cidade é obrigatória');
       }
-      
+
       // 2. Validação de pares de data/hora
       try {
         // Start datetime (obrigatório)
         const startDatetime = validateDateTimePair(
-          formData.start_date, 
-          formData.start_time, 
+          formData.start_date,
+          formData.start_time,
           'Data e hora de início'
         );
-        
+
         if (!startDatetime) {
           validationErrors.push('Data e hora de início são obrigatórias');
         }
-        
+
         // End datetime (opcional)
         const endDatetime = validateDateTimePair(
-          formData.end_date, 
-          formData.end_time, 
+          formData.end_date,
+          formData.end_time,
           'Data e hora de término'
         );
-        
+
         // 3. Validações de lógica de negócio
         if (endDatetime && startDatetime) {
           const startDate = new Date(startDatetime);
           const endDate = new Date(endDatetime);
-          
+
           if (endDate <= startDate) {
             validationErrors.push('Data de término deve ser posterior à data de início');
           }
         }
-        
+
         // 4. Validações de ingressos
         if (formData.ticket_type === 'paid' && formData.tickets.length === 0) {
           validationErrors.push('Eventos pagos devem ter pelo menos um tipo de ingresso');
         }
-        
+
         if (formData.tickets.length > 0) {
           formData.tickets.forEach((ticket, index) => {
             if (!ticket.title?.trim()) {
@@ -728,7 +839,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             if (ticket.quantity < 0) {
               validationErrors.push(`Quantidade do ingresso ${index + 1} não pode ser negativa`);
             }
-            
+
             // Validações para meia-entrada
             if (ticket.has_half_price) {
               if (!ticket.half_price_title?.trim()) {
@@ -741,10 +852,10 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 validationErrors.push(`Preço da meia-entrada do ingresso ${index + 1} não pode ser negativo`);
               }
             }
-            
+
             // Validações para lotes
             if (ticket.sale_period_type === 'batch' && ticket.batches.length > 0) {
-              ticket.batches.forEach((batch, batchIndex) => {
+              ticket.batches.forEach((batch) => {
                 if (batch.quantity <= 0) {
                   validationErrors.push(`Quantidade do lote ${batch.batch_number} do ingresso ${index + 1} deve ser maior que zero`);
                 }
@@ -758,28 +869,29 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             }
           });
         }
-        
+
         // 5. Se houver erros de validação, parar aqui
         if (validationErrors.length > 0) {
           alert(`Erros de validação:\n${validationErrors.join('\n')}`);
           setIsSubmitting(false);
           return;
         }
-        
+
         // 6. CONSTRUIR PAYLOAD CORRETO
         const payload = {
           // Campos básicos
           title: formData.title.trim(),
           description: formData.description || '',
           image: formData.image || '',
+          map_image: formData.map_image || '',
           subject: formData.subject || 'Evento',
           category: formData.category || 'evento',
           classification: formData.classification || 'Livre',
-          
+
           // Datetimes formatados corretamente (usar nomes das colunas existentes)
           start_date: startDatetime,
           end_date: endDatetime,
-          
+
           // Localização
           location: formData.location_name || formData.location_city || 'Local não informado',
           location_type: formData.location_type || 'physical',
@@ -792,15 +904,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           location_neighborhood: formData.location_neighborhood || '',
           location_cep: formData.location_cep || '',
           location_search: formData.location_search || '',
-          
+
           // Ingressos
           ticket_type: formData.ticket_type || 'free',
           price: formData.tickets.length > 0 ? Math.min(...formData.tickets.map(t => t.price || 0)) : 0,
-          
+
           // ✅ CAMPOS ADICIONAIS ADICIONADOS
           attractions: formData.attractions?.filter(a => a.trim() !== '') || [],
           important_info: formData.important_info?.filter(info => info.trim() !== '') || [],
-          
+
           // ✅ CAMPOS DE CONTATO ADICIONADOS
           contact_info: {
             phone: formData.contact_phone || '(11) 99999-9999',
@@ -809,35 +921,35 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               'Sábados: 9h às 14h'
             ]
           },
-          
+
           // Metadados
           organizer_id: user.id,
           status: event?.id ? event.status : 'pending', // Preservar status atual durante edição
           service_fee_type: formData.service_fee_type,
           created_at: event?.id ? event.created_at : new Date().toISOString() // Preservar data de criação durante edição
         };
-        
+
         // 7. LOGS DETALHADOS PARA DEBUG
         console.log('🔍 DEBUG - Payload final:', JSON.stringify(payload, null, 2));
         console.log('🔍 DEBUG - Timestamps formatados:', {
           start_datetime: startDatetime,
           end_datetime: endDatetime
         });
-        
+
         // 8. VERIFICAR AUTENTICAÇÃO (com timeout)
         const { data: { user: currentUser }, error: authError } = await withTimeout(
           supabase.auth.getUser(),
           10000,
           'Verificação de autenticação excedeu o tempo limite'
         );
-        
+
         if (authError || !currentUser) {
           throw new Error('Usuário não autenticado. Faça login novamente.');
         }
-        
+
         // 9. ✅ INSERIR OU ATUALIZAR NO SUPABASE (com timeout)
-        let eventData;
-        
+        let eventData: any;
+
         if (event?.id) {
           // ✅ MODO EDIÇÃO: Atualizar evento existente
           console.log('📝 Atualizando evento existente:', event.id);
@@ -851,19 +963,19 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             30000,
             'Falha ao atualizar evento. Tente novamente.'
           );
-          
+
           if (updateError) {
             console.error('❌ Erro ao atualizar evento:', updateError);
             throw new Error(`Erro ao atualizar evento: ${updateError.message}`);
           }
-          
+
           eventData = data;
           console.log('✅ Evento atualizado com sucesso:', eventData);
         } else {
           // ✅ MODO CRIAÇÃO: Inserir novo evento
           console.log('➕ Criando novo evento');
         }
-        
+
         // 9b. INSERIR NO SUPABASE (apenas se não for edição, com timeout)
         if (!event?.id) {
           const { data, error: insertError } = await withTimeout(
@@ -875,55 +987,55 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             30000,
             'Falha ao criar evento. Tente novamente.'
           );
-          
+
           if (insertError) {
             console.error('❌ Erro ao inserir evento:', insertError);
             throw new Error(`Erro ao criar evento: ${insertError.message}`);
           }
-          
+
           eventData = data;
           console.log('✅ Evento criado com sucesso:', eventData);
         }
-        
+
         // 10. CRIAR/ATUALIZAR TIPOS DE INGRESSO
         if (formData.tickets && formData.tickets.length > 0) {
           console.log('🎫 Gerenciando tipos de ingresso...');
-          
+
           // 10.1. Se for edição, deletar ingressos e lotes existentes primeiro
           if (event?.id) {
             console.log('🗑️ Deletando ingressos existentes do evento:', event.id);
-            
+
             // Buscar IDs dos ingressos existentes
             const { data: existingTickets, error: fetchError } = await supabase
               .from('event_ticket_types')
               .select('id')
               .eq('event_id', event.id);
-            
+
             if (fetchError) {
               console.error('❌ Erro ao buscar ingressos existentes:', fetchError);
             } else if (existingTickets && existingTickets.length > 0) {
               const ticketIds = existingTickets.map(t => t.id);
-              
+
               // Deletar lotes primeiro (foreign key)
               console.log('🗑️ Deletando lotes existentes...');
               const { error: batchDeleteError } = await supabase
                 .from('event_ticket_batches')
                 .delete()
                 .in('ticket_type_id', ticketIds);
-              
+
               if (batchDeleteError) {
                 console.error('❌ Erro ao deletar lotes:', batchDeleteError);
               } else {
                 console.log('✅ Lotes deletados com sucesso');
               }
-              
+
               // Depois deletar os ingressos
               console.log('🗑️ Deletando ingressos...');
               const { error: ticketDeleteError } = await supabase
                 .from('event_ticket_types')
                 .delete()
                 .eq('event_id', event.id);
-              
+
               if (ticketDeleteError) {
                 console.error('❌ Erro ao deletar ingressos:', ticketDeleteError);
               } else {
@@ -931,10 +1043,10 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               }
             }
           }
-          
+
           // 10.2. Criar os novos ingressos
           console.log('🎫 Criando tipos de ingresso...');
-          
+
           const ticketsData = formData.tickets.map(ticket => ({
             event_id: eventData.id,
             title: ticket.title,
@@ -960,27 +1072,27 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             ticket_type: 'paid',
             service_fee_type: formData.service_fee_type
           }));
-          
+
           const { data: insertedTickets, error: ticketsError } = await supabase
             .from('event_ticket_types')
             .insert(ticketsData)
             .select();
-          
+
           if (ticketsError) {
             console.error('❌ Erro ao criar ingressos:', ticketsError);
             // Não falha o evento, apenas avisa
             console.warn('⚠️ Evento criado, mas houve erro ao criar ingressos');
           } else {
             console.log('✅ Ingressos criados com sucesso:', insertedTickets);
-            
+
             // 10.1. CRIAR LOTES PARA CADA INGRESSO (se houver)
             for (let i = 0; i < insertedTickets.length; i++) {
               const insertedTicket = insertedTickets[i];
               const originalTicket = formData.tickets[i];
-              
+
               if (originalTicket.batches && originalTicket.batches.length > 0) {
                 console.log(`🎫 Criando lotes para ingresso: ${insertedTicket.title}`);
-                
+
                 const batchesData = originalTicket.batches.map(batch => ({
                   ticket_type_id: insertedTicket.id,
                   batch_number: batch.batch_number,
@@ -993,12 +1105,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                   sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00Z` : null,
                   sale_end_time: batch.sale_end_time || null
                 }));
-                
+
                 const { data: insertedBatches, error: batchesError } = await supabase
                   .from('event_ticket_batches')
                   .insert(batchesData)
                   .select();
-                
+
                 if (batchesError) {
                   console.error('❌ Erro ao criar lotes:', batchesError);
                   console.warn(`⚠️ Ingresso ${insertedTicket.title} criado, mas houve erro ao criar lotes`);
@@ -1009,45 +1121,114 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             }
           }
         }
-        
-        // 11. ✅ SUCESSO (mensagem diferenciada)
-        const successMessage = event?.id 
-          ? '✅ Evento atualizado com sucesso!' 
+
+        // 11. SALVAR CUPONS
+        if (formData.coupons) {
+          console.log('🎫 Gerenciando cupons...');
+
+          // 11.1 Deletar cupons removidos (apenas se for edição)
+          if (event?.id) {
+            const { data: existingCoupons } = await supabase
+              .from('event_coupons')
+              .select('id')
+              .eq('event_id', event.id);
+
+            if (existingCoupons) {
+              const currentCouponIds = formData.coupons.map(c => c.id).filter(id => id);
+              const couponsToDelete = existingCoupons
+                .map(c => c.id)
+                .filter(id => !currentCouponIds.includes(id));
+
+              if (couponsToDelete.length > 0) {
+                console.log('🗑️ Deletando cupons removidos:', couponsToDelete);
+                await supabase
+                  .from('event_coupons')
+                  .delete()
+                  .in('id', couponsToDelete);
+              }
+            }
+          }
+
+          // 11.2 Upsert
+          if (formData.coupons.length > 0) {
+            const couponsData = formData.coupons.map(coupon => {
+              // Preparar payload base
+              const payload: any = {
+                event_id: eventData.id,
+                organizer_id: user.id,
+                code: coupon.code,
+                description: coupon.description,
+                discount_type: coupon.discount_type,
+                discount_value: Number(coupon.discount_value),
+                max_uses: coupon.max_uses ? Number(coupon.max_uses) : null,
+                max_uses_per_user: Number(coupon.max_uses_per_user),
+                minimum_purchase_amount: coupon.minimum_purchase_amount ? Number(coupon.minimum_purchase_amount) : null,
+                valid_from: coupon.valid_from || null,
+                valid_until: coupon.valid_until || null,
+                is_active: coupon.is_active,
+                applicable_to_all_tickets: coupon.applicable_to_all_tickets,
+                applicable_ticket_types: coupon.applicable_ticket_types
+              };
+
+              // Só incluir ID se for um UUID válido (não temporário)
+              if (coupon.id && !coupon.id.toString().startsWith('coupon_')) {
+                payload.id = coupon.id;
+              }
+
+              return payload;
+            });
+
+            const { error: couponsError } = await supabase
+              .from('event_coupons')
+              .upsert(couponsData);
+
+            if (couponsError) {
+              console.error('❌ Erro ao salvar cupons:', couponsError);
+              console.warn('⚠️ Evento salvo, mas houve erro ao salvar cupons');
+            } else {
+              console.log('✅ Cupons salvos com sucesso');
+            }
+          }
+        }
+
+        // 12. ✅ SUCESSO (mensagem diferenciada)
+        const successMessage = event?.id
+          ? '✅ Evento atualizado com sucesso!'
           : '✅ Evento criado com sucesso!';
-        
+
         setToast({ message: successMessage, type: 'success' });
-        
+
         // Fechar modal após 2 segundos
         setTimeout(() => {
           onEventCreated?.();
           onClose();
         }, 2000);
-        
+
       } catch (validationError) {
         if (validationError instanceof Error) {
           validationErrors.push(validationError.message);
         } else {
           validationErrors.push('Erro de validação desconhecido');
         }
-        
+
         if (validationErrors.length > 0) {
           alert(`Erros de validação:\n${validationErrors.join('\n')}`);
           setIsSubmitting(false);
           return;
         }
       }
-      
+
     } catch (error: any) {
       console.error('❌ Erro geral:', error);
-      
+
       let errorMessage = 'Erro desconhecido ao criar evento';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'object' && error !== null) {
         errorMessage = JSON.stringify(error);
       }
-      
+
       alert(`Erro ao criar evento:\n${errorMessage}`);
     } finally {
       setIsSubmitting(false);
@@ -1084,17 +1265,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Imagem de divulgação (opcional)
         </label>
-        <div 
+        <div
           className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-500 transition-colors cursor-pointer"
           onClick={() => fileInputRef.current?.click()}
         >
           {imagePreview ? (
             <div className="relative">
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
+              <img
+                src={imagePreview}
+                alt="Preview"
                 className="max-h-48 mx-auto rounded-lg"
-                style={{ 
+                style={{
                   objectFit: 'cover',
                   filter: 'contrast(1.02) saturate(1.05)'
                 }}
@@ -1119,18 +1300,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           onChange={handleImageUpload}
           className="hidden"
         />
-                 <div className="mt-2 text-xs text-gray-500 space-y-1">
-           <p>A dimensão recomendada é de 1600 x 838</p>
-           <p>(mesma proporção do formato utilizado nas páginas de evento no Facebook).</p>
-           <p>Formato JPEG, PNG, GIF ou WebP de no máximo 5MB.</p>
-           <p>Imagens com dimensões diferentes serão redimensionadas.</p>
-         </div>
+        <div className="mt-2 text-xs text-gray-500 space-y-1">
+          <p>A dimensão recomendada é de 1600 x 838</p>
+          <p>(mesma proporção do formato utilizado nas páginas de evento no Facebook).</p>
+          <p>Formato JPEG, PNG, GIF ou WebP de no máximo 5MB.</p>
+          <p>Imagens com dimensões diferentes serão redimensionadas.</p>
+        </div>
       </div>
 
       {/* Classificação */}
       <div>
         <h4 className="text-md font-medium text-gray-800 mb-4">Classifique seu evento</h4>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1305,7 +1486,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Hora de Início *
@@ -1334,7 +1515,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Hora de Término *
@@ -1347,17 +1528,17 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               required
             />
           </div>
+
+          {/* Duração calculada */}
+          {formData.start_date && formData.end_date && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Seu evento vai durar:</strong> {calculateEventDuration()}
+              </p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Duração calculada */}
-      {formData.start_date && formData.end_date && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Seu evento vai durar:</strong> {calculateEventDuration()}
-          </p>
-        </div>
-      )}
     </div>
   );
 
@@ -1396,9 +1577,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         >
           <Underline className="h-4 w-4" />
         </button>
-        
+
         <div className="w-px bg-gray-300 mx-1"></div>
-        
+
         <button
           type="button"
           onClick={() => executeCommand('insertUnorderedList')}
@@ -1407,9 +1588,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         >
           <List className="h-4 w-4" />
         </button>
-        
+
         <div className="w-px bg-gray-300 mx-1"></div>
-        
+
         <button
           type="button"
           onClick={() => executeCommand('justifyLeft')}
@@ -1434,9 +1615,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         >
           <AlignRight className="h-4 w-4" />
         </button>
-        
+
         <div className="w-px bg-gray-300 mx-1"></div>
-        
+
         <button
           type="button"
           onClick={() => {
@@ -1448,7 +1629,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         >
           <Link className="h-4 w-4" />
         </button>
-        
+
         <select
           onChange={(e) => executeCommand('fontSize', e.target.value)}
           className="px-2 py-1 text-xs border border-gray-300 rounded"
@@ -1460,7 +1641,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           <option value="5">Grande</option>
           <option value="7">Muito Grande</option>
         </select>
-        
+
         <input
           type="color"
           onChange={(e) => executeCommand('foreColor', e.target.value)}
@@ -1471,20 +1652,29 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
       {/* Editor de texto */}
       <div
-        ref={descriptionRef}
+        ref={(node) => {
+          descriptionRef.current = node;
+          if (node && formData.description && node.innerHTML !== formData.description) {
+            console.log('📝 Setting description via ref callback');
+            node.innerHTML = formData.description;
+          }
+        }}
         contentEditable
         className="min-h-[200px] p-4 border-x border-b border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-pink-500 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none"
         onInput={() => {
           if (descriptionRef.current) {
-            setFormData(prev => ({ 
-              ...prev, 
-              description: descriptionRef.current?.innerText || descriptionRef.current?.textContent || '' 
+            setFormData(prev => ({
+              ...prev,
+              description: descriptionRef.current?.innerText || descriptionRef.current?.textContent || ''
             }));
           }
         }}
         data-placeholder="Descreva seu evento aqui..."
         style={{ minHeight: '200px' }}
       />
+      <div className="mt-2 text-xs text-gray-400">
+        Debug: Carregado {formData.description?.length || 0} caracteres.
+      </div>
     </div>
   );
 
@@ -1684,6 +1874,50 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               </select>
             </div>
           </div>
+
+          {/* Upload de Mapa do Evento */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mapa do Evento (Opcional)
+            </label>
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-500 transition-colors cursor-pointer bg-gray-50 hover:bg-gray-100"
+              onClick={() => document.getElementById('map-upload-input')?.click()}
+            >
+              {formData.map_image ? (
+                <div className="relative">
+                  <img
+                    src={formData.map_image}
+                    alt="Mapa do evento"
+                    className="max-h-48 mx-auto rounded-lg object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFormData(prev => ({ ...prev, map_image: '' }));
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 mb-3 text-gray-400" />
+                  <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Clique para enviar</span> o mapa do evento</p>
+                  <p className="text-xs text-gray-500">PNG, JPG ou GIF (MAX. 5MB)</p>
+                </div>
+              )}
+              <input
+                id="map-upload-input"
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={handleMapUpload}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1701,7 +1935,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center gap-2">
           Taxa de Serviço *
         </h4>
-        
+
 
         {/* Quem paga a taxa */}
         <div className="mb-4">
@@ -1752,7 +1986,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
             className="mr-2"
           />
-                      Ingressos pagos
+          Ingressos pagos
         </label>
         <label className="flex items-center">
           <input
@@ -1763,7 +1997,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             onChange={(e) => setFormData(prev => ({ ...prev, ticket_type: e.target.value as any }))}
             className="mr-2"
           />
-                      Ingressos gratuitos
+          Ingressos gratuitos
         </label>
       </div>
 
@@ -1812,7 +2046,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                   <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
                     Configuração de Preços
                   </label>
-                  
+
                   {/* Opção de Tipo de Preço */}
                   <div className="mb-4">
                     <div className="space-y-3">
@@ -1822,9 +2056,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                           name={`price_type_${ticket.id}`}
                           value="unissex"
                           checked={ticket.price_type === 'unissex'}
-                          onChange={(e) => updateTicket(ticket.id, { 
+                          onChange={(e) => updateTicket(ticket.id, {
                             price_type: e.target.value as 'unissex',
-                            price_feminine: null 
+                            price_feminine: null
                           })}
                           className="mr-3"
                         />
@@ -1839,8 +2073,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                           name={`price_type_${ticket.id}`}
                           value="gender_separate"
                           checked={ticket.price_type === 'gender_separate'}
-                          onChange={(e) => updateTicket(ticket.id, { 
-                            price_type: e.target.value as 'gender_separate' 
+                          onChange={(e) => updateTicket(ticket.id, {
+                            price_type: e.target.value as 'gender_separate'
                           })}
                           className="mr-3"
                         />
@@ -1851,7 +2085,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                       </label>
                     </div>
                   </div>
-                  
+
                   {ticket.sale_period_type === 'batch' ? (
                     /* Tabela de Lotes */
                     <div className="overflow-x-auto">
@@ -2112,7 +2346,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                       )}
                     </div>
                   )}
-                  
+
                   {/* Botão para adicionar lotes */}
                   {ticket.sale_period_type === 'batch' && (
                     <div className="mt-4">
@@ -2130,8 +2364,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                             sale_end_date: '',
                             sale_end_time: ''
                           };
-                          updateTicket(ticket.id, { 
-                            batches: [...ticket.batches, newBatch] 
+                          updateTicket(ticket.id, {
+                            batches: [...ticket.batches, newBatch]
                           });
                         }}
                         className="w-full px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -2220,7 +2454,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
                 Configurações do Ingresso
               </h5>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2258,19 +2492,19 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                       checked={ticket.has_half_price}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
-                        updateTicket(ticket.id, { 
+                        updateTicket(ticket.id, {
                           has_half_price: isChecked,
                           half_price_title: isChecked ? `${ticket.title} - MEIA` : '',
                           // Só calcular valores iniciais quando marca o checkbox pela primeira vez
                           // Se já tinha valores, manter os existentes para não sobrescrever edições do usuário
-                          half_price_quantity: isChecked && !ticket.half_price_quantity 
-                            ? Math.floor(ticket.quantity / 2) 
+                          half_price_quantity: isChecked && !ticket.half_price_quantity
+                            ? Math.floor(ticket.quantity / 2)
                             : (isChecked ? ticket.half_price_quantity : 0),
                           half_price_price: isChecked && !ticket.half_price_price && ticket.price
-                            ? ticket.price / 2 
+                            ? ticket.price / 2
                             : (isChecked ? ticket.half_price_price : null),
                           half_price_price_feminine: isChecked && !ticket.half_price_price_feminine && ticket.price_feminine
-                            ? ticket.price_feminine / 2 
+                            ? ticket.price_feminine / 2
                             : (isChecked ? ticket.half_price_price_feminine : null)
                         });
                       }}
@@ -2278,7 +2512,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     />
                     Criar meia-entrada para este ingresso
                   </label>
-                  
+
                   {ticket.has_half_price && (
                     <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
                       <div>
@@ -2293,7 +2527,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                         />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Quantidade *
@@ -2323,7 +2557,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                           Ex. define a quantidade
                         </p>
                       </div>
-                      
+
                       {ticket.price_type === 'unissex' ? (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2436,7 +2670,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                                      Para todo o público
+                  Para todo o público
                 </label>
                 <label className="flex items-center">
                   <input
@@ -2447,7 +2681,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                                      Restrito a convidados
+                  Restrito a convidados
                 </label>
                 <label className="flex items-center">
                   <input
@@ -2458,7 +2692,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                     onChange={(e) => updateTicket(ticket.id, { availability: e.target.value as any })}
                     className="mr-2"
                   />
-                                      Para ser adicionado manualmente
+                  Para ser adicionado manualmente
                 </label>
               </div>
             </div>
@@ -2554,7 +2788,22 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
   const renderStep6 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">Informações de Contato</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">6. Cupons de Desconto</h3>
+        <p className="text-sm text-gray-600 mb-4">Crie cupons para oferecer descontos aos seus participantes (opcional).</p>
+      </div>
+
+      <CouponManagement
+        coupons={formData.coupons}
+        onCouponsChange={(newCoupons) => setFormData(prev => ({ ...prev, coupons: newCoupons }))}
+        availableTicketTypes={formData.tickets.map(t => ({ id: t.id, title: t.title }))}
+      />
+    </div>
+  );
+
+  const renderStep7 = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">7. Informações de Contato</h3>
         <p className="text-sm text-gray-600 mb-4">Defina como os participantes podem entrar em contato</p>
       </div>
 
@@ -2611,9 +2860,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
         </div>
         <button
           type="button"
-          onClick={() => setFormData(prev => ({ 
-            ...prev, 
-            contact_hours: [...prev.contact_hours, ''] 
+          onClick={() => setFormData(prev => ({
+            ...prev,
+            contact_hours: [...prev.contact_hours, '']
           }))}
           className="mt-2 text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
         >
@@ -2638,7 +2887,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
             {(!event && currentStep === 3) && 'Descrição do Evento'}
             {(!event && currentStep === 4) && 'Local do Evento'}
             {(!event && currentStep === 5) && 'Ingressos'}
-            {(!event && currentStep === 6) && 'Informações de Contato'}
+            {(!event && currentStep === 6) && 'Cupons de Desconto'}
+            {(!event && currentStep === 7) && 'Informações de Contato'}
           </h2>
           <button
             onClick={onClose}
@@ -2655,20 +2905,19 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               {[1, 2, 3, 4, 5, 6].map((step) => (
                 <div
                   key={step}
-                  className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
-                    step <= currentStep
-                      ? 'bg-pink-600 text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}
+                  className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${step <= currentStep
+                    ? 'bg-pink-600 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                    }`}
                 >
                   {step}
                 </div>
               ))}
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-pink-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentStep / 6) * 100}%` }}
+                style={{ width: `${(currentStep / 7) * 100}%` }}
               />
             </div>
           </div>
@@ -2685,6 +2934,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               {renderStep4()}
               {renderStep5()}
               {renderStep6()}
+              {renderStep7()}
             </>
           ) : (
             <>
@@ -2694,6 +2944,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
               {currentStep === 4 && renderStep4()}
               {currentStep === 5 && renderStep5()}
               {currentStep === 6 && renderStep6()}
+              {currentStep === 7 && renderStep7()}
             </>
           )}
         </div>
@@ -2717,7 +2968,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
                 >
                   Cancelar
                 </button>
-                {currentStep < 6 ? (
+                {currentStep < 7 ? (
                   <button
                     onClick={goToNextStep}
                     type="button"

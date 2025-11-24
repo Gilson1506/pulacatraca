@@ -23,12 +23,15 @@ import SearchPage from './pages/SearchPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import AffiliateRegisterPage from './pages/AffiliateRegisterPage';
+import AffiliateDashboardPage from './pages/AffiliateDashboardPage';
+import OrganizerAffiliateManagementPage from './pages/OrganizerAffiliateManagementPage';
 
 const AppRoutes = () => {
   const location = useLocation();
   const hideFooter = location.pathname.startsWith('/profile') || location.pathname.startsWith('/organizer-dashboard') || location.pathname.startsWith('/ingresso') || location.pathname.startsWith('/checkin');
   const hideHeader = location.pathname.startsWith('/event/') || location.pathname.startsWith('/ingresso') || location.pathname.startsWith('/checkin/resultado');
-  
+
   // A/B Testing Dashboard (apenas em desenvolvimento)
   const { isOpen, setIsOpen } = useABTestingDashboardShortcut();
 
@@ -63,14 +66,21 @@ const AppRoutes = () => {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/affiliate/register" element={<AffiliateRegisterPage />} />
+          <Route path="/affiliate/dashboard" element={<AffiliateDashboardPage />} />
+          <Route path="/organizer/affiliates" element={
+            <ProtectedRoute requiredRole="organizer">
+              <OrganizerAffiliateManagementPage />
+            </ProtectedRoute>
+          } />
         </Routes>
       </main>
       {!hideFooter && <Footer />}
-      
+
       {/* A/B Testing Dashboard */}
-      <ABTestingDashboard 
-        isOpen={isOpen} 
-        onClose={() => setIsOpen(false)} 
+      <ABTestingDashboard
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
       />
     </div>
   );

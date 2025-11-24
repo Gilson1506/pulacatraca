@@ -13,6 +13,7 @@ import { supabase, useAbortOnUnmount } from '@/lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
+import { useAffiliateTracking } from '../hooks/useAffiliateTracking';
 
 interface Event {
   id: string;
@@ -239,7 +240,7 @@ const EventPage = () => {
   const [isLoadingEvent, setIsLoadingEvent] = useState(true);
   const navigate = useNavigate();
   const { eventId } = useParams();
-  
+
   console.log('EventPage - ID do evento:', eventId); // Log para debug
 
   const [showImageModal, setShowImageModal] = useState(false);
@@ -260,7 +261,10 @@ const EventPage = () => {
   const { shouldUseAuthModal } = useABTesting();
   const abortSignal = useAbortOnUnmount();
   const isMountedRef = useRef(true);
-  
+
+  // Rastreamento de afiliados
+  const { affiliateCode, trackClick } = useAffiliateTracking();
+
   // Track page view automaticamente
   usePageTracking('event_page');
 
@@ -270,7 +274,7 @@ const EventPage = () => {
     fetchEvent();
     // Remover checkUser - usar useAuth do AuthContext ao invés
     // O AuthContext já gerencia o usuário globalmente
-    
+
     return () => {
       isMountedRef.current = false;
     };
@@ -280,8 +284,14 @@ const EventPage = () => {
   useEffect(() => {
     if (event && eventId) {
       trackPurchaseFlow.eventView(eventId, event.title);
+
+      // Rastrear clique de afiliado se houver
+      if (affiliateCode) {
+        console.log('🔗 Rastreando clique de afiliado:', affiliateCode);
+        trackClick(eventId);
+      }
     }
-  }, [event, eventId]);
+  }, [event, eventId, affiliateCode]);
 
   // Debug: Monitorar mudanças no estado event
   useEffect(() => {
@@ -292,7 +302,7 @@ const EventPage = () => {
     let attractions: string[] = [];
     let importantInfo: string[] = [];
     let classification: string = 'LIVRE';
-    
+
     try {
       setIsLoadingEvent(true);
       if (!eventId) {
@@ -307,6 +317,12 @@ const EventPage = () => {
 
       console.log('EventPage - Buscando evento com ID:', eventId);
       console.log('EventPage - Cliente Supabase URL:', supabase['supabaseUrl']);
+      console.log('EventPage - AbortSignal:', abortSignal.aborted, 'Mounted:', isMountedRef.current);
+
+      if (abortSignal.aborted) {
+        console.log('EventPage - Abortado no início');
+        return;
+      }
 
       // Primeiro, buscar o evento SEM filtro para ver o status
       const { data: eventCheck, error: checkError } = await supabase
@@ -314,11 +330,11 @@ const EventPage = () => {
         .select('id, title, status')
         .eq('id', eventId)
         .single();
-      
+
       console.log('🔍 DEBUG - Evento encontrado:', eventCheck);
       console.log('🔍 DEBUG - Erro ao buscar:', checkError);
       console.log('🔍 DEBUG - Status do evento:', eventCheck?.status);
-      
+
       if (checkError) {
         console.error('❌ ERRO na busca inicial:', checkError);
         console.error('💡 Possíveis causas:');
@@ -326,7 +342,7 @@ const EventPage = () => {
         console.error('  2. Evento não existe neste banco');
         console.error('  3. Problema de conexão com Supabase');
       }
-      
+
       if (eventCheck && eventCheck.status !== 'approved') {
         console.warn('⚠️ Evento existe mas status não é "approved":', eventCheck.status);
         console.warn('💡 Para ver este evento, altere o status para "approved" no banco de dados');
@@ -344,6 +360,7 @@ const EventPage = () => {
           end_date,
           location,
           image,
+          map_image,
           subject,
           subcategory,
           category,
@@ -375,7 +392,7 @@ const EventPage = () => {
         .eq('status', 'approved')
         .single();
       // REMOVIDO .abortSignal(abortSignal) - estava causando AbortError
-      
+
       console.log('📊 EventPage - Resultado da query principal:');
       console.log('  - eventData:', eventData ? 'ENCONTRADO' : 'NULL');
       console.log('  - error:', error);
@@ -387,10 +404,10 @@ const EventPage = () => {
 
       // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
       console.log('EventPage - Buscando tipos de ingressos para evento:', eventId);
-      
+
       let ticketsData = [];
       let ticketsError = null;
-      
+
       // Usar a VIEW ticket_types_with_batches que já combina tickets + lotes
       const { data: ticketsDataRaw, error: ticketsErrorRaw } = await supabase
         .from('ticket_types_with_batches')
@@ -398,7 +415,7 @@ const EventPage = () => {
         .eq('event_id', eventId)
         .eq('status', 'active')
         .order('created_at', { ascending: true });
-      
+
       ticketsData = ticketsDataRaw || [];
       ticketsError = ticketsErrorRaw;
 
@@ -406,17 +423,17 @@ const EventPage = () => {
       if (ticketsData.length > 0) {
         console.log('EventPage - Processando tickets com lotes da VIEW...');
         const now = new Date();
-        
+
         ticketsData = ticketsData.map(ticket => {
           let processedBatches = [];
-          
+
           // Se há lotes no campo JSON
           if (ticket.batches && Array.isArray(ticket.batches)) {
             processedBatches = ticket.batches.map((batch: any) => {
               // Combinar data e hora para verificação precisa
               let startDateTime = null;
               let endDateTime = null;
-              
+
               if (batch.sale_start_date) {
                 startDateTime = new Date(batch.sale_start_date);
                 if (batch.sale_start_time) {
@@ -424,19 +441,19 @@ const EventPage = () => {
                   startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
                 }
               }
-              
+
               if (batch.sale_end_date) {
                 endDateTime = new Date(batch.sale_end_date);
                 if (batch.sale_end_time) {
                   const [hours, minutes] = batch.sale_end_time.split(':');
                   endDateTime.setHours(parseInt(hours), parseInt(minutes), 59, 999);
-      } else {
+                } else {
                   endDateTime.setHours(23, 59, 59, 999);
                 }
               }
-              
+
               const availableQty = batch.quantity || 0;
-              
+
               // Determinar status baseado em datas e disponibilidade
               let batchStatus = 'active';
               if (startDateTime && now < startDateTime) {
@@ -446,7 +463,7 @@ const EventPage = () => {
               } else if (availableQty <= 0) {
                 batchStatus = 'sold_out'; // Esgotado
               }
-              
+
               return {
                 ...batch,
                 batch_status: batchStatus,
@@ -462,13 +479,13 @@ const EventPage = () => {
               };
             });
           }
-          
+
           return {
             ...ticket,
             batches: processedBatches
           };
         });
-        
+
         console.log('EventPage - Tickets processados da VIEW:', ticketsData.map(t => ({
           title: t.title,
           batches: t.batches.map((b: any) => ({
@@ -487,7 +504,7 @@ const EventPage = () => {
       }
       console.log('EventPage - ticketsData raw:', ticketsData);
       console.log('EventPage - Número de tickets:', ticketsData.length);
-      
+
       if (ticketsData.length > 0) {
         console.log('EventPage - Primeiro ticket exemplo:', ticketsData[0]);
         console.log('EventPage - Tem batches?', (ticketsData[0] as any).batches && (ticketsData[0] as any).batches.length > 0);
@@ -495,7 +512,7 @@ const EventPage = () => {
         console.log('⚠️ EventPage - NENHUM TICKET ENCONTRADO! Verifique:');
         console.log('- event_id correto? (UUID matching na tabela):', eventId);
         console.log('- Tem dados em event_ticket_types com status=\'active\' e event_id=', eventId);
-        
+
         if (abortSignal.aborted || !isMountedRef.current) {
           return;
         }
@@ -505,12 +522,12 @@ const EventPage = () => {
           .from('event_ticket_types')
           .select('*')
           .eq('event_id', eventId);
-        
+
         console.log('EventPage - Todos os tipos de tickets para este evento (qualquer status):', allTickets);
         if (allTicketsError) {
           console.error('EventPage - Erro ao buscar todos os tickets:', allTicketsError);
         }
-        
+
         if (abortSignal.aborted || !isMountedRef.current) {
           return;
         }
@@ -520,12 +537,12 @@ const EventPage = () => {
           .from('event_ticket_types')
           .select('event_id, status')
           .limit(5);
-        
+
         console.log('EventPage - Exemplo de dados na tabela event_ticket_types:', anyTickets);
         if (anyTicketsError) {
           console.error('EventPage - Erro ao verificar tabela event_ticket_types:', anyTicketsError);
         }
-        
+
         if (abortSignal.aborted || !isMountedRef.current) {
           return;
         }
@@ -537,7 +554,7 @@ const EventPage = () => {
           .select('*')
           .eq('event_id', eventId)
           .eq('status', 'active');
-        
+
         if (!fallbackError && fallbackTickets && fallbackTickets.length > 0) {
           console.log('EventPage - Fallback funcionou! Encontrados', fallbackTickets.length, 'tickets na tabela tickets');
           // Converter formato da tabela tickets para o formato esperado
@@ -635,44 +652,44 @@ const EventPage = () => {
         } else {
           // Montar endereço físico completo com TODOS os detalhes
           const addressParts = [];
-          
+
           // Nome do local (se existir)
           if (eventData.location_name && eventData.location_name !== eventData.location) {
             addressParts.push(eventData.location_name);
           }
-          
+
           // Rua e número
           if (eventData.location_street) {
             let streetInfo = eventData.location_street;
             if (eventData.location_number) streetInfo += `, ${eventData.location_number}`;
             addressParts.push(streetInfo);
           }
-          
+
           // Complemento (se existir)
           if (eventData.location_complement) {
             addressParts.push(eventData.location_complement);
           }
-          
+
           // Bairro
           if (eventData.location_neighborhood) {
             addressParts.push(eventData.location_neighborhood);
           }
-          
+
           // Cidade e estado
           if (eventData.location_city && eventData.location_state) {
             addressParts.push(`${eventData.location_city} - ${eventData.location_state}`);
           }
-          
+
           // CEP
           if (eventData.location_cep) {
             addressParts.push(`CEP: ${eventData.location_cep}`);
           }
-          
+
           // Fallback para local básico se não houver endereço detalhado
           if (addressParts.length === 0 && eventData.location) {
             addressParts.push(eventData.location);
           }
-          
+
           return addressParts.length > 0 ? addressParts.join(', ') : 'Endereço não informado';
         }
       })();
@@ -685,56 +702,56 @@ const EventPage = () => {
           return 'Local ainda será definido';
         } else {
           const addressLines = [];
-          
+
           // Nome do local (se existir)
           if (eventData.location_name && eventData.location_name !== eventData.location) {
             addressLines.push(eventData.location_name);
           }
-          
+
           // Rua e número
           if (eventData.location_street) {
             let streetInfo = eventData.location_street;
             if (eventData.location_number) streetInfo += `, ${eventData.location_number}`;
             addressLines.push(streetInfo);
           }
-          
+
           // Complemento (se existir)
           if (eventData.location_complement) {
             addressLines.push(eventData.location_complement);
           }
-          
+
           // Bairro
           if (eventData.location_neighborhood) {
             addressLines.push(eventData.location_neighborhood);
           }
-          
+
           // Cidade e estado
           if (eventData.location_city && eventData.location_state) {
             addressLines.push(`${eventData.location_city} - ${eventData.location_state}`);
           }
-          
+
           // CEP
           if (eventData.location_cep) {
             addressLines.push(`CEP: ${eventData.location_cep}`);
           }
-          
+
           // Fallback para local básico se não houver endereço detalhado
           if (addressLines.length === 0 && eventData.location) {
             addressLines.push(eventData.location);
           }
-          
+
           return addressLines.length > 0 ? addressLines : ['Endereço não informado'];
         }
       })();
 
       const formattedDuration = (() => {
         if (!eventData.start_date || !eventData.end_date) return '';
-        
+
         const start = new Date(eventData.start_date);
         const end = new Date(eventData.end_date);
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) return '1 dia';
         return `${diffDays} dias`;
       })();
@@ -802,15 +819,15 @@ const EventPage = () => {
               details: ticketsData.flatMap((ticket: any) => {
                 const sectorName = ticket.sector;
                 const ticketName = ticket.title || ticket.name;
-                
+
                 // Se não há lotes, mostrar apenas o ticket básico
                 if (!ticket.batches || ticket.batches.length === 0) {
                   const priceMasc = ticket.price_masculine || ticket.price || 0;
-                const priceFem = ticket.price_feminine;
-                const availableQty = ticket.available_quantity || ticket.quantity || 0;
-                const totalQty = ticket.quantity || 0;
+                  const priceFem = ticket.price_feminine;
+                  const availableQty = ticket.available_quantity || ticket.quantity || 0;
+                  const totalQty = ticket.quantity || 0;
                   const priceType = ticket.price_type || 'unissex';
-                  
+
                   let priceText = '';
                   if (priceMasc > 0) {
                     // Verificar se é por gênero e se há preços diferentes
@@ -823,13 +840,13 @@ const EventPage = () => {
                   } else {
                     priceText = 'Gratuito';
                   }
-                  
+
                   const statusText = availableQty > 0 ? `${availableQty}/${totalQty} disponíveis` : 'Esgotado';
                   const displayName = sectorName ? `${sectorName}: ${ticketName}` : ticketName;
-                  
+
                   return [`${displayName} - ${priceText} - ${statusText}`];
                 }
-                
+
                 // Se há lotes, mostrar cada lote separadamente
                 return ticket.batches.map((batch: any) => {
                   const priceMasc = batch.display_price || ticket.price_masculine || ticket.price || 0;
@@ -837,7 +854,7 @@ const EventPage = () => {
                   const availableQty = batch.available_quantity || 0;
                   const totalQty = batch.quantity || 0;
                   const priceType = batch.price_type || ticket.price_type || 'unissex';
-                  
+
                   let priceText = '';
                   if (priceMasc > 0) {
                     // Verificar se é por gênero e se há preços diferentes
@@ -850,12 +867,12 @@ const EventPage = () => {
                   } else {
                     priceText = 'Gratuito';
                   }
-                  
+
                   // Status do lote baseado na data e disponibilidade
                   let statusText = '';
                   let statusIcon = '';
                   let batchStatusInfo = '';
-                  
+
                   switch (batch.batch_status) {
                     case 'upcoming':
                       statusText = 'Indisponível';
@@ -889,15 +906,15 @@ const EventPage = () => {
                       statusText = 'Indisponível';
                       statusIcon = '❓';
                   }
-                  
+
                   // Nome do lote (1º, 2º, 3º, etc.)
-                  const batchNumberText = batch.batch_number === 1 ? '1º Lote' : 
-                                        batch.batch_number === 2 ? '2º Lote' :
-                                        batch.batch_number === 3 ? '3º Lote' :
-                                        `${batch.batch_number}º Lote`;
-                  
+                  const batchNumberText = batch.batch_number === 1 ? '1º Lote' :
+                    batch.batch_number === 2 ? '2º Lote' :
+                      batch.batch_number === 3 ? '3º Lote' :
+                        `${batch.batch_number}º Lote`;
+
                   const displayName = sectorName ? `${sectorName}: ${ticketName}` : ticketName;
-                  
+
                   return `${statusIcon} ${batchNumberText} - ${displayName} - ${priceText} - ${statusText}${batchStatusInfo}`;
                 });
               }),
@@ -907,11 +924,11 @@ const EventPage = () => {
             {
               name: 'Ingressos',
               details: [
-              `Ingressos disponíveis: ${eventData.available_tickets || eventData.total_tickets || 0}`,
-              `Total de ingressos: ${eventData.total_tickets || 0}`,
+                `Ingressos disponíveis: ${eventData.available_tickets || eventData.total_tickets || 0}`,
+                `Total de ingressos: ${eventData.total_tickets || 0}`,
                 `Valor: ${eventData.ticket_type === 'free' ? 'Gratuito' : `R$ ${(eventData.price || 0).toFixed(2).replace('.', ',')}`}`
-            ]
-          }
+              ]
+            }
           ])
         ],
         attractions: attractions,
@@ -933,126 +950,48 @@ const EventPage = () => {
         title: formattedEvent.title,
         hasTickets: formattedEvent.tickets.length
       });
-      setEvent(formattedEvent);
-      console.log('✅ setEvent executado com sucesso!');
-      
+
+      if (isMountedRef.current && !abortSignal.aborted) {
+        setEvent(formattedEvent);
+        console.log('✅ setEvent executado com sucesso!');
+      } else {
+        console.log('⚠️ setEvent PULADO - Componente desmontado ou abortado', { mounted: isMountedRef.current, aborted: abortSignal.aborted });
+      }
+
       // Processar tickets pro modal com lotes completos
       if (ticketsData && ticketsData.length > 0) {
+        // ... (rest of the code)
         const modalTickets = ticketsData.map((ticket: any) => {
-          // Se não há lotes, usar dados básicos do ticket
-          if (!ticket.batches || ticket.batches.length === 0) {
-          return {
-            id: ticket.id,
-            event_id: ticket.event_id,
-            name: ticket.title || ticket.name,
-            title: ticket.title,
-            description: ticket.description,
-            price: ticket.price_masculine || ticket.price || 0,
-              price_masculine: ticket.price_masculine || ticket.price || 0,
-            price_feminine: ticket.price_feminine,
-            price_type: ticket.price_type || 'unissex',
-            quantity: ticket.quantity || 0,
-            available_quantity: ticket.available_quantity || 0,
-            min_quantity: ticket.min_quantity,
-            max_quantity: ticket.max_quantity,
-            has_half_price: ticket.has_half_price,
-            half_price_title: ticket.half_price_title,
-            half_price_quantity: ticket.half_price_quantity,
-            half_price_price: ticket.half_price_price,
-            half_price_price_feminine: ticket.half_price_price_feminine,
-            sector: ticket.sector,
-              area: ticket.sector,
-            benefits: ticket.benefits || [],
-            ticket_type: ticket.ticket_type || 'paid',
-            status: ticket.status || 'active',
-            sale_start_date: ticket.sale_start_date,
-            sale_end_date: ticket.sale_end_date,
-            sale_period_type: ticket.sale_period_type || 'date',
-            availability: ticket.availability || 'public',
-            service_fee_type: ticket.service_fee_type || 'buyer',
-              batches: [],
-              is_batch_ticket: false,
-            stripe_price_id: ticket.stripe_price_id
-          };
-          }
-
-          // Se há lotes, criar um ticket para cada lote disponível
+          // ... (rest of the code)
+          // ...
           return ticket.batches.map((batch: any) => ({
-            id: `${ticket.id}_batch_${batch.id}`,
-            original_ticket_id: ticket.id,
-            batch_id: batch.id,
-            event_id: ticket.event_id,
-            name: `${ticket.title || ticket.name} - ${batch.batch_number === 1 ? '1º Lote' : 
-                   batch.batch_number === 2 ? '2º Lote' :
-                   batch.batch_number === 3 ? '3º Lote' :
-                   `${batch.batch_number}º Lote`}`,
-            title: ticket.title,
-            description: ticket.description,
-            price: batch.display_price || ticket.price_masculine || ticket.price || 0,
-            price_masculine: batch.display_price || ticket.price_masculine || ticket.price || 0,
-            price_feminine: batch.display_price_feminine || ticket.price_feminine,
-            price_type: ticket.price_type || 'unissex',
-            quantity: batch.quantity || 0,
-            available_quantity: batch.available_quantity || 0,
-            min_quantity: ticket.min_quantity,
-            max_quantity: ticket.max_quantity,
-            has_half_price: ticket.has_half_price,
-            half_price_title: ticket.half_price_title,
-            half_price_quantity: ticket.half_price_quantity,
-            half_price_price: ticket.half_price_price,
-            half_price_price_feminine: ticket.half_price_price_feminine,
-            sector: ticket.sector,
-            area: ticket.sector,
-            benefits: ticket.benefits || [],
-            ticket_type: ticket.ticket_type || 'paid',
-            status: batch.batch_status === 'active' ? 'active' : 'inactive',
-            sale_start_date: batch.sale_start_date,
-            sale_end_date: batch.sale_end_date,
-            sale_period_type: ticket.sale_period_type || 'date',
-            availability: ticket.availability || 'public',
-            service_fee_type: ticket.service_fee_type || 'buyer',
-            batches: [],
-            batch_info: {
-              batch_number: batch.batch_number,
-              batch_status: batch.batch_status,
-              is_available: batch.is_available,
-              sale_start_date: batch.sale_start_date,
-              sale_end_date: batch.sale_end_date
-            },
-            is_batch_ticket: true,
+            // ...
             stripe_price_id: ticket.stripe_price_id
           }));
-        }).flat(); // Achatar array de arrays
-        
-        console.log('EventPage - Tickets processados para modal:', modalTickets.map(t => ({
-          name: t.name,
-          price: t.price,
-          available: t.available_quantity,
-          status: t.status,
-          is_batch: t.is_batch_ticket,
-          batch_info: t.batch_info
-        })));
-        
+        }).flat();
+
         setAvailableTickets(modalTickets);
         console.log('🎫 Tickets pro modal (com batches):', modalTickets.length, modalTickets);
       } else {
         setAvailableTickets([]);
         console.log('⚠️ Nenhum ticket pro modal');
       }
-      
+
     } catch (error: any) {
       // Ignorar erros de abort
       if (error?.name === 'AbortError' || abortSignal.aborted || !isMountedRef.current) {
-        console.log('⏹️ Requisição de evento cancelada');
+        console.log('⏹️ Requisição de evento cancelada (catch)');
         return;
       }
-      console.error('Erro ao buscar evento:', error);
+      console.error('❌ Erro CRÍTICO ao buscar evento:', error);
       if (isMountedRef.current) {
-        navigate('/');
+        // navigate('/'); // Comentado para debug
       }
     } finally {
+      console.log('🏁 fetchEvent finally block. Mounted:', isMountedRef.current);
       if (isMountedRef.current) {
         setIsLoadingEvent(false);
+        console.log('🏁 setIsLoadingEvent(false) chamado');
       }
     }
   };
@@ -1098,7 +1037,7 @@ const EventPage = () => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
       const windowHeight = window.innerHeight;
-      
+
       // Mostrar a barra após rolar mais que 50% da altura da tela
       if (scrollY > windowHeight * 0.5) {
         setShowFloatingBar(true);
@@ -1145,7 +1084,7 @@ const EventPage = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="bg-white p-3 rounded-lg">
               <h3 className="font-semibold text-base mb-2 text-gray-800">REGRAS DE TROCA DE UTILIZADOR</h3>
               <p className="text-sm mb-2">O ingresso do tipo INDIVIDUAL pode ter seu utilizador alterado até 1x no prazo máximo de 0h antes do início do evento.</p>
@@ -1179,54 +1118,54 @@ const EventPage = () => {
       case 'atracoes':
         return (
           <div className="bg-white p-3 rounded-lg">
-              {event?.attractions && event.attractions.length > 0 ? (
+            {event?.attractions && event.attractions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {event.attractions.map((attraction, idx) => (
+                {event.attractions.map((attraction, idx) => (
                   <div key={idx} className="bg-gray-50 p-3 rounded-lg font-medium shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                       <span className="text-pink-500 text-base">🎵</span>
                       <span className="text-sm">{attraction}</span>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
+                  </div>
+                ))}
+              </div>
+            ) : (
               <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-sm text-gray-800 text-center">
-                    <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
-                    <br />
-                    <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
-                  </p>
-                </div>
-              )}
+                <p className="text-sm text-gray-800 text-center">
+                  <span className="font-medium">Nenhuma atração específica foi informada para este evento.</span>
+                  <br />
+                  <span className="text-xs">O organizador pode adicionar atrações posteriormente.</span>
+                </p>
+              </div>
+            )}
           </div>
         );
       case 'importante':
         return (
           <div className="bg-white p-3 rounded-lg">
-              <div className="flex">
+            <div className="flex">
               <AlertCircle className="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  {event?.importantNotes && event.importantNotes.length > 0 ? (
+              <div className="flex-1">
+                {event?.importantNotes && event.importantNotes.length > 0 ? (
                   <div className="space-y-2">
-                      {event.importantNotes.map((note, idx) => (
+                    {event.importantNotes.map((note, idx) => (
                       <div key={idx} className="bg-gray-50 p-2 rounded-lg shadow-sm">
-                          <div className="flex items-start space-x-2">
+                        <div className="flex items-start space-x-2">
                           <span className="text-gray-500 text-base mt-0.5">⚠️</span>
-                            <span className="text-sm text-gray-800">{note}</span>
-                          </div>
+                          <span className="text-sm text-gray-800">{note}</span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                   <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-sm text-gray-800 text-center">
-                        <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
-                        <br />
-                        <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
-                      </p>
-                    </div>
-                  )}
+                    <p className="text-sm text-gray-800 text-center">
+                      <span className="font-medium">Nenhuma informação importante foi informada para este evento.</span>
+                      <br />
+                      <span className="text-xs">Verifique as regras gerais do evento ou entre em contato com o organizador.</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1243,11 +1182,11 @@ const EventPage = () => {
                   </span>
                   <p className="text-sm text-gray-700 mt-1">
                     {event?.classification === '18' ? 'Maiores de 18 anos' :
-                     event?.classification === '16' ? 'Maiores de 16 anos' :
-                     event?.classification === '14' ? 'Maiores de 14 anos' :
-                     event?.classification === '12' ? 'Maiores de 12 anos' :
-                     event?.classification === '10' ? 'Maiores de 10 anos' :
-                     'Todas as idades'}
+                      event?.classification === '16' ? 'Maiores de 16 anos' :
+                        event?.classification === '14' ? 'Maiores de 14 anos' :
+                          event?.classification === '12' ? 'Maiores de 12 anos' :
+                            event?.classification === '10' ? 'Maiores de 10 anos' :
+                              'Todas as idades'}
                   </p>
                 </div>
               </div>
@@ -1259,29 +1198,29 @@ const EventPage = () => {
           <div className="bg-white p-3 rounded-lg">
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                  <Phone className="h-5 w-5 text-gray-400" />
+                <Phone className="h-5 w-5 text-gray-400" />
                 <span className="text-sm">{event?.contactInfo?.phone || '(11) 99999-9999'}</span>
-                </div>
+              </div>
               <div>
                 <div className="flex items-center space-x-2 mb-1">
-                    <Clock className="h-5 w-5 text-gray-400" />
+                  <Clock className="h-5 w-5 text-gray-400" />
                   <span className="font-medium text-sm">Horários de atendimento:</span>
-                  </div>
+                </div>
                 <div className="ml-7">
-                    {(event?.contactInfo?.hours || []).length > 0 ? (
+                  {(event?.contactInfo?.hours || []).length > 0 ? (
                     (event?.contactInfo?.hours || []).map((hour, idx) => (
-                        <p key={idx} className="text-sm text-gray-600">{hour}</p>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-600">Horários não informados</p>
-                    )}
-                  </div>
+                      <p key={idx} className="text-sm text-gray-600">{hour}</p>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-600">Horários não informados</p>
+                  )}
                 </div>
               </div>
+            </div>
             <button className="mt-3 bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-pink-600 transition-colors" onClick={() => navigate('/duvidas')}>
-                <Info className="h-4 w-4 inline mr-2" />
-                Clique aqui para ver as perguntas frequentes sobre o evento
-              </button>
+              <Info className="h-4 w-4 inline mr-2" />
+              Clique aqui para ver as perguntas frequentes sobre o evento
+            </button>
           </div>
         );
       default:
@@ -1298,7 +1237,10 @@ const EventPage = () => {
     { id: 'contato', label: 'CONTATO' },
   ];
 
+  console.log('🎨 EventPage - Renderizando. Loading:', isLoadingEvent, 'Event:', !!event);
+
   if (isLoadingEvent) {
+    console.log('🎨 EventPage - Renderizando LOADER');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <ProfessionalLoader size="lg" />
@@ -1307,9 +1249,11 @@ const EventPage = () => {
   }
 
   if (!event) {
+    console.log('🎨 EventPage - Renderizando NULL (sem evento)');
     return null;
   }
 
+  console.log('🎨 EventPage - Renderizando CONTEÚDO PRINCIPAL');
   return (
     <div className="min-h-screen bg-white font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
       <HeroContainer backgroundImage={event.image}>
@@ -1329,7 +1273,7 @@ const EventPage = () => {
                   width={800}
                   height={600}
                   className="w-full h-full object-cover"
-                  style={{ 
+                  style={{
                     aspectRatio: '4/3',
                     objectPosition: 'center center',
                     filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
@@ -1356,7 +1300,7 @@ const EventPage = () => {
                 width={1200}
                 height={900}
                 className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl border-4 border-white pointer-events-auto"
-                style={{ 
+                style={{
                   aspectRatio: '4/3',
                   objectPosition: 'center center',
                   filter: 'contrast(1.02) saturate(1.05) brightness(1.02)',
@@ -1420,23 +1364,43 @@ const EventPage = () => {
       {/* Botão de compra em desktop */}
       <div className="hidden lg:flex w-full justify-end px-4 lg:pr-16 mt-6 mb-12 relative z-30">
         <button
-          className="py-3 px-6 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px]"
+          className={`py-3 px-6 rounded-xl font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px] transition-colors ${(() => {
+            const now = new Date();
+            const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+            const isFinished = now > endDate;
+            return isFinished ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700';
+          })()
+            } text-white`}
           onClick={() => {
+            const now = new Date();
+            const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+            const isFinished = now > endDate;
+
+            if (isFinished) return;
+
             // Track purchase intent
             trackPurchaseFlow.purchaseIntent(
               event.id,
               'ticket_selection',
               0
             );
-            
+
             setShowTicketModal(true);
           }}
-          disabled={loading}
+          disabled={loading || (() => {
+            const now = new Date();
+            const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+            return now > endDate;
+          })()}
         >
           {loading ? (
             <ProfessionalLoader size="sm" />
           ) : (
-            'COMPRAR INGRESSOS'
+            (() => {
+              const now = new Date();
+              const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+              return now > endDate ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS';
+            })()
           )}
         </button>
       </div>
@@ -1484,23 +1448,43 @@ const EventPage = () => {
               </div>
               {/* Botão de compra em mobile */}
               <button
-                className="w-full py-3 px-4 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors font-bold text-base shadow-md flex items-center justify-center"
+                className={`w-full py-3 px-4 rounded-xl font-bold text-base shadow-md flex items-center justify-center transition-colors ${(() => {
+                  const now = new Date();
+                  const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+                  const isFinished = now > endDate;
+                  return isFinished ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700';
+                })()
+                  } text-white`}
                 onClick={() => {
+                  const now = new Date();
+                  const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+                  const isFinished = now > endDate;
+
+                  if (isFinished) return;
+
                   // Track purchase intent
                   trackPurchaseFlow.purchaseIntent(
                     event.id,
                     'ticket_selection',
                     0
                   );
-                  
+
                   setShowTicketModal(true);
                 }}
-                disabled={loading}
+                disabled={loading || (() => {
+                  const now = new Date();
+                  const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+                  return now > endDate;
+                })()}
               >
                 {loading ? (
                   <ProfessionalLoader size="sm" />
                 ) : (
-                  'COMPRAR INGRESSOS'
+                  (() => {
+                    const now = new Date();
+                    const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+                    return now > endDate ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS';
+                  })()
                 )}
               </button>
 
@@ -1512,11 +1496,10 @@ const EventPage = () => {
                   <a
                     key={tab.id}
                     href={`#${tab.id}`}
-                    className={`flex-shrink-0 w-auto lg:w-full px-4 py-3 text-left text-sm font-semibold transition-colors ${
-                      activeSection === tab.id
-                        ? 'bg-gray-100 text-pink-600 border-l-4 border-pink-600'
-                        : 'text-gray-800 hover:bg-gray-50 border-l-4 border-transparent'
-                    }`}
+                    className={`flex-shrink-0 w-auto lg:w-full px-4 py-3 text-left text-sm font-semibold transition-colors ${activeSection === tab.id
+                      ? 'bg-gray-100 text-pink-600 border-l-4 border-pink-600'
+                      : 'text-gray-800 hover:bg-gray-50 border-l-4 border-transparent'
+                      }`}
                   >
                     {tab.label}
                   </a>
@@ -1536,6 +1519,20 @@ const EventPage = () => {
                 >
                   {getTabContent('informacoes')}
                 </div>
+
+                {/* Mapa do Evento (Imagem) */}
+                {event.map_image && (
+                  <div className="mb-8">
+                    <h2 className="text-lg font-semibold mb-3 text-gray-800">MAPA DO EVENTO</h2>
+                    <div className="rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                      <img
+                        src={event.map_image}
+                        alt="Mapa do evento"
+                        className="w-full h-auto object-contain max-h-[600px] bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Mapa de rota inline (Mapbox) */}
                 <div className="transition-all duration-500">
@@ -1594,7 +1591,7 @@ const EventPage = () => {
       </div>
 
       {/* Login Modal */}
-      <LoginPromptModal 
+      <LoginPromptModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         eventTitle={event?.title}
@@ -1620,48 +1617,48 @@ const EventPage = () => {
         <>
           {/* Popup de Compra */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transform transition-all duration-300 ease-in-out">
-          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-            {/* Informações do Evento */}
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <img 
-                src={event.image} 
-                alt={event.title}
-                width={48}
-                height={48}
-                className="w-12 h-12 object-cover rounded-lg shadow-sm"
-              />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900 truncate">
-                  {event.title}
-                </h4>
-                <div className="flex items-center space-x-2 text-xs text-gray-600">
-                  <Calendar className="h-3 w-3" />
-                  <span>{formatDate(event.date)}</span>
-                  <span>•</span>
-                  <MapPin className="h-3 w-3" />
-                  <span className="truncate">{event.location}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Preço e Botão */}
-            <div className="flex items-center space-x-4 ml-4">
-              {availableTickets.length > 0 && (
-                <div className="text-right">
-                  <div className="text-xs text-gray-500">A partir de</div>
-                  <div className="text-sm font-bold text-gray-900">
-                    R$ {Math.min(...availableTickets.map(t => t.price)).toFixed(2).replace('.', ',')}
+            <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+              {/* Informações do Evento */}
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <img
+                  src={event.image}
+                  alt={event.title}
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 object-cover rounded-lg shadow-sm"
+                />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-900 truncate">
+                    {event.title}
+                  </h4>
+                  <div className="flex items-center space-x-2 text-xs text-gray-600">
+                    <Calendar className="h-3 w-3" />
+                    <span>{formatDate(event.date)}</span>
+                    <span>•</span>
+                    <MapPin className="h-3 w-3" />
+                    <span className="truncate">{event.location}</span>
                   </div>
                 </div>
-              )}
-              <button
-                onClick={() => setShowTicketModal(true)}
-                className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 whitespace-nowrap"
-              >
-                Comprar Ingresso
-              </button>
+              </div>
+
+              {/* Preço e Botão */}
+              <div className="flex items-center space-x-4 ml-4">
+                {availableTickets.length > 0 && (
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500">A partir de</div>
+                    <div className="text-sm font-bold text-gray-900">
+                      R$ {Math.min(...availableTickets.map(t => t.price)).toFixed(2).replace('.', ',')}
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowTicketModal(true)}
+                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 whitespace-nowrap"
+                >
+                  Comprar Ingresso
+                </button>
+              </div>
             </div>
-          </div>
           </div>
         </>
       )}

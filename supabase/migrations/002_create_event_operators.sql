@@ -344,6 +344,8 @@ BEGIN
             'id', v_operator.id,
             'name', v_operator.name,
             'email', v_operator.email,
+            'organizer_id', v_operator.organizer_id,
+            'event_id', v_operator.event_id,
             'can_checkin', v_operator.can_checkin,
             'can_view_stats', v_operator.can_view_stats,
             'total_checkins', v_operator.total_checkins
@@ -356,6 +358,404 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.authenticate_operator IS 'Autentica um operador usando código de acesso';
+
+-- =====================================================
+-- 10. FUNÇÃO: Buscar eventos com dados completos para operador
+-- Retorna eventos com tickets, tipos de ingressos e check-ins
+-- =====================================================
+CREATE OR REPLACE FUNCTION public.get_operator_events_with_details(
+    p_operator_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_operator RECORD;
+    v_events JSON;
+    v_result JSON;
+BEGIN
+    -- Buscar dados do operador
+    SELECT * INTO v_operator
+    FROM public.event_operators
+    WHERE id = p_operator_id AND is_active = true;
+    
+    -- Verificar se operador existe e está ativo
+    IF NOT FOUND THEN
+        RETURN json_build_object(
+            'success', false,
+            'message', 'Operador não encontrado ou inativo'
+        );
+    END IF;
+    
+    -- Buscar eventos disponíveis para o operador com todos os detalhes
+    IF v_operator.event_id IS NOT NULL THEN
+        -- Operador específico de um evento
+        SELECT json_agg(
+            json_build_object(
+                'id', e.id,
+                'title', e.title,
+                'description', e.description,
+                'start_date', e.start_date,
+                'end_date', e.end_date,
+                'location', e.location,
+                'location_name', e.location_name,
+                'location_city', e.location_city,
+                'location_state', e.location_state,
+                'image', e.image,
+                'category', e.category,
+                'status', e.status,
+                'tickets', COALESCE(
+                    (
+                        SELECT json_agg(
+                            json_build_object(
+                                'id', t.id,
+                                'qr_code', t.qr_code,
+                                'participant_name', COALESCE(tu.name, 'Não informado'),
+                                'participant_email', COALESCE(tu.email, ''),
+                                'participant_document', COALESCE(tu.document, ''),
+                                'ticket_type', COALESCE(tt.name, tt.title, 'Geral'),
+                                'ticket_type_id', t.ticket_type_id,
+                                'price', COALESCE(t.price, 0),
+                                'status', t.status,
+                                'purchase_date', t.purchase_date,
+                                'checked_in', EXISTS(
+                                    SELECT 1 FROM public.checkin c 
+                                    WHERE c.ticket_user_id = COALESCE(t.ticket_user_id, t.user_id)
+                                        AND c.event_id = t.event_id
+                                ),
+                                'checkin_info', (
+                                    SELECT json_build_object(
+                                        'checkin_date', c.created_at,
+                                        'operator_name', eo.name
+                                    )
+                                    FROM public.checkin c
+                                    LEFT JOIN public.operator_checkins oc ON oc.checkin_id = c.id
+                                    LEFT JOIN public.event_operators eo ON eo.id = oc.operator_id
+                                    WHERE c.ticket_user_id = COALESCE(t.ticket_user_id, t.user_id)
+                                        AND c.event_id = t.event_id
+                                    ORDER BY c.created_at DESC
+                                    LIMIT 1
+                                ),
+                                'ticket_user', CASE 
+                                    WHEN tu.id IS NOT NULL THEN
+                                        json_build_object(
+                                            'id', tu.id,
+                                            'name', tu.name,
+                                            'email', tu.email,
+                                            'document', tu.document
+                                        )
+                                    ELSE NULL
+                                END
+                            )
+                            ORDER BY t.purchase_date DESC
+                        )
+                        FROM public.tickets t
+                        LEFT JOIN public.ticket_users tu ON (
+                            tu.id = t.ticket_user_id 
+                            OR (t.ticket_user_id IS NULL AND tu.id = t.user_id)
+                        )
+                        LEFT JOIN public.event_ticket_types tt ON tt.id = t.ticket_type_id
+                        WHERE t.event_id = e.id
+                            AND t.status IN ('valid', 'active', 'pending', 'used')
+                    ),
+                    '[]'::json
+                ),
+                'ticket_types', COALESCE(
+                    (
+                        SELECT json_agg(
+                            json_build_object(
+                                'id', tt.id,
+                                'name', tt.name,
+                                'title', tt.title,
+                                'description', tt.description,
+                                'price', tt.price,
+                                'price_masculine', tt.price_masculine,
+                                'price_feminine', tt.price_feminine,
+                                'price_type', tt.price_type,
+                                'quantity', tt.quantity,
+                                'available_quantity', tt.available_quantity,
+                                'status', tt.status
+                            )
+                        )
+                        FROM public.event_ticket_types tt
+                        WHERE tt.event_id = e.id
+                            AND tt.status = 'active'
+                    ),
+                    '[]'::json
+                ),
+                'stats', json_build_object(
+                    'total_tickets', (
+                        SELECT COUNT(*)::integer
+                        FROM public.tickets
+                        WHERE event_id = e.id
+                            AND status IN ('valid', 'active', 'pending')
+                    ),
+                    'checked_in', (
+                        SELECT COUNT(DISTINCT c.ticket_user_id)::integer
+                        FROM public.checkin c
+                        WHERE c.event_id = e.id
+                    ),
+                    'pending', (
+                        SELECT COUNT(*)::integer
+                        FROM public.tickets t2
+                        WHERE t2.event_id = e.id
+                            AND t2.status IN ('valid', 'active', 'pending')
+                            AND NOT EXISTS(
+                                SELECT 1 FROM public.checkin c2 
+                                WHERE c2.ticket_user_id = COALESCE(t2.ticket_user_id, t2.user_id)
+                                    AND c2.event_id = t2.event_id
+                            )
+                    )
+                )
+            )
+        ) INTO v_events
+        FROM public.events e
+        WHERE e.id = v_operator.event_id
+            AND e.status = 'approved';
+    ELSE
+        -- Operador global - todos os eventos do organizador
+        SELECT json_agg(
+            json_build_object(
+                'id', e.id,
+                'title', e.title,
+                'description', e.description,
+                'start_date', e.start_date,
+                'end_date', e.end_date,
+                'location', e.location,
+                'location_name', e.location_name,
+                'location_city', e.location_city,
+                'location_state', e.location_state,
+                'image', e.image,
+                'category', e.category,
+                'status', e.status,
+                'tickets', COALESCE(
+                    (
+                        SELECT json_agg(
+                            json_build_object(
+                                'id', t.id,
+                                'qr_code', t.qr_code,
+                                'participant_name', COALESCE(tu.name, 'Não informado'),
+                                'participant_email', COALESCE(tu.email, ''),
+                                'participant_document', COALESCE(tu.document, ''),
+                                'ticket_type', COALESCE(tt.name, tt.title, 'Geral'),
+                                'ticket_type_id', t.ticket_type_id,
+                                'price', COALESCE(t.price, 0),
+                                'status', t.status,
+                                'purchase_date', t.purchase_date,
+                                'checked_in', EXISTS(
+                                    SELECT 1 FROM public.checkin c 
+                                    WHERE c.ticket_user_id = COALESCE(t.ticket_user_id, t.user_id)
+                                        AND c.event_id = t.event_id
+                                ),
+                                'checkin_info', (
+                                    SELECT json_build_object(
+                                        'checkin_date', c.created_at,
+                                        'operator_name', eo.name
+                                    )
+                                    FROM public.checkin c
+                                    LEFT JOIN public.operator_checkins oc ON oc.checkin_id = c.id
+                                    LEFT JOIN public.event_operators eo ON eo.id = oc.operator_id
+                                    WHERE c.ticket_user_id = COALESCE(t.ticket_user_id, t.user_id)
+                                        AND c.event_id = t.event_id
+                                    ORDER BY c.created_at DESC
+                                    LIMIT 1
+                                ),
+                                'ticket_user', CASE 
+                                    WHEN tu.id IS NOT NULL THEN
+                                        json_build_object(
+                                            'id', tu.id,
+                                            'name', tu.name,
+                                            'email', tu.email,
+                                            'document', tu.document
+                                        )
+                                    ELSE NULL
+                                END
+                            )
+                            ORDER BY t.purchase_date DESC
+                        )
+                        FROM public.tickets t
+                        LEFT JOIN public.ticket_users tu ON (
+                            tu.id = t.ticket_user_id 
+                            OR (t.ticket_user_id IS NULL AND tu.id = t.user_id)
+                        )
+                        LEFT JOIN public.event_ticket_types tt ON tt.id = t.ticket_type_id
+                        WHERE t.event_id = e.id
+                            AND t.status IN ('valid', 'active', 'pending', 'used')
+                    ),
+                    '[]'::json
+                ),
+                'ticket_types', COALESCE(
+                    (
+                        SELECT json_agg(
+                            json_build_object(
+                                'id', tt.id,
+                                'name', tt.name,
+                                'title', tt.title,
+                                'description', tt.description,
+                                'price', tt.price,
+                                'price_masculine', tt.price_masculine,
+                                'price_feminine', tt.price_feminine,
+                                'price_type', tt.price_type,
+                                'quantity', tt.quantity,
+                                'available_quantity', tt.available_quantity,
+                                'status', tt.status
+                            )
+                        )
+                        FROM public.event_ticket_types tt
+                        WHERE tt.event_id = e.id
+                            AND tt.status = 'active'
+                    ),
+                    '[]'::json
+                ),
+                'stats', json_build_object(
+                    'total_tickets', (
+                        SELECT COUNT(*)::integer
+                        FROM public.tickets
+                        WHERE event_id = e.id
+                            AND status IN ('valid', 'active', 'pending')
+                    ),
+                    'checked_in', (
+                        SELECT COUNT(DISTINCT c.ticket_user_id)::integer
+                        FROM public.checkin c
+                        WHERE c.event_id = e.id
+                    ),
+                    'pending', (
+                        SELECT COUNT(*)::integer
+                        FROM public.tickets t2
+                        WHERE t2.event_id = e.id
+                            AND t2.status IN ('valid', 'active', 'pending')
+                            AND NOT EXISTS(
+                                SELECT 1 FROM public.checkin c2 
+                                WHERE c2.ticket_user_id = COALESCE(t2.ticket_user_id, t2.user_id)
+                                    AND c2.event_id = t2.event_id
+                            )
+                    )
+                )
+            )
+            ORDER BY e.start_date DESC
+        ) INTO v_events
+        FROM public.events e
+        WHERE e.organizer_id = v_operator.organizer_id
+            AND e.status = 'approved';
+    END IF;
+    
+    -- Retornar resultado
+    SELECT json_build_object(
+        'success', true,
+        'events', COALESCE(v_events, '[]'::json)
+    ) INTO v_result;
+    
+    RETURN v_result;
+END;
+$$;
+
+COMMENT ON FUNCTION public.get_operator_events_with_details IS 'Busca eventos completos com tickets, tipos de ingressos e estatísticas para um operador';
+
+-- =====================================================
+-- 11. FUNÇÃO: Realizar check-in via operador (SECURITY DEFINER)
+-- Evita problemas de RLS realizando a validação e escrita no backend
+-- =====================================================
+CREATE OR REPLACE FUNCTION public.perform_operator_checkin(
+    p_operator_id UUID,
+    p_event_id UUID,
+    p_qr_code TEXT DEFAULT NULL,
+    p_ticket_id UUID DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_operator RECORD;
+    v_ticket RECORD;
+    v_ticket_user_id UUID;
+    v_existing RECORD;
+    v_checkin RECORD;
+    v_participant RECORD;
+BEGIN
+    -- Validar operador
+    SELECT * INTO v_operator
+    FROM public.event_operators
+    WHERE id = p_operator_id AND is_active = true;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'message', 'Operador inválido ou inativo');
+    END IF;
+
+    -- Validar escopo do operador (se estiver vinculado a um único evento)
+    IF v_operator.event_id IS NOT NULL AND v_operator.event_id <> p_event_id THEN
+        RETURN json_build_object('success', false, 'message', 'Operador não autorizado para este evento');
+    END IF;
+
+    -- Localizar ticket
+    IF p_ticket_id IS NOT NULL THEN
+        SELECT * INTO v_ticket
+        FROM public.tickets t
+        WHERE t.id = p_ticket_id AND t.event_id = p_event_id;
+    ELSIF p_qr_code IS NOT NULL THEN
+        SELECT * INTO v_ticket
+        FROM public.tickets t
+        WHERE t.qr_code = p_qr_code AND t.event_id = p_event_id;
+    ELSE
+        RETURN json_build_object('success', false, 'message', 'Informe qr_code ou ticket_id');
+    END IF;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'message', 'Ticket não encontrado para este evento');
+    END IF;
+
+    v_ticket_user_id := COALESCE(v_ticket.ticket_user_id, v_ticket.user_id);
+    IF v_ticket_user_id IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'Ticket sem portador vinculado');
+    END IF;
+
+    -- Verificar check-in prévio
+    SELECT * INTO v_existing
+    FROM public.checkin c
+    WHERE c.ticket_user_id = v_ticket_user_id
+      AND c.event_id = p_event_id
+    ORDER BY c.created_at DESC
+    LIMIT 1;
+
+    IF FOUND THEN
+        RETURN json_build_object(
+            'success', false,
+            'already_checked_in', true,
+            'message', 'Participante já realizou check-in',
+            'checkin', json_build_object('id', v_existing.id, 'created_at', v_existing.created_at)
+        );
+    END IF;
+
+    -- Criar check-in
+    INSERT INTO public.checkin (ticket_user_id, event_id, organizer_id)
+    VALUES (v_ticket_user_id, p_event_id, v_operator.organizer_id)
+    RETURNING * INTO v_checkin;
+
+    -- Vincular operador ao check-in
+    INSERT INTO public.operator_checkins (checkin_id, operator_id)
+    VALUES (v_checkin.id, v_operator.id);
+
+    -- Carregar dados do participante
+    SELECT tu.id, tu.name, tu.email, tu.document INTO v_participant
+    FROM public.ticket_users tu
+    WHERE tu.id = v_ticket_user_id;
+
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Check-in realizado com sucesso',
+        'checkin', json_build_object('id', v_checkin.id, 'created_at', v_checkin.created_at),
+        'participant', json_build_object(
+            'id', v_participant.id,
+            'name', COALESCE(v_participant.name, 'Não informado'),
+            'email', COALESCE(v_participant.email, ''),
+            'document', COALESCE(v_participant.document, '')
+        )
+    );
+END;
+$$;
+
+COMMENT ON FUNCTION public.perform_operator_checkin IS 'Realiza check-in de participante por operador com validações e vínculo do operador';
 
 -- =====================================================
 -- 8. FUNÇÃO: Atualizar operador
@@ -528,6 +928,8 @@ BEGIN
 END;
 $$;
 
+-- Garantir idempotência do trigger (evitar erro se já existir)
+DROP TRIGGER IF EXISTS trigger_update_operator_checkin_count ON public.operator_checkins;
 CREATE TRIGGER trigger_update_operator_checkin_count
 AFTER INSERT ON public.operator_checkins
 FOR EACH ROW
@@ -548,6 +950,8 @@ BEGIN
 END;
 $$;
 
+-- Garantir idempotência do trigger (evitar erro se já existir)
+DROP TRIGGER IF EXISTS trigger_update_operator_updated_at ON public.event_operators;
 CREATE TRIGGER trigger_update_operator_updated_at
 BEFORE UPDATE ON public.event_operators
 FOR EACH ROW

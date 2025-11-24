@@ -10,13 +10,22 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user, loading, getDashboardRoute } = useAuth();
   const navigate = useNavigate();
 
   // Garantir que a página carregue do topo
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Redirecionar usuários já autenticados
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('🔐 Usuário já autenticado, redirecionando para dashboard...');
+      const dashboardRoute = getDashboardRoute();
+      navigate(dashboardRoute, { replace: true });
+    }
+  }, [user, loading, navigate, getDashboardRoute]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +87,7 @@ const LoginPage = () => {
       } else {
         setError('Erro inesperado. Tente novamente.');
       }
-    } 
+    }
     // Não finaliza loading aqui, pois a página será redirecionada pelo OAuth
   };
 
@@ -104,8 +113,8 @@ const LoginPage = () => {
               {showEmailForm ? 'Acessar Conta' : 'Bem vindo'}
             </h1>
             <p className="text-sm text-gray-600">
-              {showEmailForm 
-                ? 'Digite suas credenciais para acessar sua conta' 
+              {showEmailForm
+                ? 'Digite suas credenciais para acessar sua conta'
                 : 'Escolha como deseja acessar sua conta'
               }
             </p>

@@ -12,13 +12,22 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const { register, loginWithGoogle } = useAuth();
+  const { register, loginWithGoogle, user, loading, getDashboardRoute } = useAuth();
   const navigate = useNavigate();
 
   // Garantir que a página carregue do topo
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Redirecionar usuários já autenticados
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('🔐 Usuário já autenticado, redirecionando para dashboard...');
+      const dashboardRoute = getDashboardRoute();
+      navigate(dashboardRoute, { replace: true });
+    }
+  }, [user, loading, navigate, getDashboardRoute]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera
+  Calendar, BarChart3, CreditCard, PlusCircle, AlertCircle, DollarSign, Users, Edit3, Share2, X, Download, Clock, CheckCircle, XCircle, Trash2, Send, Menu, Camera, UserPlus, Tag
 } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
 import ShareEventModal from '../components/ShareEventModal';
 import OperatorsManagement from '../components/OperatorsManagement';
+import OrganizerCoupons from '../components/OrganizerCoupons';
 // QrScanner removido - conflitava com html5-qrcode
 import { supabase } from '@/lib/supabase';
 import LoadingButton from '../components/LoadingButton';
@@ -57,7 +58,23 @@ interface Event {
   category: string;
   price: number;
   image?: string;
+  map_image?: string;
   ticketTypes?: any[];
+  subject?: string;
+  classification?: string;
+  important_info?: string[];
+  attractions?: string[];
+  location_type?: string;
+  location_city?: string;
+  location_state?: string;
+  location_street?: string;
+  location_number?: string;
+  location_neighborhood?: string;
+  location_cep?: string;
+  location_complement?: string;
+  location_search?: string;
+  ticket_type?: string;
+  contact_info?: any;
 }
 
 interface Sale {
@@ -157,7 +174,7 @@ const DashboardOverview = () => {
   useEffect(() => {
     isMountedRef.current = true;
     fetchDashboardData();
-    
+
     return () => {
       isMountedRef.current = false;
       // useAbortController já faz o cleanup automático
@@ -167,7 +184,7 @@ const DashboardOverview = () => {
   const fetchDashboardData = async () => {
     // Criar novo controller (cancela requisições anteriores)
     const { signal: abortSignal } = createNewController();
-    
+
     try {
       setIsLoading(true);
 
@@ -192,146 +209,155 @@ const DashboardOverview = () => {
 
       // Buscar eventos do organizador com dados completos
       const { data: events, error: eventsError } = await supabase
-          .from('events')
-          .select(`
+        .from('events')
+        .select(`
             id, title, description, start_date, end_date, location, image, subject, subcategory, category,
             classification, important_info, attractions, price, status, organizer_id, available_tickets,
             total_tickets, tags, location_type, location_name, location_city, location_state, location_street,
             location_number, location_neighborhood, location_cep, location_complement, location_search,
-            ticket_type, contact_info, created_at, updated_at
+            ticket_type, contact_info, created_at, updated_at, map_image
           `)
-          .eq('organizer_id', user.id)
-          .eq('status', 'approved')
-          .order('created_at', { ascending: false })
-          .abortSignal(abortSignal);
+        .eq('organizer_id', user.id)
+        .in('status', ['approved', 'pending'])
+        .order('created_at', { ascending: false })
+        .abortSignal(abortSignal);
 
-        if (eventsError) throw eventsError;
+      if (eventsError) throw eventsError;
 
+      if (abortSignal.aborted || !isMountedRef.current) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
+      const eventsData = events || [];
+      const activeEventsCount = eventsData.filter(event => event.status === 'approved').length;
+      const eventsApproved = eventsData.filter(e => e.status === 'approved').length;
+      const eventsPending = eventsData.filter(e => e.status === 'pending').length;
+      const eventsRejected = eventsData.filter(e => e.status === 'rejected').length;
+
+      // Buscar dados reais de transações para calcular vendas e receita
+      const eventIds = eventsData.map(event => event.id);
+      let totalTicketsSold = 0;
+      let totalRevenue = 0;
+
+      let transactionsData: any[] | null = null;
+      if (eventIds.length > 0) {
         if (abortSignal.aborted || !isMountedRef.current) {
           throw new DOMException('Aborted', 'AbortError');
         }
 
-        const eventsData = events || [];
-        const activeEventsCount = eventsData.filter(event => event.status === 'approved').length;
-        const eventsApproved = eventsData.filter(e => e.status === 'approved').length;
-        const eventsPending = eventsData.filter(e => e.status === 'pending').length;
-        const eventsRejected = eventsData.filter(e => e.status === 'rejected').length;
-        
-        // Buscar dados reais de transações para calcular vendas e receita
-        const eventIds = eventsData.map(event => event.id);
-        let totalTicketsSold = 0;
-        let totalRevenue = 0;
-        
-        let transactionsData: any[] | null = null;
-        if (eventIds.length > 0) {
-          if (abortSignal.aborted || !isMountedRef.current) {
-            throw new DOMException('Aborted', 'AbortError');
-          }
-
-          // Buscar transações dos eventos do organizador
-          const { data: txRaw, error: transactionsError } = await supabase
-            .from('transactions')
-            .select(`
+        // Buscar transações dos eventos do organizador
+        const { data: txRaw, error: transactionsError } = await supabase
+          .from('transactions')
+          .select(`
               id, event_id, user_id, amount, status, created_at
             `)
-            .in('event_id', eventIds)
-            .eq('status', 'completed')
-          .abortSignal(abortSignal);
-          
-          if (abortSignal.aborted || !isMountedRef.current) {
-            throw new DOMException('Aborted', 'AbortError');
-          }
-
-          // Buscar outras transações para status pendente/cancelado
-          const { data: txAll } = await supabase
-            .from('transactions')
-            .select('id, event_id, amount, status, created_at')
-            .in('event_id', eventIds)
+          .in('event_id', eventIds)
+          .eq('status', 'completed')
           .abortSignal(abortSignal);
 
-          transactionsData = txAll || txRaw || [];
-
-          if (!transactionsError && (txRaw || txAll)) {
-            const completedList = (txAll || txRaw || []).filter((t: any) => t.status === 'completed');
-            totalTicketsSold = completedList.length;
-            totalRevenue = completedList.reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
-          }
-        }
-        
-        // Criar dados para os gráficos baseados nos eventos
-        const currentDate = new Date();
-        const labels = [];
-        const revenueData = [];
-        const ticketsSeries = [];
-        
-        // Gerar dados dos últimos 6 meses
-        for (let i = 5; i >= 0; i--) {
-          const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          labels.push(monthKey);
-          
-          // Usar dados reais quando disponíveis
-          const monthEvents = eventsData.filter(event => {
-            const eventDate = new Date(event.start_date);
-            return eventDate.getFullYear() === date.getFullYear() && 
-                   eventDate.getMonth() === date.getMonth();
-          });
-          
-          const monthRevenue = monthEvents.reduce((sum, event) => sum + (event.price || 0), 0);
-          // Usar dados reais de tickets vendidos em vez de simulação
-          const monthTickets = monthEvents.length > 0 ? Math.floor(totalTicketsSold / monthEvents.length) : 0;
-          
-          revenueData.push(monthRevenue);
-          ticketsSeries.push(monthTickets);
-        }
-
-        setStats({ 
-          totalRevenue: totalRevenue || revenueData.reduce((sum, rev) => sum + rev, 0), 
-          totalTicketsSold: totalTicketsSold, 
-          activeEvents: activeEventsCount, 
-          pendingSales: eventsData.filter(event => event.status === 'pending').length 
-        });
-
-        // Calcular resumo (vendas e saldos)
-        const today = new Date();
-        const toYMD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
-        const todayKey = toYMD(today);
-
-        const salesCompleted = (transactionsData || []).filter((t: any) => t.status === 'completed').length;
-        const salesPending = (transactionsData || []).filter((t: any) => t.status === 'pending').length;
-        const salesCancelled = (transactionsData || []).filter((t: any) => ['failed','refunded','partially_refunded','cancelled'].includes(t.status)).length;
-        const salesTodayAmount = (transactionsData || [])
-          .filter((t: any) => t.status === 'completed' && toYMD(new Date(t.created_at)) === todayKey)
-          .reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
-        const availableBalance = (transactionsData || [])
-          .filter((t: any) => t.status === 'completed')
-          .reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
-
-        setSummary({
-          eventsApproved,
-          eventsPending,
-          eventsRejected,
-          salesCompleted,
-          salesPending,
-          salesCancelled,
-          salesTodayAmount,
-          availableBalance
-        });
-        setRecentEvents(eventsData.slice(0, 3).map(event => ({
-          ...event,
-          ticketsSold: 0,
-          totalTickets: event.total_tickets || 0,
-          revenue: 0
-        })));
-        // Verificar abort antes de atualizar estado
         if (abortSignal.aborted || !isMountedRef.current) {
           throw new DOMException('Aborted', 'AbortError');
         }
+
+        // Buscar outras transações para status pendente/cancelado
+        const { data: txAll } = await supabase
+          .from('transactions')
+          .select('id, event_id, amount, status, created_at')
+          .in('event_id', eventIds)
+          .abortSignal(abortSignal);
+
+        transactionsData = txAll || txRaw || [];
+
+        if (!transactionsError && (txRaw || txAll)) {
+          const completedList = (txAll || txRaw || []).filter((t: any) => t.status === 'completed');
+          totalTicketsSold = completedList.length;
+          totalRevenue = completedList.reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
+        }
+      }
+
+      // Criar dados para os gráficos baseados nos eventos (Picos de Vendas - Diário do Mês Atual)
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      const labels = [];
+      const revenueData = [];
+      const ticketsSeries = [];
+
+      // Inicializar arrays com zeros para cada dia do mês
+      const dailyRevenue = new Array(daysInMonth).fill(0);
+      const dailyTickets = new Array(daysInMonth).fill(0);
+
+      // Processar transações para preencher os dados diários
+      if (transactionsData) {
+        transactionsData.forEach((tx: any) => {
+          if (tx.status === 'completed') {
+            const txDate = new Date(tx.created_at);
+            if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
+              const dayIndex = txDate.getDate() - 1; // 0-indexed
+              dailyRevenue[dayIndex] += Number(tx.amount) || 0;
+              dailyTickets[dayIndex] += 1;
+            }
+          }
+        });
+      }
+
+      // Preencher labels e dados finais
+      for (let i = 1; i <= daysInMonth; i++) {
+        labels.push(`${i}/${currentMonth + 1}`);
+        revenueData.push(dailyRevenue[i - 1]);
+        ticketsSeries.push(dailyTickets[i - 1]);
+      }
+
+
+      setStats({
+        totalRevenue: totalRevenue || revenueData.reduce((sum, rev) => sum + rev, 0),
+        totalTicketsSold: totalTicketsSold,
+        activeEvents: activeEventsCount,
+        pendingSales: eventsData.filter(event => event.status === 'pending').length
+      });
+
+      // Calcular resumo (vendas e saldos)
+      const today = new Date();
+      const toYMD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      const todayKey = toYMD(today);
+
+      const salesCompleted = (transactionsData || []).filter((t: any) => t.status === 'completed').length;
+      const salesPending = (transactionsData || []).filter((t: any) => t.status === 'pending').length;
+      const salesCancelled = (transactionsData || []).filter((t: any) => ['failed', 'refunded', 'partially_refunded', 'cancelled'].includes(t.status)).length;
+      const salesTodayAmount = (transactionsData || [])
+        .filter((t: any) => t.status === 'completed' && toYMD(new Date(t.created_at)) === todayKey)
+        .reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
+      const availableBalance = (transactionsData || [])
+        .filter((t: any) => t.status === 'completed')
+        .reduce((sum: number, t: any) => sum + (Number(t.amount) || 0), 0);
+
+      setSummary({
+        eventsApproved,
+        eventsPending,
+        eventsRejected,
+        salesCompleted,
+        salesPending,
+        salesCancelled,
+        salesTodayAmount,
+        availableBalance
+      });
+      setRecentEvents(eventsData.slice(0, 3).map(event => ({
+        ...event,
+        ticketsSold: 0,
+        totalTickets: event.total_tickets || 0,
+        revenue: 0
+      })));
+      // Verificar abort antes de atualizar estado
+      if (abortSignal.aborted || !isMountedRef.current) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
 
       setLabelsSeries(labels);
       setRevenueSeries(revenueData);
       setTicketsSeries(ticketsSeries);
-      
+
     } catch (error: any) {
       // Ignorar erros de abort
       if (error?.name === 'AbortError' || abortSignal.aborted || !isMountedRef.current) {
@@ -340,17 +366,17 @@ const DashboardOverview = () => {
       }
 
       console.error('❌ Erro ao buscar dados do dashboard:', error);
-      
+
       // Só atualizar estado se componente ainda estiver montado
       if (!isMountedRef.current) return;
-      
+
       // Definir dados padrão em caso de erro
       setStats({ totalRevenue: 0, totalTicketsSold: 0, activeEvents: 0, pendingSales: 0 });
       setRecentEvents([]);
       setLabelsSeries([]);
       setRevenueSeries([]);
       setTicketsSeries([]);
-      
+
       // Configurar estado de erro
       setHasError(true);
       if (error instanceof Error) {
@@ -382,7 +408,7 @@ const DashboardOverview = () => {
   }
 
   if (hasError) {
-  return (
+    return (
       <div className="flex items-center justify-center min-h-[400px] md:min-h-[600px]">
         <div className="text-center p-6 bg-white rounded-xl shadow-sm border border-gray-200 max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
@@ -468,173 +494,173 @@ const DashboardOverview = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-        {/* Receita por mês */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4 min-h-[280px] md:min-h-[320px]">
-          <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Receita por mês</h3>
-          <div className="w-full h-48 md:h-52">
-          <Line
-            data={{
-              labels: labelsSeries,
-              datasets: [
-                {
-                  label: 'Receita (R$)',
-                  data: revenueSeries,
-                  borderColor: 'rgb(236,72,153)',
-                  backgroundColor: 'rgba(236,72,153,0.2)',
-                  tension: 0.35,
-                  fill: true
-                }
-              ]
-            }}
-            options={{
-                plugins: { 
-                  legend: { display: false },
-                  tooltip: {
-                    mode: 'index',
-                    intersect: false
-                  }
-                },
-                scales: { 
-                  y: { 
-                    ticks: { 
-                      callback: (v: any) => `R$ ${v}`,
-                      maxTicksLimit: 6
+          {/* Receita por mês */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4 min-h-[280px] md:min-h-[320px]">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Receita por mês</h3>
+            <div className="w-full h-48 md:h-52">
+              <Line
+                data={{
+                  labels: labelsSeries,
+                  datasets: [
+                    {
+                      label: 'Receita (R$)',
+                      data: revenueSeries,
+                      borderColor: 'rgb(236,72,153)',
+                      backgroundColor: 'rgba(236,72,153,0.2)',
+                      tension: 0.35,
+                      fill: true
+                    }
+                  ]
+                }}
+                options={{
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      mode: 'index',
+                      intersect: false
+                    }
+                  },
+                  scales: {
+                    y: {
+                      ticks: {
+                        callback: (v: any) => `R$ ${v}`,
+                        maxTicksLimit: 6
+                      },
+                      beginAtZero: true
                     },
-                    beginAtZero: true
-                  },
-                  x: {
-                    ticks: {
-                      maxTicksLimit: 6,
-                      maxRotation: 45
+                    x: {
+                      ticks: {
+                        maxTicksLimit: 6,
+                        maxRotation: 45
+                      }
                     }
-                  }
-                },
-              responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                  mode: 'nearest',
-                  axis: 'x',
-                  intersect: false
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Vendas por mês */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4 min-h-[280px] md:min-h-[320px]">
-          <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Vendas por mês</h3>
-          <div className="w-full h-48 md:h-52">
-          <Bar
-            data={{
-              labels: labelsSeries,
-              datasets: [
-                {
-                  label: 'Ingressos',
-                  data: ticketsSeries,
-                    backgroundColor: 'rgba(59,130,246,0.6)',
-                    borderColor: 'rgba(59,130,246,1)',
-                    borderWidth: 1
-                }
-              ]
-            }}
-            options={{
-                plugins: { 
-                  legend: { display: false },
-                  tooltip: {
-                    mode: 'index',
+                  },
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
                     intersect: false
                   }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      maxTicksLimit: 6
-                    }
-                  },
-                  x: {
-                    ticks: {
-                      maxTicksLimit: 6,
-                      maxRotation: 45
-                    }
-                  }
-                },
-              responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                  mode: 'nearest',
-                  axis: 'x',
-                  intersect: false
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Resumo */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4 min-h-[280px] md:min-h-[320px] md:col-span-2 xl:col-span-1">
-          <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Resumo</h3>
-          <div className="w-full h-48 md:h-52">
-          <Doughnut
-            data={{
-              labels: ['Aprovados', 'Pendentes', 'Outros'],
-              datasets: [
-                {
-                  data: [stats.activeEvents, stats.pendingSales, Math.max(0, (recentEvents.length || 0) - stats.activeEvents)],
-                    backgroundColor: ['#22c55e', '#f59e0b', '#9ca3af'],
-                    borderWidth: 2,
-                    borderColor: '#ffffff'
-                  }
-                ]
-              }}
-              options={{ 
-                plugins: { 
-                  legend: { 
-                    position: 'bottom',
-                    labels: {
-                      padding: 15,
-                      usePointStyle: true,
-                      font: {
-                        size: 11
+          {/* Vendas por mês */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4 min-h-[280px] md:min-h-[320px]">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Vendas por mês</h3>
+            <div className="w-full h-48 md:h-52">
+              <Bar
+                data={{
+                  labels: labelsSeries,
+                  datasets: [
+                    {
+                      label: 'Ingressos',
+                      data: ticketsSeries,
+                      backgroundColor: 'rgba(59,130,246,0.6)',
+                      borderColor: 'rgba(59,130,246,1)',
+                      borderWidth: 1
+                    }
+                  ]
+                }}
+                options={{
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      mode: 'index',
+                      intersect: false
+                    }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        maxTicksLimit: 6
+                      }
+                    },
+                    x: {
+                      ticks: {
+                        maxTicksLimit: 6,
+                        maxRotation: 45
                       }
                     }
                   },
-                  tooltip: {
-                    callbacks: {
-                      label: function(context) {
-                        const label = context.label || '';
-                        const value = context.parsed;
-                        const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${label}: ${value} (${percentage}%)`;
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Resumo */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4 min-h-[280px] md:min-h-[320px] md:col-span-2 xl:col-span-1">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Resumo</h3>
+            <div className="w-full h-48 md:h-52">
+              <Doughnut
+                data={{
+                  labels: ['Aprovados', 'Pendentes', 'Outros'],
+                  datasets: [
+                    {
+                      data: [stats.activeEvents, stats.pendingSales, Math.max(0, (recentEvents.length || 0) - stats.activeEvents)],
+                      backgroundColor: ['#22c55e', '#f59e0b', '#9ca3af'],
+                      borderWidth: 2,
+                      borderColor: '#ffffff'
+                    }
+                  ]
+                }}
+                options={{
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        font: {
+                          size: 11
+                        }
+                      }
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function (context) {
+                          const label = context.label || '';
+                          const value = context.parsed;
+                          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                          const percentage = ((value / total) * 100).toFixed(1);
+                          return `${label}: ${value} (${percentage}%)`;
+                        }
                       }
                     }
-                  }
-                }, 
-                maintainAspectRatio: false,
-                responsive: true
-              }}
-            />
-          </div>
-          
-          {/* Stats Grid - Responsive */}
-          <div className="mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs md:text-sm">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <div className="text-green-700 font-semibold text-xs">Aprovados</div>
-              <div className="text-green-700 font-bold">{stats.activeEvents}</div>
+                  },
+                  maintainAspectRatio: false,
+                  responsive: true
+                }}
+              />
             </div>
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <div className="text-yellow-700 font-semibold text-xs">Pendentes</div>
-              <div className="text-yellow-700 font-bold">{stats.pendingSales}</div>
-            </div>
-            <div className="p-2 bg-blue-50 rounded-lg col-span-2 md:col-span-1">
-              <div className="text-blue-700 font-semibold text-xs">Vendidos</div>
-              <div className="text-blue-700 font-bold">{stats.totalTicketsSold}</div>
+
+            {/* Stats Grid - Responsive */}
+            <div className="mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs md:text-sm">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <div className="text-green-700 font-semibold text-xs">Aprovados</div>
+                <div className="text-green-700 font-bold">{stats.activeEvents}</div>
+              </div>
+              <div className="p-2 bg-yellow-50 rounded-lg">
+                <div className="text-yellow-700 font-semibold text-xs">Pendentes</div>
+                <div className="text-yellow-700 font-bold">{stats.pendingSales}</div>
+              </div>
+              <div className="p-2 bg-blue-50 rounded-lg col-span-2 md:col-span-1">
+                <div className="text-blue-700 font-semibold text-xs">Vendidos</div>
+                <div className="text-blue-700 font-bold">{stats.totalTicketsSold}</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Recent Events - Responsive */}
@@ -670,19 +696,18 @@ const DashboardOverview = () => {
                       {event.start_date ? new Date(event.start_date).toLocaleDateString('pt-BR') : 'Data não informada'} • {event.location_name || event.location || 'Local não informado'}
                     </p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                        event.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${event.status === 'approved' ? 'bg-green-100 text-green-800' :
                         event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        event.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          event.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            event.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {event.status === 'approved' ? 'Aprovado' :
-                         event.status === 'pending' ? 'Pendente' :
-                         event.status === 'cancelled' ? 'Cancelado' :
-                         event.status === 'rejected' ? 'Rejeitado' : 'Rascunho'}
+                          event.status === 'pending' ? 'Pendente' :
+                            event.status === 'cancelled' ? 'Cancelado' :
+                              event.status === 'rejected' ? 'Rejeitado' : 'Rascunho'}
                       </span>
-                      <button 
+                      <button
                         onClick={() => {
                           setEventToShare(event);
                           setShowShareModal(true);
@@ -727,7 +752,7 @@ const OrganizerSupport = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sending, setSending] = useState(false);
-  const [toast, setToast] = useState<{type:'success'|'error', text:string}|null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [myTickets, setMyTickets] = useState<any[]>([]);
 
   const SUPPORT_ABORT_KEY = "organizer-support";
@@ -737,7 +762,7 @@ const OrganizerSupport = () => {
   useEffect(() => {
     isSupportMountedRef.current = true;
     fetchMyTickets();
-    
+
     return () => {
       isSupportMountedRef.current = false;
       // useAbortController já faz o cleanup automático
@@ -746,7 +771,7 @@ const OrganizerSupport = () => {
 
   const fetchMyTickets = async () => {
     const { signal: abortSignal } = createSupportController();
-    
+
     try {
       if (abortSignal.aborted || !isSupportMountedRef.current) {
         return;
@@ -789,7 +814,7 @@ const OrganizerSupport = () => {
     try {
       setSending(true);
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) { setToast({type:'error', text:'Usuário não autenticado'}); setTimeout(()=>setToast(null),3000); return; }
+      if (userError || !user) { setToast({ type: 'error', text: 'Usuário não autenticado' }); setTimeout(() => setToast(null), 3000); return; }
       const { error } = await supabase
         .from('support_tickets')
         .insert({
@@ -798,7 +823,7 @@ const OrganizerSupport = () => {
           description: description.trim(),
           status: 'aberto'
         });
-      if (error) { setToast({type:'error', text:'Erro ao enviar suporte.'}); setTimeout(()=>setToast(null),3000); return; }
+      if (error) { setToast({ type: 'error', text: 'Erro ao enviar suporte.' }); setTimeout(() => setToast(null), 3000); return; }
       setTitle('');
       setDescription('');
       setToast({ type: 'success', text: 'Chamado enviado com sucesso!' });
@@ -812,7 +837,7 @@ const OrganizerSupport = () => {
   return (
     <div className="max-w-2xl">
       {toast && (
-        <div className={`mb-3 px-3 py-2 rounded ${toast.type==='success'?'bg-green-600 text-white':'bg-red-600 text-white'}`}>{toast.text}</div>
+        <div className={`mb-3 px-3 py-2 rounded ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{toast.text}</div>
       )}
       <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Atendimento</h2>
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
@@ -847,7 +872,7 @@ const OrganizerSupport = () => {
         <div className="bg-gray-50 rounded-lg p-3 space-y-2">
           {myTickets.length === 0 ? (
             <div className="text-sm text-gray-500">Nenhum ticket enviado.</div>
-          ) : myTickets.map((t)=> (
+          ) : myTickets.map((t) => (
             <div key={t.id} className="text-sm">
               <div className="font-semibold text-gray-800">{t.title}</div>
               <div className="text-gray-600">{t.description}</div>
@@ -879,7 +904,7 @@ const OrganizerEvents = () => {
   useEffect(() => {
     isEventsMountedRef.current = true;
     fetchEvents();
-    
+
     return () => {
       isEventsMountedRef.current = false;
       // useAbortController já faz o cleanup automático
@@ -893,7 +918,7 @@ const OrganizerEvents = () => {
 
   const fetchEvents = async () => {
     const { signal: abortSignal } = createEventsController();
-    
+
     try {
       setIsLoading(true);
 
@@ -923,11 +948,11 @@ const OrganizerEvents = () => {
           classification, important_info, attractions, price, status, organizer_id, available_tickets,
           total_tickets, tags, location_type, location_name, location_city, location_state, location_street,
           location_number, location_neighborhood, location_cep, location_complement, location_search,
-          ticket_type, contact_info, created_at, updated_at
+          ticket_type, contact_info, created_at, updated_at, map_image
         `)
         .eq('organizer_id', user.id)
-          .order('created_at', { ascending: false })
-          .abortSignal(abortSignal);
+        .order('created_at', { ascending: false })
+        .abortSignal(abortSignal);
 
       if (abortSignal.aborted || !isEventsMountedRef.current) {
         return;
@@ -938,10 +963,10 @@ const OrganizerEvents = () => {
       // Buscar dados de vendas e receita para cada evento
       let ticketCounts: { [key: string]: number } = {};
       let eventRevenues: { [key: string]: number } = {};
-      
+
       if (eventsData && eventsData.length > 0) {
         const eventIds = eventsData.map(event => event.id);
-        
+
         if (abortSignal.aborted || !isEventsMountedRef.current) {
           return;
         }
@@ -950,15 +975,15 @@ const OrganizerEvents = () => {
         const { data: ticketsData, error: ticketsError } = await supabase
           .from('tickets')
           .select('event_id, status, transaction_id')
-            .in('event_id', eventIds)
+          .in('event_id', eventIds)
           .abortSignal(abortSignal);
-        
+
         console.log('🎫 Tickets encontrados:', ticketsData?.length || 0);
         console.log('🎫 Tickets com transaction_id:', ticketsData?.filter(t => t.transaction_id).length || 0);
         if (ticketsError) {
           console.error('❌ Erro ao buscar tickets:', ticketsError);
         }
-        
+
         if (abortSignal.aborted || !isEventsMountedRef.current) {
           return;
         }
@@ -967,10 +992,10 @@ const OrganizerEvents = () => {
         const { data: transactionsData, error: transactionsError } = await supabase
           .from('transactions')
           .select('event_id, amount, status')
-            .in('event_id', eventIds)
+          .in('event_id', eventIds)
           .abortSignal(abortSignal);
-        
-        
+
+
         console.log('🔍 Buscando transações para eventos:', eventIds);
         console.log('📊 Transações encontradas (todas):', transactionsData?.length || 0);
         console.log('📊 Transações completadas:', transactionsData?.filter(t => t.status === 'completed').length || 0);
@@ -982,8 +1007,8 @@ const OrganizerEvents = () => {
         if (transactionsError) {
           console.error('❌ Erro ao buscar transações:', transactionsError);
         }
-        
-        
+
+
         if (abortSignal.aborted || !isEventsMountedRef.current) {
           return;
         }
@@ -991,24 +1016,24 @@ const OrganizerEvents = () => {
         // Debug: Buscar todas as transações para verificar se existem
         const { data: allTransactions } = await supabase
           .from('transactions')
-            .select('event_id, amount, status')
-            .limit(10)
+          .select('event_id, amount, status')
+          .limit(10)
           .abortSignal(abortSignal);
         console.log('🔍 Todas as transações (primeiras 10):', allTransactions);
-        
+
         // Contar tickets vendidos por evento
         ticketsData?.forEach(ticket => {
           if (ticket.status === 'active' || ticket.status === 'used') {
-          ticketCounts[ticket.event_id] = (ticketCounts[ticket.event_id] || 0) + 1;
+            ticketCounts[ticket.event_id] = (ticketCounts[ticket.event_id] || 0) + 1;
           }
         });
-        
+
         // Calcular receita real por evento
         transactionsData?.forEach(transaction => {
           const revenue = transaction.amount || 0;
           eventRevenues[transaction.event_id] = (eventRevenues[transaction.event_id] || 0) + revenue;
         });
-        
+
         // Debug: Log das receitas calculadas
         console.log('💰 Receitas calculadas por evento:', eventRevenues);
         console.log('🎫 Tickets vendidos por evento:', ticketCounts);
@@ -1026,7 +1051,7 @@ const OrganizerEvents = () => {
 
         const eventRevenue = eventRevenues[event.id] || 0;
         const eventTicketsSold = ticketCounts[event.id] || 0;
-        
+
         // Debug: Log da receita do evento específico
         console.log(`💰 Evento ${event.title}: Receita = R$ ${eventRevenue}, Tickets = ${eventTicketsSold}`);
 
@@ -1036,6 +1061,7 @@ const OrganizerEvents = () => {
           start_date: event.start_date,
           end_date: event.end_date,
           location: event.location,
+          location_name: event.location_name,
           description: event.description,
           status: event.status,
           ticketsSold: eventTicketsSold,
@@ -1043,7 +1069,22 @@ const OrganizerEvents = () => {
           revenue: eventRevenue,
           category: event.category,
           price: event.price || 0,
-          image: event.image || event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iNDAwIDMwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNGMzY4QTciLz4KPHRleHQgeD0iMjAwIiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+Cg=='
+          image: event.image || event.banner_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iNDAwIDMwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNGMzY4QTciLz4KPHRleHQgeD0iMjAwIiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV2ZW50bzwvdGV4dD4KPC9zdmc+Cg==',
+          subject: event.subject,
+          classification: event.classification,
+          important_info: event.important_info,
+          attractions: event.attractions,
+          location_type: event.location_type,
+          location_city: event.location_city,
+          location_state: event.location_state,
+          location_street: event.location_street,
+          location_number: event.location_number,
+          location_neighborhood: event.location_neighborhood,
+          location_cep: event.location_cep,
+          location_complement: event.location_complement,
+          location_search: event.location_search,
+          ticket_type: event.ticket_type,
+          contact_info: event.contact_info
         };
       });
 
@@ -1072,9 +1113,9 @@ const OrganizerEvents = () => {
       console.log('🎫 Tipos de ingressos:', eventData.ticketTypes);
 
       // VALIDAÇÃO RIGOROSA DOS CAMPOS OBRIGATÓRIOS
-              if (!eventData.start_date) {
-          throw new Error('Data e hora de início são obrigatórias');
-        }
+      if (!eventData.start_date) {
+        throw new Error('Data e hora de início são obrigatórias');
+      }
 
       if (!eventData.title || !eventData.title.trim()) {
         throw new Error('Título do evento é obrigatório');
@@ -1121,7 +1162,7 @@ const OrganizerEvents = () => {
 
         if (existingTickets && existingTickets.length > 0) {
           const ticketIds = existingTickets.map(t => t.id);
-          
+
           // Deletar lotes primeiro (foreign key constraint)
           console.log('🗑️ Deletando lotes existentes...');
           const { error: batchDeleteError } = await supabase
@@ -1133,7 +1174,7 @@ const OrganizerEvents = () => {
             console.warn('⚠️ Erro ao remover lotes existentes:', batchDeleteError);
           }
         }
-        
+
         // Depois deletar os ingressos
         const { error: deleteError } = await supabase
           .from('event_ticket_types')
@@ -1148,7 +1189,7 @@ const OrganizerEvents = () => {
         if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
           for (const ticket of eventData.ticketTypes) {
             console.log('🎫 Atualizando tipo de ingresso:', ticket);
-            
+
             const { data: ticketType, error: ticketError } = await supabase
               .from('event_ticket_types')
               .insert({
@@ -1187,7 +1228,7 @@ const OrganizerEvents = () => {
       } else {
         // Criação - usar função SQL avançada
         const { data: userData } = await supabase.auth.getUser();
-        
+
         // DEBUG: Verificar dados antes de inserir
         console.log('🔍 DEBUG - Dados do evento:', {
           title: eventData.title,
@@ -1212,12 +1253,12 @@ const OrganizerEvents = () => {
           status: 'pending',
           price: eventData.price || 0,
           category: eventData.category || 'evento',
-          
+
           // Campos opcionais com valores padrão
           image: eventData.image || null,
           available_tickets: eventData.totalTickets || 0,
           total_tickets: eventData.totalTickets || 0,
-          
+
           // Campos adicionais da tabela
           subject: eventData.category || 'Evento',
           subcategory: eventData.category || 'evento',
@@ -1258,7 +1299,7 @@ const OrganizerEvents = () => {
         if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
           for (const ticket of eventData.ticketTypes) {
             console.log('🎫 Criando tipo de ingresso:', ticket);
-            
+
             // Inserir diretamente na tabela event_ticket_types
             const { data: ticketType, error: ticketError } = await supabase
               .from('event_ticket_types')
@@ -1297,25 +1338,25 @@ const OrganizerEvents = () => {
             // Se há lotes, criar na tabela event_ticket_batches
             if (ticket.batches && ticket.batches.length > 0) {
               console.log('📦 Criando lotes para ingresso:', ticketType.id);
-                
+
               const batchesData = ticket.batches.map((batch: any) => ({
-                    ticket_type_id: ticketType.id,
-                    batch_number: batch.batch_number,
-                    quantity: batch.quantity,
+                ticket_type_id: ticketType.id,
+                batch_number: batch.batch_number,
+                quantity: batch.quantity,
                 price_type: batch.price_type || 'uniform',
                 price: batch.price || batch.price_masculine,
                 price_feminine: batch.price_feminine,
-                    sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
+                sale_start_date: batch.sale_start_date ? `${batch.sale_start_date}T${batch.sale_start_time || '00:00'}:00` : null,
                 sale_start_time: batch.sale_start_time || null,
-                    sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
+                sale_end_date: batch.sale_end_date ? `${batch.sale_end_date}T${batch.sale_end_time || '23:59'}:00` : null,
                 sale_end_time: batch.sale_end_time || null
               }));
-              
+
               const { error: batchError } = await supabase
                 .from('event_ticket_batches')
                 .insert(batchesData);
 
-                if (batchError) {
+              if (batchError) {
                 console.warn('⚠️ Erro ao criar lotes:', batchError);
               } else {
                 console.log('✅ Lotes criados com sucesso');
@@ -1355,7 +1396,7 @@ const OrganizerEvents = () => {
 
   if (isLoading) {
     return (
-              <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <ProfessionalLoader size="lg" className="mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Carregando eventos...</p>
@@ -1372,7 +1413,7 @@ const OrganizerEvents = () => {
           <h2 className="text-2xl font-bold text-gray-900">Meus Eventos</h2>
           <p className="text-gray-600">Gerencie todos os seus eventos em um só lugar</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setShowEventFormModal(true);
             setIsModalOpen(true);
@@ -1394,10 +1435,10 @@ const OrganizerEvents = () => {
         }}
         event={selectedEvent}
         onEventCreated={async () => {
-            await fetchEvents();
-            setSelectedEvent(undefined);
-            setShowEventFormModal(false);
-            setIsModalOpen(false);
+          await fetchEvents();
+          setSelectedEvent(undefined);
+          setShowEventFormModal(false);
+          setIsModalOpen(false);
         }}
       />
 
@@ -1430,8 +1471,8 @@ const OrganizerEvents = () => {
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
           />
         </div>
-        
-                <div className="flex gap-2">
+
+        <div className="flex gap-2">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
@@ -1453,8 +1494,8 @@ const OrganizerEvents = () => {
           <div key={event.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             <div className="aspect-video bg-gradient-to-br from-pink-500 to-purple-600 relative">
               {event.image && event.image !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=' ? (
-                <img 
-                  src={event.image} 
+                <img
+                  src={event.image}
                   alt={event.title}
                   className="absolute inset-0 w-full h-full object-cover"
                   onError={(e) => {
@@ -1477,40 +1518,42 @@ const OrganizerEvents = () => {
               <div className="absolute top-4 left-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(event.status)}`}>
                   {event.status === 'approved' ? 'Aprovado' :
-                   event.status === 'pending' ? 'Pendente' :
-                   event.status === 'rejected' ? 'Rejeitado' :
-                   event.status === 'cancelled' ? 'Cancelado' :
-                   event.status === 'draft' ? 'Rascunho' : event.status}
+                    event.status === 'pending' ? 'Pendente' :
+                      event.status === 'rejected' ? 'Rejeitado' :
+                        event.status === 'cancelled' ? 'Cancelado' :
+                          event.status === 'draft' ? 'Rascunho' : event.status}
                 </span>
               </div>
               <div className="absolute bottom-4 left-4 right-4 text-white">
                 <h3 className="font-semibold text-lg line-clamp-2 mb-1">{event.title}</h3>
                 <p className="text-sm opacity-90">
-                  {event.start_date ? new Date(event.start_date).toLocaleDateString('pt-BR') : 'Data não informada'} • 
-                  {event.start_date ? new Date(event.start_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : 'Horário não informado'}
+                  {event.start_date ? new Date(event.start_date).toLocaleDateString('pt-BR') : 'Data não informada'} •
+                  {event.start_date ? new Date(event.start_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Horário não informado'}
                 </p>
               </div>
             </div>
-            
+
             <div className="p-4 sm:p-6">
               <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                 <Calendar className="h-4 w-4 flex-shrink-0" />
                 <span className="line-clamp-1">{event.location_name || event.location || 'Local não informado'}</span>
               </div>
-              
+
               <div className="flex gap-2">
-                                  <button 
-                    onClick={() => {
-                      setSelectedEvent(event);
-                      setShowEventFormModal(true);
-                      setIsModalOpen(true);
-                    }}
-                    className="flex-1 px-3 py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors text-sm font-medium"
-                  >
-                    <Edit3 className="h-4 w-4 inline mr-1" />
-                    Editar
-                  </button>
-                <button 
+                <button
+                  onClick={() => {
+                    console.log('📝 DEBUG - Evento selecionado para edição:', event);
+                    console.log('📝 DEBUG - map_image no evento:', event.map_image);
+                    setSelectedEvent(event);
+                    setShowEventFormModal(true);
+                    setIsModalOpen(true);
+                  }}
+                  className="flex-1 px-3 py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors text-sm font-medium"
+                >
+                  <Edit3 className="h-4 w-4 inline mr-1" />
+                  Editar
+                </button>
+                <button
                   onClick={() => {
                     setEventToShare(event);
                     setShowShareModal(true);
@@ -1541,7 +1584,7 @@ const OrganizerSales = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
-  
+
   // Estados removidos - agora o comprador define o usuário
 
   useEffect(() => {
@@ -1576,29 +1619,29 @@ const OrganizerSales = () => {
       // Buscar dados de vendas e receita para cada evento
       let ticketCounts: { [key: string]: number } = {};
       let eventRevenues: { [key: string]: number } = {};
-      
+
       if (eventsData && eventsData.length > 0) {
         const eventIds = eventsData.map(event => event.id);
-        
+
         // Buscar tickets vendidos
         const { data: ticketsData, error: ticketsError } = await supabase
           .from('tickets')
           .select('event_id, status, transaction_id')
           .in('event_id', eventIds);
-        
+
         console.log('🎫 Tickets encontrados:', ticketsData?.length || 0);
         console.log('🎫 Tickets com transaction_id:', ticketsData?.filter(t => t.transaction_id).length || 0);
         if (ticketsError) {
           console.error('❌ Erro ao buscar tickets:', ticketsError);
         }
-        
+
         // Buscar transações para calcular receita real
         const { data: transactionsData, error: transactionsError } = await supabase
           .from('transactions')
           .select('event_id, amount, status')
           .in('event_id', eventIds);
-        
-        
+
+
         console.log('🔍 Buscando transações para eventos:', eventIds);
         console.log('📊 Transações encontradas (todas):', transactionsData?.length || 0);
         console.log('📊 Transações completadas:', transactionsData?.filter(t => t.status === 'completed').length || 0);
@@ -1610,22 +1653,22 @@ const OrganizerSales = () => {
         if (transactionsError) {
           console.error('❌ Erro ao buscar transações:', transactionsError);
         }
-        
-        
+
+
         // Debug: Buscar todas as transações para verificar se existem
         const { data: allTransactions } = await supabase
           .from('transactions')
           .select('event_id, amount, status')
           .limit(10);
         console.log('🔍 Todas as transações (primeiras 10):', allTransactions);
-        
+
         // Contar tickets vendidos por evento
         ticketsData?.forEach(ticket => {
           if (ticket.status === 'active' || ticket.status === 'used') {
             ticketCounts[ticket.event_id] = (ticketCounts[ticket.event_id] || 0) + 1;
           }
         });
-        
+
         // Calcular receita real por evento
         transactionsData?.forEach(transaction => {
           const revenue = transaction.amount || 0;
@@ -1660,7 +1703,7 @@ const OrganizerSales = () => {
     try {
       setIsLoadingSales(true);
       console.log('🔄 Buscando vendas/ingressos...');
-      
+
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1670,7 +1713,7 @@ const OrganizerSales = () => {
 
       // ✅ USAR A MESMA LÓGICA DO DASHBOARD: buscar eventos primeiro, depois tickets
       console.log('🔍 Buscando eventos do organizador:', user.id);
-      
+
       // 1. Buscar eventos do organizador (mesmo que dashboard)
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
@@ -1694,7 +1737,7 @@ const OrganizerSales = () => {
       // 2. Buscar tickets dos eventos do organizador (mesmo que dashboard)
       const eventIds = eventsData.map(event => event.id);
       console.log('🔍 Buscando tickets para eventos:', eventIds);
-      
+
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select('*')
@@ -1713,12 +1756,12 @@ const OrganizerSales = () => {
         .from('event_ticket_types')
         .select('id, event_id, name, title')
         .in('event_id', eventIds);
-      
+
       const ticketTypesMap = (ticketTypesData || []).reduce((acc: any, tt: any) => {
         acc[tt.id] = tt;
         return acc;
       }, {});
-      
+
       console.log('✅ Tipos de ingressos encontrados:', ticketTypesData?.length || 0);
 
       // 3. Buscar transações relacionadas para obter buyer via transaction quando necessário
@@ -1831,17 +1874,17 @@ const OrganizerSales = () => {
         const pricePaidRaw = ticket.price_paid ?? ticket.amount ?? tx?.amount ?? ticket.price ?? event.price ?? 0;
         const pricePaid = typeof pricePaidRaw === 'string' ? parseFloat(pricePaidRaw) : (pricePaidRaw as number);
         const paymentMethod = (tx?.payment_method || 'Não informado') as string;
-        
+
         // Buscar nome real do tipo de ingresso
         const ticketTypeData = ticket.ticket_type_id ? ticketTypesMap[ticket.ticket_type_id] : null;
         let ticketTypeName = ticketTypeData?.title || ticketTypeData?.name || ticket.ticket_type || 'Ingresso Padrão';
-        
+
         // Limpar sufixos de gênero (Feminino/Masculino) mas manter o nome do ingresso
         ticketTypeName = ticketTypeName
           .replace(/\s*-?\s*(Feminino|Masculino|Unissex)\s*$/i, '')
           .replace(/\s*\((Feminino|Masculino|Unissex)\)\s*$/i, '')
           .trim();
-        
+
         return {
           id: ticket.id,
           eventId: ticket.event_id,
@@ -1866,10 +1909,10 @@ const OrganizerSales = () => {
       // 6. ADICIONAR TRANSACTIONS PENDENTES QUE NÃO TÊM TICKETS
       // (Vendas PIX não pagas ainda não geraram tickets)
       console.log('🔍 Buscando transactions pendentes sem tickets...');
-      
+
       // IDs de tickets já mapeados
       const mappedTicketIds = new Set((ticketsData || []).map((t: any) => t.id));
-      
+
       // Transactions pendentes que não têm ticket correspondente
       const pendingTransactions = (transactionsByEvent || []).filter((tx: any) => {
         // Só incluir se:
@@ -1877,16 +1920,16 @@ const OrganizerSales = () => {
         // 2. Não tem ticket_id OU o ticket não existe na lista de tickets
         return tx.status === 'pending' && (!tx.ticket_id || !mappedTicketIds.has(tx.ticket_id));
       });
-      
+
       console.log(`✅ Transactions pendentes encontradas: ${pendingTransactions.length}`);
-      
+
       // Formatar transactions pendentes como vendas
       const pendingSales: Sale[] = pendingTransactions.map((tx: any) => {
         const buyerId = tx.buyer_id || tx.user_id;
         const buyer = buyerId ? usersData[buyerId] || {} : {};
         const event = (eventsData as any[]).find(e => e.id === tx.event_id) || {};
         const pricePaid = typeof tx.amount === 'string' ? parseFloat(tx.amount) : (tx.amount || 0);
-        
+
         return {
           id: tx.id, // Usar ID da transaction
           eventId: tx.event_id,
@@ -1907,11 +1950,11 @@ const OrganizerSales = () => {
           usedAt: null
         };
       });
-      
+
       // COMBINAR tickets confirmados + transactions pendentes
       const allSales = [...formattedSales, ...pendingSales];
       console.log(`✅ Total de vendas (confirmadas + pendentes): ${allSales.length}`);
-      
+
       setSales(allSales);
     } catch (error: any) {
       console.error('❌ Erro inesperado ao buscar vendas:', error);
@@ -1924,7 +1967,7 @@ const OrganizerSales = () => {
   const fetchTransactionsOnly = async (userId: string) => {
     try {
       console.log('🔄 Fallback: Buscando apenas transações...');
-      
+
       // Buscar transações sem relacionamentos complexos
       const { data: salesData, error } = await supabase
         .from('transactions')
@@ -1970,19 +2013,19 @@ const OrganizerSales = () => {
   const filteredSales = useMemo(() => {
     return sales.filter((sale: Sale) => {
       const matchesFilter = filter === 'todos' || sale.status === filter;
-      const matchesDate = !dateRange.start || !dateRange.end || 
+      const matchesDate = !dateRange.start || !dateRange.end ||
         (sale.date >= dateRange.start && sale.date <= dateRange.end);
       return matchesFilter && matchesDate;
     });
   }, [sales, filter, dateRange]);
 
   // Calcular totais
-  const totalRevenue = useMemo(() => 
+  const totalRevenue = useMemo(() =>
     filteredSales.reduce((sum: number, sale: Sale) => sum + sale.amount, 0),
     [filteredSales]
   );
   const totalSales = useMemo(() => filteredSales.length, [filteredSales]);
-  const pendingSales = useMemo(() => 
+  const pendingSales = useMemo(() =>
     filteredSales.filter((sale: Sale) => sale.status === 'pendente').length,
     [filteredSales]
   );
@@ -1990,7 +2033,7 @@ const OrganizerSales = () => {
   const updateTicketStatus = async (ticketId: string, newStatus: 'confirmado' | 'cancelado') => {
     try {
       const dbStatus = newStatus === 'confirmado' ? 'active' : 'cancelled';
-      
+
       // Atualizar status do ingresso
       const { error } = await supabase
         .from('tickets')
@@ -2000,13 +2043,13 @@ const OrganizerSales = () => {
       if (error) throw error;
 
       // Atualizar estado local
-      setSales(prev => prev.map(sale => 
+      setSales(prev => prev.map(sale =>
         sale.id === ticketId ? { ...sale, status: newStatus } : sale
       ));
 
       // Recarregar dados
       await fetchSales();
-      
+
       console.log(`✅ Ingresso ${newStatus} com sucesso!`);
     } catch (error) {
       console.error('Erro ao atualizar status do ingresso:', error);
@@ -2034,17 +2077,17 @@ const OrganizerSales = () => {
       // Configurações básicas do documento
       const margin = 20;
       const pageWidth = doc.internal.pageSize.width;
-      
+
       // Título simples
       doc.setFontSize(20);
       doc.setTextColor(236, 72, 153);
       doc.text('PULAKATRACA', margin, 30);
-      
+
       // Configurações do documento
       doc.setFont('helvetica');
       doc.setFontSize(16);
       doc.setTextColor(40);
-      
+
       // Posição inicial do conteúdo
       const contentStartY = 50;
 
@@ -2058,10 +2101,10 @@ const OrganizerSales = () => {
 
       // Detalhes do Evento
       let currentY = contentStartY + 30;
-      
+
       doc.setFontSize(12);
       doc.text(`Evento: ${selectedEvent?.title || 'Todos os Eventos'}`, margin, currentY);
-      
+
       if (selectedEvent) {
         currentY += 10;
         doc.text(`Data: ${new Date(selectedEvent.start_date).toLocaleDateString('pt-BR')}`, margin, currentY);
@@ -2080,7 +2123,7 @@ const OrganizerSales = () => {
       doc.setFontSize(14);
       doc.setTextColor(236, 72, 153);
       doc.text('Resumo das Vendas', margin, currentY);
-      
+
       doc.setTextColor(40);
       doc.setFontSize(11);
       currentY += 10;
@@ -2099,12 +2142,12 @@ const OrganizerSales = () => {
       doc.setFontSize(14);
       doc.setTextColor(236, 72, 153);
       doc.text('Filtros Aplicados', margin, currentY);
-      
+
       doc.setTextColor(40);
       doc.setFontSize(11);
       currentY += 10;
       doc.text(`Status: ${filter === 'todos' ? 'Todos' : filter.charAt(0).toUpperCase() + filter.slice(1)}`, margin, currentY);
-      
+
       if (dateRange.start && dateRange.end) {
         currentY += 10;
         doc.text(`Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} a ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`, margin, currentY);
@@ -2117,7 +2160,7 @@ const OrganizerSales = () => {
       doc.text(`Receita Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, currentY);
       currentY += 10;
       doc.text(`Vendas Pendentes: ${pendingSales}`, margin, currentY);
-      
+
       // Tabela de vendas básica
       currentY += 20;
       const headers = [
@@ -2137,12 +2180,12 @@ const OrganizerSales = () => {
         head: headers,
         body: data,
         theme: 'striped',
-        styles: { 
+        styles: {
           fontSize: 10,
           cellPadding: 4,
           font: 'helvetica'
         },
-        headStyles: { 
+        headStyles: {
           fillColor: [236, 72, 153],
           textColor: 255,
           fontSize: 10
@@ -2182,7 +2225,7 @@ const OrganizerSales = () => {
           <h2 className="text-2xl font-bold text-gray-900">Controle de Vendas</h2>
           <p className="text-gray-600">Gerencie todas as vendas dos seus eventos</p>
         </div>
-        <button 
+        <button
           onClick={async () => {
             setIsExporting(true);
             try {
@@ -2225,7 +2268,7 @@ const OrganizerSales = () => {
             <BarChart3 className="h-8 w-8 text-blue-600" />
           </div>
         </div>
-        
+
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -2235,7 +2278,7 @@ const OrganizerSales = () => {
             <DollarSign className="h-8 w-8 text-green-600" />
           </div>
         </div>
-        
+
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -2276,7 +2319,7 @@ const OrganizerSales = () => {
             <option value="confirmado">Confirmados</option>
             <option value="cancelado">Cancelados</option>
           </select>
-          
+
           <input
             type="date"
             value={dateRange.start}
@@ -2303,6 +2346,7 @@ const OrganizerSales = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Método</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
@@ -2364,12 +2408,12 @@ const OrganizerSales = () => {
               ) : (
                 // Dados reais das vendas
                 filteredSales.map(sale => (
-                <tr key={sale.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
+                  <tr key={sale.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
                         {sale.eventImage ? (
-                          <img 
-                            src={sale.eventImage} 
+                          <img
+                            src={sale.eventImage}
                             alt={sale.eventName}
                             className="w-10 h-10 rounded-lg object-cover mr-3"
                             onError={(e) => {
@@ -2380,71 +2424,82 @@ const OrganizerSales = () => {
                           />
                         ) : null}
                         <div className={`w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mr-3 ${sale.eventImage ? 'hidden' : ''}`}>
-                        <Calendar className="h-5 w-5 text-pink-600" />
+                          <Calendar className="h-5 w-5 text-pink-600" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
+                          <div className="text-sm text-gray-500">{sale.ticketType}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{sale.eventName}</div>
-                        <div className="text-sm text-gray-500">{sale.ticketType}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="text-sm font-medium text-gray-900">{sale.buyerName}</div>
+                      <div className="text-sm text-gray-500">{sale.buyerEmail}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        {sale.ticketCode}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="text-sm font-medium text-gray-900">{sale.buyerName}</div>
-                    <div className="text-sm text-gray-500">{sale.buyerEmail}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                      {sale.ticketCode}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      sale.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
-                      sale.status === 'confirmado' ? 'bg-green-100 text-green-800' :
-                      sale.status === 'usado' ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-green-600">R$ {sale.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{sale.date}</td>
-                  <td className="px-6 py-4 text-sm font-medium">
-                    <div className="flex gap-2">
-                      {sale.status === 'pendente' && (
-                        <>
-                          <button 
-                            onClick={() => updateTicketStatus(sale.id, 'confirmado')}
-                            className="text-green-600 hover:text-green-700 flex items-center gap-1 px-2 py-1 text-xs bg-green-50 rounded"
-                            title="Confirmar ingresso (comprador poderá definir usuário)"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Confirmar
-                          </button>
-                          <button 
-                            onClick={() => updateTicketStatus(sale.id, 'cancelado')}
-                            className="text-red-600 hover:text-red-700"
-                            title="Cancelar ingresso"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                      {sale.status === 'confirmado' && (
-                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded">
-                          ✅ Confirmado
-                        </span>
-                      )}
-                      {sale.status === 'usado' && (
-                        <span className="text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
-                          🎯 Usado
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${sale.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
+                        sale.status === 'confirmado' ? 'bg-green-100 text-green-800' :
+                          sale.status === 'usado' ? 'bg-blue-100 text-blue-800' :
+                            'bg-red-100 text-red-800'
+                        }`}>
+                        {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      R$ {sale.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${sale.paymentMethod === 'pix' ? 'bg-blue-100 text-blue-800' :
+                        sale.paymentMethod === 'credit_card' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                        {sale.paymentMethod === 'pix' ? 'PIX' :
+                          sale.paymentMethod === 'credit_card' ? 'Cartão' :
+                            sale.paymentMethod || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{sale.date}</td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <div className="flex gap-2">
+                        {sale.status === 'pendente' && (
+                          <>
+                            <button
+                              onClick={() => updateTicketStatus(sale.id, 'confirmado')}
+                              className="text-green-600 hover:text-green-700 flex items-center gap-1 px-2 py-1 text-xs bg-green-50 rounded"
+                              title="Confirmar ingresso (comprador poderá definir usuário)"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => updateTicketStatus(sale.id, 'cancelado')}
+                              className="text-red-600 hover:text-red-700"
+                              title="Cancelar ingresso"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                        {sale.status === 'confirmado' && (
+                          <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded">
+                            ✅ Confirmado
+                          </span>
+                        )}
+                        {sale.status === 'usado' && (
+                          <span className="text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
+                            🎯 Usado
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -2465,21 +2520,19 @@ const OrganizerFinancial = () => {
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-md">
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'accounts'
-              ? 'bg-white text-pink-600 shadow-sm'
-              : 'text-gray-600 hover:text-pink-600'
-          }`}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'accounts'
+            ? 'bg-white text-pink-600 shadow-sm'
+            : 'text-gray-600 hover:text-pink-600'
+            }`}
         >
           Contas Bancárias
         </button>
         <button
           onClick={() => setActiveTab('withdrawals')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'withdrawals'
-              ? 'bg-white text-pink-600 shadow-sm'
-              : 'text-gray-600 hover:text-pink-600'
-          }`}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'withdrawals'
+            ? 'bg-white text-pink-600 shadow-sm'
+            : 'text-gray-600 hover:text-pink-600'
+            }`}
         >
           Saques
         </button>
@@ -2519,7 +2572,7 @@ const BankAccountsSection = () => {
   const fetchBankAccounts = async () => {
     try {
       setIsLoading(true);
-      
+
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -2537,7 +2590,7 @@ const BankAccountsSection = () => {
 
       if (error) {
         console.error('❌ Erro ao buscar contas bancárias:', error);
-        
+
         if (error.code === '42P01') {
           alert('Tabela bank_accounts não existe. Execute o script SQL no Supabase primeiro.');
         } else {
@@ -2610,7 +2663,7 @@ const BankAccountsSection = () => {
       if (selectedAccount.id) {
         // Editar conta existente
         console.log('🔄 Editando conta existente:', selectedAccount.id);
-        
+
         const updateData = {
           bank_name: selectedAccount.bank,
           agency: selectedAccount.agency,
@@ -2621,7 +2674,7 @@ const BankAccountsSection = () => {
           is_default: selectedAccount.isDefault,
           updated_at: new Date().toISOString()
         };
-        
+
         console.log('📝 Dados para atualização:', updateData);
 
         const { data, error } = await supabase
@@ -2639,7 +2692,7 @@ const BankAccountsSection = () => {
       } else {
         // Criar nova conta
         console.log('🔄 Criando nova conta...');
-        
+
         // Gerar UUID manualmente para garantir que não seja null
         const insertData = {
           id: crypto.randomUUID(), // ✅ Gerar UUID no frontend
@@ -2654,7 +2707,7 @@ const BankAccountsSection = () => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
-        
+
         console.log('📝 Dados para inserção:', insertData);
 
         const { data, error } = await supabase
@@ -2676,13 +2729,13 @@ const BankAccountsSection = () => {
       setShowAccountModal(false);
       setSelectedAccount(null);
       console.log('✅ Operação concluída com sucesso!');
-      
+
     } catch (error: any) {
       console.error('❌ Erro ao salvar conta bancária:', error);
-      
+
       // Tratamento específico de erros
       let errorMessage = 'Erro desconhecido ao salvar conta bancária';
-      
+
       if (error.message) {
         if (error.message.includes('Failed to fetch')) {
           errorMessage = 'Erro de conectividade. Verifique sua conexão com a internet e tente novamente.';
@@ -2692,7 +2745,7 @@ const BankAccountsSection = () => {
           errorMessage = error.message;
         }
       }
-      
+
       alert('Erro ao salvar conta bancária: ' + errorMessage);
     } finally {
       setIsSavingAccount(false);
@@ -2737,7 +2790,7 @@ const BankAccountsSection = () => {
       if (error) throw error;
 
       // Atualizar estado local
-      setBankAccounts(prev => prev.map(account => 
+      setBankAccounts(prev => prev.map(account =>
         account.id === accountId ? { ...account, isDefault: true } : { ...account, isDefault: false }
       ));
     } catch (error: any) {
@@ -2750,7 +2803,7 @@ const BankAccountsSection = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Contas Bancárias</h2>
-        <button 
+        <button
           onClick={handleAddAccount}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
@@ -2771,7 +2824,7 @@ const BankAccountsSection = () => {
             <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma conta bancária</h3>
             <p className="text-gray-500 mb-4">Adicione uma conta bancária para receber seus pagamentos</p>
-            <button 
+            <button
               onClick={handleAddAccount}
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
@@ -2795,72 +2848,71 @@ const BankAccountsSection = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {bankAccounts.map(account => (
-                <tr key={account.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <CreditCard className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{account.bank}</div>
-                        <div className="text-sm text-gray-500">{account.agency}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{account.agency}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{account.account}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{account.type.charAt(0).toUpperCase() + account.type.slice(1)}</td>
-                  <td className="px-6 py-4">
-                    {account.pix_key ? (
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold text-purple-600 uppercase">{account.pix_key_type || 'PIX'}</p>
-                          <p className="text-sm font-mono text-gray-900 truncate max-w-[150px]" title={account.pix_key}>
-                            {account.pix_key}
-                          </p>
+                  <tr key={account.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                          <CreditCard className="h-5 w-5 text-blue-600" />
                         </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{account.bank}</div>
+                          <div className="text-sm text-gray-500">{account.agency}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{account.agency}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{account.account}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{account.type.charAt(0).toUpperCase() + account.type.slice(1)}</td>
+                    <td className="px-6 py-4">
+                      {account.pix_key ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-purple-600 uppercase">{account.pix_key_type || 'PIX'}</p>
+                            <p className="text-sm font-mono text-gray-900 truncate max-w-[150px]" title={account.pix_key}>
+                              {account.pix_key}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(account.pix_key || '');
+                              alert('Chave PIX copiada!');
+                            }}
+                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                            title="Copiar chave PIX"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Não cadastrada</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleSetDefault(account.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${account.isDefault ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}
+                      >
+                        Padrão
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(account.pix_key || '');
-                            alert('Chave PIX copiada!');
-                          }}
-                          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                          title="Copiar chave PIX"
+                          onClick={() => handleEditAccount(account)}
+                          className="text-blue-600 hover:text-blue-700"
                         >
-                          📋
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAccount(account.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">Não cadastrada</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => handleSetDefault(account.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        account.isDefault ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      Padrão
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleEditAccount(account)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteAccount(account.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -2875,14 +2927,14 @@ const BankAccountsSection = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900">{selectedAccount ? 'Editar Conta' : 'Nova Conta'}</h3>
-                <button 
+                <button
                   onClick={() => setShowAccountModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <form onSubmit={(e) => { e.preventDefault(); handleSaveAccount(); }} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Banco</label>
@@ -2925,11 +2977,11 @@ const BankAccountsSection = () => {
                     <option value="poupanca">Poupança</option>
                   </select>
                 </div>
-                
+
                 {/* Campos PIX */}
                 <div className="pt-4 border-t border-gray-200">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">🔑 Chave PIX (Opcional)</h4>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Chave</label>
@@ -2946,7 +2998,7 @@ const BankAccountsSection = () => {
                         <option value="aleatoria">Chave Aleatória</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Chave PIX</label>
                       <input
@@ -3026,7 +3078,7 @@ const WithdrawalsSection = () => {
   const fetchWithdrawals = async () => {
     try {
       setIsLoading(true);
-      
+
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -3090,11 +3142,11 @@ const WithdrawalsSection = () => {
   }, []);
 
   const handleAddWithdrawal = () => {
-    setSelectedWithdrawal({ 
-      id: '', 
-      amount: 0, 
-      requestDate: new Date().toISOString().split('T')[0], 
-      status: 'pendente', 
+    setSelectedWithdrawal({
+      id: '',
+      amount: 0,
+      requestDate: new Date().toISOString().split('T')[0],
+      status: 'pendente',
       bankAccount: '',
       bank_account_id: '',
       notes: '',
@@ -3123,7 +3175,7 @@ const WithdrawalsSection = () => {
 
       if (error) throw error;
 
-    setWithdrawals(prev => prev.filter(withdrawal => withdrawal.id !== withdrawalId));
+      setWithdrawals(prev => prev.filter(withdrawal => withdrawal.id !== withdrawalId));
       console.log('✅ Saque deletado com sucesso');
     } catch (error) {
       console.error('❌ Erro ao deletar saque:', error);
@@ -3155,7 +3207,7 @@ const WithdrawalsSection = () => {
       if (selectedWithdrawal.id) {
         // Editar saque existente (apenas admin pode fazer isso)
         console.log('🔄 Editando saque existente:', selectedWithdrawal.id);
-        
+
         const updateData = {
           amount: selectedWithdrawal.amount,
           notes: selectedWithdrawal.notes,
@@ -3167,7 +3219,7 @@ const WithdrawalsSection = () => {
           time_interval_days: selectedWithdrawal.time_interval_days,
           withdrawal_limit: selectedWithdrawal.withdrawal_limit
         };
-        
+
         const { data, error } = await supabase
           .from('withdrawals')
           .update(updateData)
@@ -3179,7 +3231,7 @@ const WithdrawalsSection = () => {
       } else {
         // Criar novo saque
         console.log('🔄 Criando novo saque...');
-        
+
         const insertData = {
           id: crypto.randomUUID(),
           organizer_id: user.id,
@@ -3196,7 +3248,7 @@ const WithdrawalsSection = () => {
           withdrawal_limit: selectedWithdrawal.withdrawal_limit || null
           // ✅ created_at e updated_at são preenchidos automaticamente pelo banco
         };
-        
+
         const { data, error } = await supabase
           .from('withdrawals')
           .insert(insertData)
@@ -3211,7 +3263,7 @@ const WithdrawalsSection = () => {
       setShowWithdrawalModal(false);
       setSelectedWithdrawal(null);
       console.log('✅ Operação concluída com sucesso!');
-      
+
     } catch (error: any) {
       console.error('❌ Erro ao salvar saque:', error);
       alert('Erro ao salvar saque: ' + (error.message || 'Erro desconhecido'));
@@ -3225,7 +3277,7 @@ const WithdrawalsSection = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Saques</h2>
-        <button 
+        <button
           onClick={handleAddWithdrawal}
           className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
@@ -3255,12 +3307,11 @@ const WithdrawalsSection = () => {
                   <td className="px-6 py-4 text-sm font-medium text-green-600">R$ {withdrawal.amount.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{withdrawal.requestDate}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      withdrawal.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${withdrawal.status === 'pendente' ? 'bg-orange-100 text-orange-800' :
                       withdrawal.status === 'processando' ? 'bg-yellow-100 text-yellow-800' :
-                      withdrawal.status === 'concluido' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        withdrawal.status === 'concluido' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
                     </span>
                   </td>
@@ -3298,14 +3349,14 @@ const WithdrawalsSection = () => {
                   <td className="px-6 py-4 text-sm font-medium">
                     <div className="flex gap-2">
                       {/* ✅ Apenas editar e deletar - status controlado pelo admin */}
-                      <button 
+                      <button
                         onClick={() => handleEditWithdrawal(withdrawal)}
                         className="text-blue-600 hover:text-blue-700"
                         title="Editar saque"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteWithdrawal(withdrawal.id)}
                         className="text-red-600 hover:text-red-700"
                         title="Deletar saque"
@@ -3328,14 +3379,14 @@ const WithdrawalsSection = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900">{selectedWithdrawal ? 'Editar Saque' : 'Novo Saque'}</h3>
-                <button 
+                <button
                   onClick={() => setShowWithdrawalModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <form className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Valor *</label>
@@ -3357,8 +3408,8 @@ const WithdrawalsSection = () => {
                     onChange={(e) => {
                       const accountId = e.target.value;
                       const account = bankAccounts.find(acc => acc.id === accountId);
-                      setSelectedWithdrawal(prev => prev ? { 
-                        ...prev, 
+                      setSelectedWithdrawal(prev => prev ? {
+                        ...prev,
                         bank_account_id: accountId,
                         bankAccount: account ? `${account.bank} - ${account.agency}/${account.account}` : ''
                       } : prev);
@@ -3374,8 +3425,8 @@ const WithdrawalsSection = () => {
                   </select>
                   {bankAccounts.length === 0 && (
                     <p className="text-sm text-orange-600 mt-1">
-                      ⚠️ Nenhuma conta bancária cadastrada. 
-                      <button 
+                      ⚠️ Nenhuma conta bancária cadastrada.
+                      <button
                         type="button"
                         onClick={() => {
                           setShowWithdrawalModal(false);
@@ -3392,7 +3443,7 @@ const WithdrawalsSection = () => {
                 {/* ✅ Configurações de Saque Automático */}
                 <div className="border-t pt-4">
                   <h4 className="text-lg font-medium text-gray-900 mb-3">🔄 Saque Automático</h4>
-                  
+
                   <div className="space-y-4">
                     {/* Ativar saque automático */}
                     <div className="flex items-center">
@@ -3400,8 +3451,8 @@ const WithdrawalsSection = () => {
                         type="checkbox"
                         id="auto_withdrawal"
                         checked={selectedWithdrawal?.auto_withdrawal_enabled || false}
-                        onChange={(e) => setSelectedWithdrawal(prev => prev ? { 
-                          ...prev, 
+                        onChange={(e) => setSelectedWithdrawal(prev => prev ? {
+                          ...prev,
                           auto_withdrawal_enabled: e.target.checked,
                           auto_trigger_type: e.target.checked ? 'sales_amount' : 'manual'
                         } : prev)}
@@ -3410,47 +3461,47 @@ const WithdrawalsSection = () => {
                       <label htmlFor="auto_withdrawal" className="ml-2 text-sm font-medium text-gray-700">
                         Ativar saque automático
                       </label>
-                </div>
+                    </div>
 
                     {/* Tipo de gatilho */}
                     {selectedWithdrawal?.auto_withdrawal_enabled && (
-                <div>
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Gatilho</label>
-                  <select
+                        <select
                           value={selectedWithdrawal?.auto_trigger_type || 'sales_amount'}
-                          onChange={(e) => setSelectedWithdrawal(prev => prev ? { 
-                            ...prev, 
-                            auto_trigger_type: e.target.value as any 
+                          onChange={(e) => setSelectedWithdrawal(prev => prev ? {
+                            ...prev,
+                            auto_trigger_type: e.target.value as any
                           } : prev)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  >
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        >
                           <option value="sales_amount">Valor total de vendas</option>
                           <option value="sales_count">Número de vendas</option>
                           <option value="time_interval">Intervalo de tempo</option>
-                  </select>
-                </div>
+                        </select>
+                      </div>
                     )}
 
                     {/* Gatilho por valor de vendas */}
                     {selectedWithdrawal?.auto_withdrawal_enabled && selectedWithdrawal?.auto_trigger_type === 'sales_amount' && (
-                <div>
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Valor para Acionar (R$)</label>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={selectedWithdrawal?.sales_amount_trigger || ''}
-                          onChange={(e) => setSelectedWithdrawal(prev => prev ? { 
-                            ...prev, 
-                            sales_amount_trigger: parseFloat(e.target.value) || 0 
+                          onChange={(e) => setSelectedWithdrawal(prev => prev ? {
+                            ...prev,
+                            sales_amount_trigger: parseFloat(e.target.value) || 0
                           } : prev)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                           placeholder="0.00"
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Saque será executado quando as vendas atingirem este valor
                         </p>
-                </div>
+                      </div>
                     )}
 
                     {/* Gatilho por contador de vendas */}
@@ -3461,9 +3512,9 @@ const WithdrawalsSection = () => {
                           type="number"
                           min="1"
                           value={selectedWithdrawal?.sales_count_trigger || ''}
-                          onChange={(e) => setSelectedWithdrawal(prev => prev ? { 
-                            ...prev, 
-                            sales_count_trigger: parseInt(e.target.value) || 0 
+                          onChange={(e) => setSelectedWithdrawal(prev => prev ? {
+                            ...prev,
+                            sales_count_trigger: parseInt(e.target.value) || 0
                           } : prev)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                           placeholder="0"
@@ -3482,9 +3533,9 @@ const WithdrawalsSection = () => {
                           type="number"
                           min="1"
                           value={selectedWithdrawal?.time_interval_days || ''}
-                          onChange={(e) => setSelectedWithdrawal(prev => prev ? { 
-                            ...prev, 
-                            time_interval_days: parseInt(e.target.value) || 0 
+                          onChange={(e) => setSelectedWithdrawal(prev => prev ? {
+                            ...prev,
+                            time_interval_days: parseInt(e.target.value) || 0
                           } : prev)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                           placeholder="30"
@@ -3504,9 +3555,9 @@ const WithdrawalsSection = () => {
                           step="0.01"
                           min="0"
                           value={selectedWithdrawal?.withdrawal_limit || ''}
-                          onChange={(e) => setSelectedWithdrawal(prev => prev ? { 
-                            ...prev, 
-                            withdrawal_limit: parseFloat(e.target.value) || 0 
+                          onChange={(e) => setSelectedWithdrawal(prev => prev ? {
+                            ...prev,
+                            withdrawal_limit: parseFloat(e.target.value) || 0
                           } : prev)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                           placeholder="0.00 (sem limite)"
@@ -3545,13 +3596,12 @@ const WithdrawalsSection = () => {
                 )}
 
                 <div className="flex justify-end gap-2">
-                  <button 
+                  <button
                     type="button"
                     onClick={handleSaveWithdrawal}
                     disabled={isSavingWithdrawal}
-                    className={`px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium ${
-                      isSavingWithdrawal ? 'opacity-75 cursor-not-allowed' : ''
-                    }`}
+                    className={`px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium ${isSavingWithdrawal ? 'opacity-75 cursor-not-allowed' : ''
+                      }`}
                   >
                     {isSavingWithdrawal ? (
                       <>
@@ -3565,7 +3615,7 @@ const WithdrawalsSection = () => {
                       'Salvar Saque'
                     )}
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowWithdrawalModal(false)}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
@@ -3598,7 +3648,7 @@ const OrganizerCheckIns = () => {
     try {
       setIsLoading(true);
       console.log('🔄 Buscando check-ins...');
-      
+
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -3627,13 +3677,13 @@ const OrganizerCheckIns = () => {
       // Buscar dados dos usuários separadamente
       const userIds = checkInsData?.map(t => t.user_id).filter(Boolean) || [];
       let usersData: any = {};
-      
+
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, name')
           .in('id', userIds);
-        
+
         usersData = profiles?.reduce((acc: any, profile) => {
           acc[profile.id] = profile;
           return acc;
@@ -3669,7 +3719,7 @@ const OrganizerCheckIns = () => {
   const handleTicketValidation = async (ticketCode: string) => {
     try {
       console.log('🔄 Validando ingresso:', ticketCode);
-      
+
       // Obter o usuário atual
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -3696,7 +3746,7 @@ const OrganizerCheckIns = () => {
       if (!result.success) {
         console.log('⚠️ Validação falhou:', result.message);
         setQrResult(result.message);
-        
+
         // Se já foi usado, mostrar modal com dados (tela laranja)
         if (result.ticket_data) {
           setIsAlreadyUsed(true);
@@ -3714,10 +3764,10 @@ const OrganizerCheckIns = () => {
       setIsAlreadyUsed(false);
       setShowParticipantModal(true);
       setSelectedParticipant(result.ticket_data);
-      
+
       // Recarregar lista de check-ins
       fetchCheckIns();
-      
+
       // Limpar código manual após 3 segundos
       setTimeout(() => {
         setManualCode('');
@@ -3734,7 +3784,7 @@ const OrganizerCheckIns = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Check-ins</h2>
-        <button 
+        <button
           onClick={() => setShowQrScanner(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
@@ -3774,11 +3824,10 @@ const OrganizerCheckIns = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{checkIn.ticketType}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{checkIn.checkInTime}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      checkIn.status === 'ok' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${checkIn.status === 'ok' ? 'bg-green-100 text-green-800' :
                       checkIn.status === 'duplicado' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        'bg-red-100 text-red-800'
+                      }`}>
                       {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
                     </span>
                   </td>
@@ -3796,14 +3845,14 @@ const OrganizerCheckIns = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Scan QR Code</h3>
-                <button 
+                <button
                   onClick={() => setShowQrScanner(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="flex flex-col items-center">
                 <div className="relative w-64 h-64 mb-4">
                   {/* Add your QR code scanner component here */}
@@ -3838,27 +3887,25 @@ const OrganizerCheckIns = () => {
                 <h3 className="text-xl font-bold text-gray-900">
                   {isAlreadyUsed ? 'Check-in Anterior' : 'Check-in Realizado'}
                 </h3>
-                <button 
+                <button
                   onClick={() => setShowParticipantModal(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Banner de Status */}
-                <div className={`${
-                  isAlreadyUsed 
-                    ? 'bg-orange-50 border-orange-300' 
-                    : 'bg-green-50 border-green-300'
-                } border-2 rounded-xl p-6 text-center shadow-sm`}>
+                <div className={`${isAlreadyUsed
+                  ? 'bg-orange-50 border-orange-300'
+                  : 'bg-green-50 border-green-300'
+                  } border-2 rounded-xl p-6 text-center shadow-sm`}>
                   <div className="text-5xl mb-3">
                     {isAlreadyUsed ? '⚠️' : '✅'}
                   </div>
-                  <div className={`text-xl font-bold ${
-                    isAlreadyUsed ? 'text-orange-700' : 'text-green-700'
-                  }`}>
+                  <div className={`text-xl font-bold ${isAlreadyUsed ? 'text-orange-700' : 'text-green-700'
+                    }`}>
                     {isAlreadyUsed ? 'CHECK-IN JÁ REALIZADO' : 'ACESSO LIBERADO'}
                   </div>
                   {isAlreadyUsed && (
@@ -3930,19 +3977,17 @@ const OrganizerCheckIns = () => {
                         Valor
                       </label>
                       <p className="text-gray-900 font-bold text-lg mt-1">
-                        {selectedParticipant.ticket_price > 0 
-                          ? `R$ ${Number(selectedParticipant.ticket_price).toFixed(2).replace('.', ',')}` 
+                        {selectedParticipant.ticket_price > 0
+                          ? `R$ ${Number(selectedParticipant.ticket_price).toFixed(2).replace('.', ',')}`
                           : 'Gratuito'}
                       </p>
                     </div>
                   </div>
 
-                  <div className={`${
-                    isAlreadyUsed ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'
-                  } p-3 rounded-lg border`}>
-                    <label className={`text-xs font-semibold uppercase tracking-wide ${
-                      isAlreadyUsed ? 'text-orange-600' : 'text-green-600'
-                    }`}>
+                  <div className={`${isAlreadyUsed ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'
+                    } p-3 rounded-lg border`}>
+                    <label className={`text-xs font-semibold uppercase tracking-wide ${isAlreadyUsed ? 'text-orange-600' : 'text-green-600'
+                      }`}>
                       {isAlreadyUsed ? 'Check-in Realizado em' : 'Data/Hora do Check-in'}
                     </label>
                     <p className="text-gray-900 font-semibold mt-1">
@@ -3960,11 +4005,10 @@ const OrganizerCheckIns = () => {
 
                 <button
                   onClick={() => setShowParticipantModal(false)}
-                  className={`w-full mt-6 px-4 py-3 rounded-lg transition-colors font-bold text-white shadow-lg ${
-                    isAlreadyUsed 
-                      ? 'bg-orange-600 hover:bg-orange-700' 
-                      : 'bg-green-600 hover:bg-green-700'
-                  }`}
+                  className={`w-full mt-6 px-4 py-3 rounded-lg transition-colors font-bold text-white shadow-lg ${isAlreadyUsed
+                    ? 'bg-orange-600 hover:bg-orange-700'
+                    : 'bg-green-600 hover:bg-green-700'
+                    }`}
                 >
                   Fechar
                 </button>
@@ -4038,8 +4082,8 @@ const OrganizerSettings = () => {
             <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 focus:ring-pink-500 focus:border-pink-500" />
           </div>
         </div>
-        <LoadingButton 
-          type="submit" 
+        <LoadingButton
+          type="submit"
           isLoading={isSaving}
           loadingText="Salvando..."
           variant="primary"
@@ -4055,7 +4099,7 @@ const OrganizerSettings = () => {
 
 // Main OrganizerDashboardPage component
 const OrganizerDashboardPage = () => {
-  const [active, setActive] = useState('dashboard');
+  const [active, setActive] = useState<'dashboard' | 'events' | 'sales' | 'finance' | 'operators' | 'settings' | 'support' | 'affiliates' | 'coupons'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { setIsModalOpen } = useModal();
@@ -4082,19 +4126,27 @@ const OrganizerDashboardPage = () => {
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-40 z-40" onClick={() => setSidebarOpen(false)}></div>
         )}
-        <aside className={`bg-white shadow-md rounded-lg p-2 md:p-4 w-64 md:w-64 mb-4 md:mb-0 md:sticky md:top-6 z-50 transition-transform duration-200 fixed md:static top-0 left-0 h-full md:h-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`} style={{maxWidth: '90vw'}}>
+        <aside className={`bg-white shadow-md rounded-lg p-2 md:p-4 w-64 md:w-64 mb-4 md:mb-0 md:sticky md:top-6 z-50 transition-transform duration-200 fixed md:static top-0 left-0 h-full md:h-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`} style={{ maxWidth: '90vw' }}>
           <nav className="flex flex-col gap-2 w-full">
-            <button onClick={() => handleSetActive('dashboard')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='dashboard'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>
+            <button onClick={() => handleSetActive('dashboard')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'dashboard' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>
               <span className="hidden md:inline">Dashboard</span>
               <span className="md:hidden">Dash</span>
             </button>
-            <button onClick={() => handleSetActive('events')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='events'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
-            <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='sales'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
-            <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='finance'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
+            <button onClick={() => handleSetActive('events')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'events' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>Eventos</button>
+            <button onClick={() => handleSetActive('sales')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'sales' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>Vendas</button>
+            <button onClick={() => handleSetActive('finance')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'finance' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>Financeiro</button>
+            <button onClick={() => handleSetActive('coupons')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'coupons' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>
+              <Tag className="h-4 w-4" />
+              <span>Cupons</span>
+            </button>
+            <button onClick={() => navigate('/organizer/affiliates')} className="w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base hover:bg-pink-50 text-gray-700">
+              <UserPlus className="h-4 w-4" />
+              <span>Afiliados</span>
+            </button>
             <button onClick={() => navigate('/checkin')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base hover:bg-pink-50 text-gray-700`}>Check-in</button>
-            <button onClick={() => handleSetActive('operators')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='operators'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Operadores</button>
-            <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='settings'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Config</button>
-            <button onClick={() => handleSetActive('support')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active==='support'?'bg-pink-600 text-white':'hover:bg-pink-50 text-gray-700'}`}>Atendimento</button>
+            <button onClick={() => handleSetActive('operators')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'operators' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>Operadores</button>
+            <button onClick={() => handleSetActive('settings')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'settings' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>Config</button>
+            <button onClick={() => handleSetActive('support')} className={`w-full flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded text-sm md:text-base ${active === 'support' ? 'bg-pink-600 text-white' : 'hover:bg-pink-50 text-gray-700'}`}>Atendimento</button>
           </nav>
         </aside>
       </div>
@@ -4104,6 +4156,7 @@ const OrganizerDashboardPage = () => {
         {active === 'dashboard' && <DashboardOverview />}
         {active === 'events' && <OrganizerEvents />}
         {active === 'sales' && <OrganizerSales />}
+        {active === 'coupons' && <OrganizerCoupons />}
         {active === 'finance' && <OrganizerFinancial />}
         {active === 'operators' && user && <OperatorsManagement organizerId={user.id} />}
         {active === 'settings' && <OrganizerSettings />}

@@ -20,17 +20,17 @@ const Footer = () => {
     const phoneNumber = '5511968033591';
     const message = 'Olá! Gostaria de mais informações sobre os eventos do Pulakatraca.';
     const encodedMessage = encodeURIComponent(message);
-    
+
     // Detectar se é mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+
     let whatsappUrl;
     if (isMobile) {
       whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     } else {
       whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
     }
-    
+
     window.open(whatsappUrl, '_blank');
   };
 
@@ -65,7 +65,7 @@ const Footer = () => {
               className="h-12 w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
-            pulakatraca - conectando produtores e público com praticidade, segurança e uma experiência simples do começo ao fim.
+              pulakatraca - conectando produtores e público com praticidade, segurança e uma experiência simples do começo ao fim.
             </p>
             <div className="flex items-center gap-3">
               <a href="#" aria-label="Instagram" className="p-2 rounded-full bg-white hover:bg-pink-50 transition-colors border border-gray-200">
@@ -115,6 +115,19 @@ const Footer = () => {
             </div>
           </div>
 
+          {/* Botão Seja um Afiliado */}
+          <div className="mt-5">
+            <button
+              onClick={() => navigate('/affiliate/register')}
+              className="w-full py-3 px-6 rounded-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300 bg-pink-600 hover:bg-pink-700 border-2 border-gray-300"
+            >
+              💰 Seja um Afiliado
+            </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              Promova eventos e ganhe comissões
+            </p>
+          </div>
+
           {/* Newsletter */}
           <div className="mt-5">
             <h3 className="text-gray-900 font-semibold mb-3">Fique por dentro</h3>
@@ -149,7 +162,7 @@ const Footer = () => {
               className="h-12 w-auto object-contain mb-3"
             />
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
-            pulakatraca - conectando produtores e público com praticidade, segurança e uma experiência simples do começo ao fim.
+              pulakatraca - conectando produtores e público com praticidade, segurança e uma experiência simples do começo ao fim.
             </p>
             <div className="flex items-center gap-3">
               <a href="#" aria-label="Instagram" className="p-2 rounded-full bg-white hover:bg-pink-50 transition-colors border border-gray-200">
@@ -196,8 +209,22 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Coluna 4: Fique por dentro (newsletter) */}
+          {/* Coluna 4: Fique por dentro (newsletter) + Afiliados */}
           <div className="lg:mt-12">
+            {/* Botão Seja um Afiliado */}
+            <div className="mb-6">
+              <button
+                onClick={() => navigate('/affiliate/register')}
+                className="w-full py-3 px-6 rounded-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300 bg-pink-600 hover:bg-pink-700 border-2 border-gray-300"
+              >
+                💰 Seja um Afiliado
+              </button>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Promova eventos e ganhe comissões
+              </p>
+            </div>
+
+            {/* Newsletter */}
             <h3 className="text-gray-900 font-semibold mb-3">Fique por dentro</h3>
             <p className="text-sm leading-relaxed mb-3 text-gray-600">
               Se inscreva na nossa lista de e-mail e fique por dentro dos próximos eventos da sua região.
