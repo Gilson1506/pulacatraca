@@ -239,6 +239,7 @@ const MapInline: React.FC<{ destinationAddress: string }> = ({ destinationAddres
 const EventPage = () => {
   const [loading, setLoading] = useState(false);
   const [isLoadingEvent, setIsLoadingEvent] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { eventId } = useParams();
 
@@ -306,6 +307,7 @@ const EventPage = () => {
 
     try {
       setIsLoadingEvent(true);
+      setLoadError(null);
       if (!eventId) {
         console.log('EventPage - ID do evento não fornecido');
         navigate('/');
@@ -993,6 +995,7 @@ const EventPage = () => {
         return;
       }
       console.error('❌ Erro CRÍTICO ao buscar evento:', error);
+      setLoadError('Não foi possível carregar este evento. Tente novamente em instantes.');
       if (isMountedRef.current) {
         // navigate('/'); // Comentado para debug
       }
@@ -1272,10 +1275,38 @@ const EventPage = () => {
   }
 
   if (!event) {
-    console.log('🎨 EventPage - Renderizando NULL (sem evento)');
-    return null;
+    console.log('🎨 EventPage - Renderizando estado intermediário (sem evento definido ainda)');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white px-4">
+        {loadError ? (
+          <div className="text-center space-y-4 max-w-md">
+            <AlertCircle className="mx-auto h-10 w-10 text-pink-500" />
+            <p className="text-gray-700">{loadError}</p>
+            <button
+              onClick={() => {
+                setIsLoadingEvent(true);
+                fetchEvent();
+              }}
+              className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg shadow hover:bg-pink-700 transition-colors"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : (
+          <div className="text-center space-y-3">
+            <ProfessionalLoader size="lg" />
+            <p className="text-gray-600">Carregando informações do evento...</p>
+          </div>
+        )}
+      </div>
+    );
   }
 
+  const eventHasEnded = (() => {
+    const now = new Date();
+    const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
+    return now > endDate;
+  })();
   console.log('🎨 EventPage - Renderizando CONTEÚDO PRINCIPAL');
   return (
     <div className="min-h-screen bg-white font-sans" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
@@ -1387,19 +1418,9 @@ const EventPage = () => {
       {/* Botão de compra em desktop */}
       <div className="hidden lg:flex w-full justify-end px-4 lg:pr-16 mt-6 mb-12 relative z-30">
         <button
-          className={`py-3 px-6 rounded-xl font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px] transition-colors ${(() => {
-            const now = new Date();
-            const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-            const isFinished = now > endDate;
-            return isFinished ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700';
-          })()
-            } text-white`}
+          className={`py-3 px-6 rounded-xl font-bold text-base shadow-2xl flex items-center justify-center min-w-[220px] transition-colors ${eventHasEnded ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'} text-white`}
           onClick={() => {
-            const now = new Date();
-            const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-            const isFinished = now > endDate;
-
-            if (isFinished) return;
+            if (eventHasEnded) return;
 
             // Track purchase intent
             trackPurchaseFlow.purchaseIntent(
@@ -1410,20 +1431,12 @@ const EventPage = () => {
 
             setShowTicketModal(true);
           }}
-          disabled={loading || (() => {
-            const now = new Date();
-            const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-            return now > endDate;
-          })()}
+          disabled={loading || eventHasEnded}
         >
           {loading ? (
             <ProfessionalLoader size="sm" />
           ) : (
-            (() => {
-              const now = new Date();
-              const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-              return now > endDate ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS';
-            })()
+            eventHasEnded ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS'
           )}
         </button>
       </div>
@@ -1471,19 +1484,9 @@ const EventPage = () => {
               </div>
               {/* Botão de compra em mobile */}
               <button
-                className={`w-full py-3 px-4 rounded-xl font-bold text-base shadow-md flex items-center justify-center transition-colors ${(() => {
-                  const now = new Date();
-                  const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-                  const isFinished = now > endDate;
-                  return isFinished ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700';
-                })()
-                  } text-white`}
+                className={`w-full py-3 px-4 rounded-xl font-bold text-base shadow-md flex items-center justify-center transition-colors ${eventHasEnded ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'} text-white`}
                 onClick={() => {
-                  const now = new Date();
-                  const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-                  const isFinished = now > endDate;
-
-                  if (isFinished) return;
+                  if (eventHasEnded) return;
 
                   // Track purchase intent
                   trackPurchaseFlow.purchaseIntent(
@@ -1494,20 +1497,12 @@ const EventPage = () => {
 
                   setShowTicketModal(true);
                 }}
-                disabled={loading || (() => {
-                  const now = new Date();
-                  const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-                  return now > endDate;
-                })()}
+                disabled={loading || eventHasEnded}
               >
                 {loading ? (
                   <ProfessionalLoader size="sm" />
                 ) : (
-                  (() => {
-                    const now = new Date();
-                    const endDate = event.end_date ? new Date(event.end_date) : new Date(`${event.date}T23:59:59`);
-                    return now > endDate ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS';
-                  })()
+                  eventHasEnded ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS'
                 )}
               </button>
 
@@ -1675,10 +1670,18 @@ const EventPage = () => {
                   </div>
                 )}
                 <button
-                  onClick={() => setShowTicketModal(true)}
-                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 whitespace-nowrap"
+                  onClick={() => {
+                    if (eventHasEnded) return;
+                    setShowTicketModal(true);
+                  }}
+                  disabled={eventHasEnded}
+                  className={`px-6 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-md whitespace-nowrap ${
+                    eventHasEnded
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-70'
+                      : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white hover:shadow-lg transform hover:scale-105 active:scale-95'
+                  }`}
                 >
-                  Comprar Ingresso
+                  {eventHasEnded ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS'}
                 </button>
               </div>
             </div>

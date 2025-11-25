@@ -568,6 +568,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
       console.log('🔗 URL pública do mapa:', publicUrl);
 
       setFormData(prev => ({ ...prev, map_image: publicUrl }));
+      console.log('✅ map_image salvo no formData:', publicUrl);
 
     } catch (error: any) {
       console.error('❌ Erro no upload do mapa:', error);
@@ -883,7 +884,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
           title: formData.title.trim(),
           description: formData.description || '',
           image: formData.image || '',
-          map_image: formData.map_image || '',
+          map_image: formData.map_image || null,
           subject: formData.subject || 'Evento',
           category: formData.category || 'evento',
           classification: formData.classification || 'Livre',
@@ -931,6 +932,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onEven
 
         // 7. LOGS DETALHADOS PARA DEBUG
         console.log('🔍 DEBUG - Payload final:', JSON.stringify(payload, null, 2));
+        console.log('🗺️ DEBUG - map_image no payload:', payload.map_image);
         console.log('🔍 DEBUG - Timestamps formatados:', {
           start_datetime: startDatetime,
           end_datetime: endDatetime
