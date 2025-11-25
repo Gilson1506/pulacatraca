@@ -971,15 +971,58 @@ const EventPage = () => {
 
       // Processar tickets pro modal com lotes completos
       if (ticketsData && ticketsData.length > 0) {
-        // ... (rest of the code)
-        const modalTickets = ticketsData.map((ticket: any) => {
-          // ... (rest of the code)
-          // ...
-          return ticket.batches.map((batch: any) => ({
-            // ...
-            stripe_price_id: ticket.stripe_price_id
-          }));
-        }).flat();
+        const modalTickets = ticketsData.flatMap((ticket: any) => {
+          // Se o ticket tem batches e eles não estão vazios, processar cada batch
+          if (ticket.batches && Array.isArray(ticket.batches) && ticket.batches.length > 0) {
+            return ticket.batches
+              .filter((batch: any) => batch.is_available !== false) // Filtrar apenas lotes disponíveis
+              .map((batch: any) => ({
+                id: batch.id || `${ticket.id}-batch-${batch.batch_number}`,
+                event_id: ticket.event_id,
+                name: ticket.title || ticket.name,
+                title: ticket.title || ticket.name,
+                description: ticket.description,
+                price: batch.display_price || ticket.price_masculine || ticket.price || 0,
+                price_masculine: batch.display_price || ticket.price_masculine || ticket.price || 0,
+                price_feminine: batch.display_price_feminine || ticket.price_feminine,
+                price_type: batch.price_type || ticket.price_type || 'unissex',
+                quantity: batch.quantity || ticket.quantity || 0,
+                available_quantity: batch.quantity || 0,
+                sector: ticket.sector,
+                status: batch.batch_status === 'active' ? 'active' : 'inactive',
+                sale_start_date: batch.sale_start_date,
+                sale_end_date: batch.sale_end_date,
+                sale_period_type: 'batch' as const,
+                stripe_price_id: ticket.stripe_price_id,
+                is_batch_ticket: true,
+                batch_info: {
+                  batch_number: batch.batch_number,
+                  batch_status: batch.batch_status,
+                  is_available: batch.is_available
+                }
+              }));
+          } else {
+            // Se não tem batches, processar o ticket diretamente
+            return [{
+              id: ticket.id,
+              event_id: ticket.event_id,
+              name: ticket.title || ticket.name,
+              title: ticket.title || ticket.name,
+              description: ticket.description,
+              price: ticket.price_masculine || ticket.price || 0,
+              price_masculine: ticket.price_masculine || ticket.price || 0,
+              price_feminine: ticket.price_feminine,
+              price_type: ticket.price_type || 'unissex',
+              quantity: ticket.quantity || 0,
+              available_quantity: ticket.available_quantity || ticket.quantity || 0,
+              sector: ticket.sector,
+              status: ticket.status || 'active',
+              sale_period_type: 'date' as const,
+              stripe_price_id: ticket.stripe_price_id,
+              is_batch_ticket: false
+            }];
+          }
+        });
 
         setAvailableTickets(modalTickets);
         console.log('🎫 Tickets pro modal (com batches):', modalTickets.length, modalTickets);
