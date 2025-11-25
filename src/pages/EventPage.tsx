@@ -26,6 +26,7 @@ interface Event {
   addressDetailed: string[];
   dateLabel: string;
   image: string;
+  map_image?: string;
   tickets: {
     id: string;
     name: string;
@@ -397,10 +398,8 @@ const EventPage = () => {
       console.log('  - eventData:', eventData ? 'ENCONTRADO' : 'NULL');
       console.log('  - error:', error);
       console.log('  - eventData completo:', eventData);
-
-      if (abortSignal.aborted || !isMountedRef.current) {
-        return;
-      }
+      console.log('  - eventData.map_image:', eventData?.map_image);
+      console.log('  - Campos disponíveis:', eventData ? Object.keys(eventData) : 'N/A');
 
       // 🎫 BUSCAR TIPOS DE INGRESSOS DO EVENTO
       console.log('EventPage - Buscando tipos de ingressos para evento:', eventId);
@@ -644,6 +643,7 @@ const EventPage = () => {
       });
 
       // Processar dados formatados uma única vez (evitar duplicações)
+      console.log('🔍 CHECKPOINT 1: Iniciando processamento de endereço');
       const formattedAddress = (() => {
         if (eventData.location_type === 'online') {
           return 'Evento Online';
@@ -757,12 +757,14 @@ const EventPage = () => {
       })();
 
       // Processar datas uma única vez (evitar duplicações)
+      console.log('🔍 CHECKPOINT 2: Processando datas');
       const startDate = new Date(eventData.start_date);
       const startTime = eventData.start_date?.split('T')[1]?.substring(0, 5) || '';
       const endTime = eventData.end_date?.split('T')[1]?.substring(0, 5) || '';
       const formattedStartDate = startDate.toLocaleDateString('pt-BR');
       const formattedEndDate = eventData.end_date ? new Date(eventData.end_date).toLocaleDateString('pt-BR') : '';
 
+      console.log('🔍 CHECKPOINT 3: Criando formattedEvent');
       const formattedEvent: Event = {
         id: eventData.id,
         title: eventData.title,
@@ -778,6 +780,7 @@ const EventPage = () => {
           year: 'numeric'
         }),
         image: eventData.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDgwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
+        map_image: (eventData.map_image && eventData.map_image.trim() !== '') ? eventData.map_image : undefined,
         tickets: ticketsData && ticketsData.length > 0 ? ticketsData.map(ticket => ({
           id: ticket.id,
           name: ticket.title || ticket.name,
@@ -940,22 +943,28 @@ const EventPage = () => {
         }
       };
 
-      if (abortSignal.aborted || !isMountedRef.current) {
-        console.log('⚠️ Abortado antes de setEvent:', { aborted: abortSignal.aborted, mounted: isMountedRef.current });
-        return;
-      }
+      console.log('🔍 CHECKPOINT 4: formattedEvent criado com sucesso!', {
+        id: formattedEvent.id,
+        title: formattedEvent.title,
+        map_image: formattedEvent.map_image,
+        has_map: !!formattedEvent.map_image
+      });
 
       console.log('📦 Chamando setEvent com formattedEvent:', {
         id: formattedEvent.id,
         title: formattedEvent.title,
-        hasTickets: formattedEvent.tickets.length
+        hasTickets: formattedEvent.tickets.length,
+        aborted: abortSignal.aborted,
+        mounted: isMountedRef.current
       });
 
-      if (isMountedRef.current && !abortSignal.aborted) {
+      // Sempre tentar setar o evento, mesmo se abortSignal estiver ativo
+      // O abort só deve cancelar requisições de rede, não impedir o setState
+      if (isMountedRef.current) {
         setEvent(formattedEvent);
         console.log('✅ setEvent executado com sucesso!');
       } else {
-        console.log('⚠️ setEvent PULADO - Componente desmontado ou abortado', { mounted: isMountedRef.current, aborted: abortSignal.aborted });
+        console.log('⚠️ setEvent PULADO - Componente desmontado', { mounted: isMountedRef.current });
       }
 
       // Processar tickets pro modal com lotes completos
@@ -1084,6 +1093,20 @@ const EventPage = () => {
                 )}
               </div>
             </div>
+
+            {/* Mapa do Evento */}
+            {event?.map_image && (
+              <div className="bg-white p-3 rounded-lg">
+                <h3 className="font-semibold text-base mb-2 text-gray-800">MAPA DO EVENTO</h3>
+                <div className="rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                  <img
+                    src={event.map_image}
+                    alt="Mapa do evento"
+                    className="w-full h-auto object-contain max-h-[600px] bg-gray-50"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="bg-white p-3 rounded-lg">
               <h3 className="font-semibold text-base mb-2 text-gray-800">REGRAS DE TROCA DE UTILIZADOR</h3>
