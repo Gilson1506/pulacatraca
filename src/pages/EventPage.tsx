@@ -1538,20 +1538,6 @@ const EventPage = () => {
                   {getTabContent('informacoes')}
                 </div>
 
-                {/* Mapa do Evento (Imagem) */}
-                {event.map_image && (
-                  <div className="mb-8">
-                    <h2 className="text-lg font-semibold mb-3 text-gray-800">MAPA DO EVENTO</h2>
-                    <div className="rounded-lg overflow-hidden shadow-sm border border-gray-200">
-                      <img
-                        src={event.map_image}
-                        alt="Mapa do evento"
-                        className="w-full h-auto object-contain max-h-[600px] bg-gray-50"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Mapa de rota inline (Mapbox) */}
                 <div className="transition-all duration-500">
                   <h2 className="text-lg font-semibold mb-3 text-gray-800">COMO CHEGAR</h2>
