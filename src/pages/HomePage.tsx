@@ -4,12 +4,12 @@ import EventCard from '../components/EventCard';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { supabase } from '../lib/supabase';
 import EventCarouselNew from '../components/EventCarouselNew';
- 
+
 const HomePage = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
- 
+
   // Eventos estáticos como fallback
   const fallbackEvents = [
     {
@@ -47,16 +47,16 @@ const HomePage = () => {
       price: 0,
     },
   ];
- 
+
   useEffect(() => {
     fetchApprovedEvents();
   }, []);
- 
+
   const fetchApprovedEvents = async () => {
     try {
       setIsLoading(true);
       setError(null);
- 
+
       // Buscar apenas eventos aprovados do Supabase
       const { data: eventsData, error } = await supabase
         .from('events')
@@ -77,20 +77,21 @@ const HomePage = () => {
           location_city,
           location_state,
           ticket_type,
+          view_count,
           created_at,
           organizer_id
         `)
         .eq('status', 'approved') // ✅ APENAS EVENTOS APROVADOS
         .order('start_date', { ascending: true });
- 
+
       if (error) {
         console.error('Erro ao buscar eventos:', error);
         setError('Erro ao carregar eventos');
         setEvents(fallbackEvents); // Usar eventos estáticos como fallback
         return;
       }
- 
-            // Formatar eventos para o formato esperado pelo EventCard (simples, como antes)
+
+      // Formatar eventos para o formato esperado pelo EventCard (simples, como antes)
       const formattedEvents = (eventsData || []).map((event) => {
         // Usar diretamente a cidade do evento do banco de dados
         const city = event.location_city || '';
@@ -110,8 +111,9 @@ const HomePage = () => {
           city,
           state,
           price: typeof event.price === 'number' ? event.price : Number(event.price) || 0,
+          view_count: event.view_count || 0,
         };
-        
+
         console.log('Evento formatado:', {
           id: formattedEvent.id,
           title: formattedEvent.title,
@@ -125,7 +127,7 @@ const HomePage = () => {
             location: event.location
           }
         });
-        
+
         return formattedEvent;
       });
 
@@ -138,10 +140,10 @@ const HomePage = () => {
       setIsLoading(false);
     }
   };
- 
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans overflow-x-hidden" style={{ fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif' }}>
-      
+
 
       {/* Hero Carousel */}
       <div className="container mx-auto px-4 overflow-x-hidden">

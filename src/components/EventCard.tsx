@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin } from 'lucide-react';
+import { MapPin, Eye } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -13,6 +13,7 @@ interface Event {
   image: string;
   price: number;
   category: string;
+  view_count?: number;
 }
 
 interface EventCardProps {
@@ -62,14 +63,14 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
           {/* Ano(s) */}
           {showYear && (
-          <span className="text-xs font-normal text-gray-500 mt-1" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }}>
+            <span className="text-xs font-normal text-gray-500 mt-1" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }}>
               {`${startYear} - ${endYear}`}
-          </span>
+            </span>
           )}
         </div>
       );
     }
-    
+
     // Evento de dia único (sem endDate ou endDate igual à data de início)
     const currentYear = new Date().getFullYear();
     const showYear = startYear !== currentYear;
@@ -78,7 +79,7 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <span className="text-3xl font-bold text-pink-600">{startDay}</span>
         <span className="text-sm font-semibold text-gray-900 mt-1">{startMonth}</span>
         {showYear && (
-        <span className="text-xs font-normal text-gray-500" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }}>{startYear}</span>
+          <span className="text-xs font-normal text-gray-500" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }}>{startYear}</span>
         )}
       </>
     );
@@ -94,20 +95,20 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
         {/* Imagem ao centro (MOBILE) - Ajustada para mostrar banner completo */}
         <div className="relative w-40 flex-shrink-0">
-        <img 
-          src={event.image} 
-          alt={event.title}
-          width={400}
-          height={300}
-          className="w-full h-28 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
-          style={{ 
-            aspectRatio: '4/3',
-            objectPosition: 'center center',
-            imageRendering: 'high-quality',
-            filter: 'contrast(1.02) saturate(1.05)'
-          }}
-          loading="lazy"
-        />
+          <img
+            src={event.image}
+            alt={event.title}
+            width={400}
+            height={300}
+            className="w-full h-28 object-cover transition-transform duration-300 group-hover:scale-105 rounded-md"
+            style={{
+              aspectRatio: '4/3',
+              objectPosition: 'center center',
+              imageRendering: 'high-quality',
+              filter: 'contrast(1.02) saturate(1.05)'
+            }}
+            loading="lazy"
+          />
         </div>
         {/* Detalhes do Evento à direita (MOBILE) */}
         <div className="flex-1 flex flex-col justify-between p-2 min-w-0">
@@ -118,19 +119,25 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
           <h3 className="font-bold text-gray-800 text-base leading-tight drop-shadow-md break-words line-clamp-2 max-w-full" style={{ fontFamily: 'Montserrat, Lato, Raleway, sans-serif' }} title={event.title}>
             {event.title}
           </h3>
+          {event.view_count && event.view_count > 0 && (
+            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+              <Eye className="w-3 h-3" />
+              <span>{event.view_count.toLocaleString('pt-BR')}</span>
+            </div>
+          )}
         </div>
       </div>
       {/* Desktop: imagem em cima, linha com data à esquerda e detalhes à direita */}
       <div className="hidden md:block">
         {/* Imagem em cima - Ajustada para mostrar banner completo */}
         <div className="relative w-full">
-          <img 
-            src={event.image} 
+          <img
+            src={event.image}
             alt={event.title}
             width={400}
             height={300}
             className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
-            style={{ 
+            style={{
               aspectRatio: '4/3',
               objectPosition: 'center center',
               imageRendering: 'high-quality',
@@ -151,9 +158,15 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {event.title}
             </h3>
             <div className="flex items-center">
-            <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0 text-blue-500" />
-            <p className="text-sm truncate font-normal" style={{ fontFamily: 'Open Sans, Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>{`${event.city}, ${event.state}`}</p>
+              <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0 text-blue-500" />
+              <p className="text-sm truncate font-normal" style={{ fontFamily: 'Open Sans, Nunito, Inter, Segoe UI, Helvetica, Arial, sans-serif', color: '#3B82F6', letterSpacing: '0.01em', textShadow: '0 1px 4px rgba(59,130,246,0.10)' }} title={`${event.city}, ${event.state}`}>{`${event.city}, ${event.state}`}</p>
             </div>
+            {event.view_count && event.view_count > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                <Eye className="w-3 h-3" />
+                <span>{event.view_count.toLocaleString('pt-BR')}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

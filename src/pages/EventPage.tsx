@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Phone, AlertCircle, CheckCircle, Info, Share2, Eye } from 'lucide-react';
 import ProfessionalLoader from '../components/ProfessionalLoader';
 import { useNavigate, useParams } from 'react-router-dom';
 // @ts-ignore
@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAnalytics, usePageTracking } from '../hooks/useAnalytics';
 import { useABTesting } from '../hooks/useABTesting';
 import { useAffiliateTracking } from '../hooks/useAffiliateTracking';
+import { useEventViews } from '../hooks/useEventViews';
 
 interface Event {
   id: string;
@@ -27,6 +28,8 @@ interface Event {
   dateLabel: string;
   image: string;
   map_image?: string;
+  view_count?: number;
+  unique_view_count?: number;
   tickets: {
     id: string;
     name: string;
@@ -270,6 +273,9 @@ const EventPage = () => {
   // Track page view automaticamente
   usePageTracking('event_page');
 
+  // Rastrear visualização do evento (views públicas)
+  useEventViews(eventId);
+
   useEffect(() => {
     isMountedRef.current = true;
     console.log('EventPage - useEffect executado com ID:', eventId); // Log para debug
@@ -388,6 +394,8 @@ const EventPage = () => {
           location_search,
           ticket_type,
           contact_info,
+          view_count,
+          unique_view_count,
           created_at,
           updated_at
         `)
@@ -783,6 +791,8 @@ const EventPage = () => {
         }),
         image: eventData.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDgwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjM2OEE3Ii8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FdmVudG88L3RleHQ+Cjwvc3ZnPgo=',
         map_image: (eventData.map_image && eventData.map_image.trim() !== '') ? eventData.map_image : undefined,
+        view_count: eventData.view_count || 0,
+        unique_view_count: eventData.unique_view_count || 0,
         tickets: ticketsData && ticketsData.length > 0 ? ticketsData.map(ticket => ({
           id: ticket.id,
           name: ticket.title || ticket.name,
@@ -1704,11 +1714,10 @@ const EventPage = () => {
                     setShowTicketModal(true);
                   }}
                   disabled={eventHasEnded}
-                  className={`px-6 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-md whitespace-nowrap ${
-                    eventHasEnded
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-70'
-                      : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white hover:shadow-lg transform hover:scale-105 active:scale-95'
-                  }`}
+                  className={`px-6 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-md whitespace-nowrap ${eventHasEnded
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-70'
+                    : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white hover:shadow-lg transform hover:scale-105 active:scale-95'
+                    }`}
                 >
                   {eventHasEnded ? 'EVENTO TERMINADO' : 'COMPRAR INGRESSOS'}
                 </button>
