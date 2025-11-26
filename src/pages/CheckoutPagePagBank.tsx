@@ -493,6 +493,9 @@ const CheckoutPagePagBank = () => {
       return;
     }
 
+    // Definir eventToUse no escopo da função
+    const eventToUse = finalEvent || event;
+
     // Validar CPF
     const cpf = (customerData.document || userProfile.document || '').replace(/\D/g, '');
     if (!cpf || cpf === '00000000000' || cpf.length !== 11) {
@@ -646,6 +649,9 @@ const CheckoutPagePagBank = () => {
       alert('Dados do usuário incompletos.');
       return;
     }
+
+    // Definir eventToUse no escopo da função
+    const eventToUse = finalEvent || event;
 
     // Validar CPF
     const cpf = (customerData.document || userProfile.document || '').replace(/\D/g, '');
